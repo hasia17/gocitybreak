@@ -60,7 +60,7 @@ _Code_: `Anywhere`
 _Avoid_: everywhere
 
 **City**:
-The group of airports Ryanair assigns to a city name, including ones far from it (e.g. Milan includes Bergamo); an offer always shows the specific airport.
+The group of airports Ryanair assigns to a city name, plus the few airports Ryanair names after a nearby city but assigns to another one (e.g. Milan includes Bergamo, Brussels includes Charleroi); an airport may belong to several cities, and an offer always shows the specific airport.
 _Code_: `City`
 _Avoid_: location, place
 
@@ -76,13 +76,23 @@ The date range the whole offer must fit into: outbound flight on the first day a
 _Code_: `TravelWindow`
 _Avoid_: departure window, date range
 
+**Local time**:
+The time at an airport in that airport's own time zone, as printed on the ticket: a departure is always in the departure airport's local time, an arrival in the arrival airport's.
+_Code_: `LocalTime`
+_Avoid_: UTC time, Polish time
+
+**Night**:
+A hotel night of the stay, counted from the outbound arrival date (or the day before, when the outbound flight lands before 06:00 local time) up to the inbound departure date.
+_Code_: `nights`
+_Avoid_: calendar night, day
+
 **Stay length**:
 The range of nights between the outbound and the inbound flight of a round-trip offer.
 _Code_: `StayLength` (in nights)
 _Avoid_: number of days, duration
 
 **Time range**:
-An optional range of hours within which a leg's departure or arrival must fall for the offer to be shown.
+An optional range of hours, in local time, within which a leg's departure or arrival must fall for the offer to be shown.
 _Code_: `TimeRange`
 _Avoid_: good hours, comfort
 
@@ -94,11 +104,11 @@ _Code_: `WorkingDay`
 _Avoid_: business day, workday
 
 **Work end**:
-The user-set time after which a departure does not cost them a working day.
+The user-set time, in the home airport's local time, after which a departure does not cost them a working day.
 _Code_: `workEnd`
 
 **Work start**:
-The user-set time before which a return does not cost them a working day.
+The user-set time, in the home airport's local time, before which a return does not cost them a working day.
 _Code_: `workStart`
 
 **Leave days**:
@@ -108,8 +118,18 @@ _Avoid_: vacation days, days off, holiday days
 
 ## Price
 
+**Original price**:
+A flight price for one adult passenger in the cheapest fare, i.e. with only a small under-seat bag (no cabin suitcase), in the currency Ryanair charges for it (the departure airport's currency).
+_Code_: `Flight.originalPrice` (amount + currency)
+_Avoid_: base price, local price
+
+**Exchange rate**:
+The official daily mid-market rate used to convert original prices into PLN; not the rate Ryanair or the user's bank applies.
+_Code_: `ExchangeRate`
+_Avoid_: Ryanair rate, conversion rate
+
 **Offer price**:
-The sum of an offer's flight prices for one adult passenger in the cheapest fare, i.e. with only a small under-seat bag (no cabin suitcase).
+The sum of an offer's original prices, each converted into PLN at the exchange rate; approximate whenever any of its flights is priced in another currency.
 _Code_: `Offer.price`
 _Avoid_: total price, price for everyone
 
@@ -124,6 +144,6 @@ _Code_: `LivePrice`
 _Avoid_: current price, real price
 
 **Price per night**:
-The price of a round-trip offer divided by the number of nights of the stay.
+The offer price of a round-trip offer divided by its number of nights.
 _Code_: `pricePerNight`
 _Avoid_: price per day
