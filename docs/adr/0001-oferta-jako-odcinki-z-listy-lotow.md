@@ -1,0 +1,3 @@
+# Oferta składa się z odcinków, a odcinek z listy lotów
+
+Docelowo chcemy samodzielnych przesiadek sklejanych z osobnych lotów Ryanaira (jak w Azair) oraz powrotu z innego miasta niż przylot (np. przylot do Wenecji, powrót z Mediolanu). Na start wyszukujemy wyłącznie loty bezpośrednie, ale model od początku zakłada, że oferta to odcinek tam (i opcjonalnie odcinek powrotny), a każdy odcinek to lista lotów, a nie pojedynczy lot. Lotnisko przylotu odcinka tam i lotnisko wylotu odcinka powrotnego są od siebie niezależne. Dzięki temu przesiadki i powroty z innego miasta dojdą bez przebudowy modelu, choć dziś każdy odcinek ma dokładnie jeden lot.
