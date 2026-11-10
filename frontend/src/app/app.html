@@ -1,0 +1,16 @@
+<main>
+  <h1>gocitybreak</h1>
+
+  @if (apiStatus.hasValue()) {
+    @let status = apiStatus.value();
+    <ul>
+      <li>API: {{ status.status }}</li>
+      <li>Version: {{ status.version }}</li>
+      <li>Database: {{ status.database.status }}</li>
+    </ul>
+  } @else if (apiStatus.error()) {
+    <p role="alert">API unavailable.</p>
+  } @else {
+    <p>Checking API…</p>
+  }
+</main>
