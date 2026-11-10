@@ -1,0 +1,276 @@
+package app_test
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"slices"
+	"testing"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/testcontainers/testcontainers-go/modules/postgres"
+)
+
+func TestSearchReturnsOneWayOfferForDirectFlightInTravelWindow(t *testing.T) {
+	srv, pg := startAPI(t, "test")
+	seed(t, pg, polishAndItalianAirports+`
+		INSERT INTO flights (departure_airport, arrival_airport,
+			departure_date, departure_time, arrival_date, arrival_time,
+			price_amount, price_currency, fetched_at)
+		VALUES ('KRK', 'BGY', '2026-12-05', '06:15', '2026-12-05', '08:10',
+			8900, 'PLN', '2026-11-10T08:00:00Z');
+	`)
+
+	code, body := search(t, srv, `{
+		"kind": "oneWay",
+		"homeAirports": ["KRK"],
+		"destination": {"airports": ["BGY"]},
+		"travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}
+	}`)
+
+	if code != http.StatusOK {
+		t.Fatalf("status code = %d, want %d", code, http.StatusOK)
+	}
+	want := []offerBody{{
+		Kind: "oneWay",
+		Outbound: legBody{
+			IsDirect: true,
+			Flights: []flightBody{{
+				DepartureAirport: "KRK",
+				ArrivalAirport:   "BGY",
+				Departure:        localTimeBody{Date: "2026-12-05", Time: "06:15", TimeZone: "Europe/Warsaw"},
+				Arrival:          localTimeBody{Date: "2026-12-05", Time: "08:10", TimeZone: "Europe/Rome"},
+				OriginalPrice:    moneyBody{Amount: 89.00, Currency: "PLN"},
+				FetchedAt:        "2026-11-10T08:00:00Z",
+			}},
+		},
+		Price:          priceBody{Amount: 89.00, Currency: "PLN", Approximate: false},
+		PriceFetchedAt: "2026-11-10T08:00:00Z",
+	}}
+	assertOffers(t, body.Offers, want)
+}
+
+func TestSearchSkipsFlightsOutsideQuery(t *testing.T) {
+	srv, pg := startAPI(t, "test")
+	seed(t, pg, polishAndItalianAirports+`
+		INSERT INTO flights (departure_airport, arrival_airport,
+			departure_date, departure_time, arrival_date, arrival_time,
+			price_amount, price_currency, fetched_at)
+		VALUES
+			-- matches
+			('KRK', 'BGY', '2026-12-01', '06:15', '2026-12-01', '08:10', 8900, 'PLN', '2026-11-10T08:00:00Z'),
+			-- the day before the travel window
+			('KRK', 'BGY', '2026-11-30', '06:15', '2026-11-30', '08:10', 5000, 'PLN', '2026-11-10T08:00:00Z'),
+			-- departs on the last day but lands after the travel window
+			('KRK', 'BGY', '2026-12-10', '23:30', '2026-12-11', '01:20', 5000, 'PLN', '2026-11-10T08:00:00Z'),
+			-- from an airport that is not a home airport
+			('KTW', 'BGY', '2026-12-05', '06:15', '2026-12-05', '08:10', 5000, 'PLN', '2026-11-10T08:00:00Z'),
+			-- to another destination
+			('KRK', 'CIA', '2026-12-05', '06:15', '2026-12-05', '08:30', 5000, 'PLN', '2026-11-10T08:00:00Z'),
+			-- the opposite direction
+			('BGY', 'KRK', '2026-12-05', '09:00', '2026-12-05', '10:50', 5000, 'EUR', '2026-11-10T08:00:00Z'),
+			-- no price (ADR-0005 fallback)
+			('KRK', 'BGY', '2026-12-05', '18:00', '2026-12-05', '19:55', NULL, NULL, '2026-11-10T08:00:00Z');
+	`)
+
+	code, body := search(t, srv, `{
+		"kind": "oneWay",
+		"homeAirports": ["KRK"],
+		"destination": {"airports": ["BGY"]},
+		"travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}
+	}`)
+
+	if code != http.StatusOK {
+		t.Fatalf("status code = %d, want %d", code, http.StatusOK)
+	}
+	if len(body.Offers) != 1 {
+		t.Fatalf("got %d offers, want 1: %+v", len(body.Offers), body.Offers)
+	}
+	if got := body.Offers[0].Outbound.Flights[0].Departure; got.Date != "2026-12-01" || got.Time != "06:15" {
+		t.Errorf("offer departs %s %s, want the KRK→BGY flight on 2026-12-01 06:15", got.Date, got.Time)
+	}
+}
+
+func TestSearchConvertsForeignCurrencyIntoApproximatePLNAtLatestRate(t *testing.T) {
+	srv, pg := startAPI(t, "test")
+	seed(t, pg, polishAndItalianAirports+`
+		INSERT INTO exchange_rates (currency, rate_date, rate) VALUES
+			('EUR', '2026-11-09', 4.3000),
+			('EUR', '2026-11-10', 4.2512);
+		INSERT INTO flights (departure_airport, arrival_airport,
+			departure_date, departure_time, arrival_date, arrival_time,
+			price_amount, price_currency, fetched_at)
+		VALUES ('BGY', 'KRK', '2026-12-05', '09:00', '2026-12-05', '10:50',
+			1999, 'EUR', '2026-11-10T08:00:00Z');
+	`)
+
+	code, body := search(t, srv, `{
+		"kind": "oneWay",
+		"homeAirports": ["BGY"],
+		"destination": {"airports": ["KRK"]},
+		"travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}
+	}`)
+
+	if code != http.StatusOK {
+		t.Fatalf("status code = %d, want %d", code, http.StatusOK)
+	}
+	if len(body.Offers) != 1 {
+		t.Fatalf("got %d offers, want 1: %+v", len(body.Offers), body.Offers)
+	}
+	offer := body.Offers[0]
+	// 19.99 EUR × 4.2512 PLN/EUR = 84.981488 PLN, rounded to 84.98.
+	if want := (priceBody{Amount: 84.98, Currency: "PLN", Approximate: true}); offer.Price != want {
+		t.Errorf("price = %+v, want %+v", offer.Price, want)
+	}
+	if want := (moneyBody{Amount: 19.99, Currency: "EUR"}); offer.Outbound.Flights[0].OriginalPrice != want {
+		t.Errorf("original price = %+v, want %+v", offer.Outbound.Flights[0].OriginalPrice, want)
+	}
+}
+
+func TestSearchSortsOffersByAscendingPriceInPLN(t *testing.T) {
+	srv, pg := startAPI(t, "test")
+	seed(t, pg, polishAndItalianAirports+`
+		INSERT INTO exchange_rates (currency, rate_date, rate) VALUES ('EUR', '2026-11-10', 4.2512);
+		INSERT INTO flights (departure_airport, arrival_airport,
+			departure_date, departure_time, arrival_date, arrival_time,
+			price_amount, price_currency, fetched_at)
+		VALUES
+			('KRK', 'BGY', '2026-12-02', '06:15', '2026-12-02', '08:10', 12000, 'PLN', '2026-11-10T08:00:00Z'),
+			-- 20.00 EUR ≈ 85.02 PLN: cheaper than 120 PLN, dearer than 70 PLN despite the smaller number
+			('BGY', 'KRK', '2026-12-03', '09:00', '2026-12-03', '10:50', 2000, 'EUR', '2026-11-10T08:00:00Z'),
+			('KRK', 'BGY', '2026-12-04', '06:15', '2026-12-04', '08:10', 7000, 'PLN', '2026-11-10T08:00:00Z');
+	`)
+
+	code, body := search(t, srv, `{
+		"kind": "oneWay",
+		"homeAirports": ["KRK", "BGY"],
+		"destination": {"airports": ["BGY", "KRK"]},
+		"travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}
+	}`)
+
+	if code != http.StatusOK {
+		t.Fatalf("status code = %d, want %d", code, http.StatusOK)
+	}
+	var got []float64
+	for _, o := range body.Offers {
+		got = append(got, o.Price.Amount)
+	}
+	if want := []float64{70.00, 85.02, 120.00}; !slices.Equal(got, want) {
+		t.Errorf("offer prices = %v, want %v", got, want)
+	}
+}
+
+func TestSearchRejectsInvalidQuery(t *testing.T) {
+	srv, _ := startAPI(t, "test")
+
+	for name, query := range map[string]string{
+		"malformed JSON":        `{"kind": "oneWay",`,
+		"unsupported kind":      `{"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}}`,
+		"no home airports":      `{"kind": "oneWay", "homeAirports": [], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}}`,
+		"no destination":        `{"kind": "oneWay", "homeAirports": ["KRK"], "destination": {"airports": []}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}}`,
+		"invalid date":          `{"kind": "oneWay", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "10.12.2026"}}`,
+		"window ends too early": `{"kind": "oneWay", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-10", "to": "2026-12-01"}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if code, _ := search(t, srv, query); code != http.StatusBadRequest {
+				t.Errorf("status code = %d, want %d", code, http.StatusBadRequest)
+			}
+		})
+	}
+}
+
+// polishAndItalianAirports is a fixture of supported Polish airports and Italian destinations.
+const polishAndItalianAirports = `
+	INSERT INTO airports (code, name, time_zone, supported) VALUES
+		('KRK', 'Kraków', 'Europe/Warsaw', true),
+		('KTW', 'Katowice', 'Europe/Warsaw', true),
+		('BGY', 'Milan Bergamo', 'Europe/Rome', false),
+		('CIA', 'Rome Ciampino', 'Europe/Rome', false);
+`
+
+type searchResponseBody struct {
+	Offers []offerBody `json:"offers"`
+}
+
+type offerBody struct {
+	Kind           string    `json:"kind"`
+	Outbound       legBody   `json:"outbound"`
+	Price          priceBody `json:"price"`
+	PriceFetchedAt string    `json:"priceFetchedAt"`
+}
+
+type legBody struct {
+	IsDirect bool         `json:"isDirect"`
+	Flights  []flightBody `json:"flights"`
+}
+
+type flightBody struct {
+	DepartureAirport string        `json:"departureAirport"`
+	ArrivalAirport   string        `json:"arrivalAirport"`
+	Departure        localTimeBody `json:"departure"`
+	Arrival          localTimeBody `json:"arrival"`
+	OriginalPrice    moneyBody     `json:"originalPrice"`
+	FetchedAt        string        `json:"fetchedAt"`
+}
+
+type localTimeBody struct {
+	Date     string `json:"date"`
+	Time     string `json:"time"`
+	TimeZone string `json:"timeZone"`
+}
+
+type moneyBody struct {
+	Amount   float64 `json:"amount"`
+	Currency string  `json:"currency"`
+}
+
+type priceBody struct {
+	Amount      float64 `json:"amount"`
+	Currency    string  `json:"currency"`
+	Approximate bool    `json:"approximate"`
+}
+
+// seed runs SQL against the test database, standing in for the price worker that fills it in production.
+func seed(t *testing.T, pg *postgres.PostgresContainer, sql string) {
+	t.Helper()
+	ctx := context.Background()
+	url, err := pg.ConnectionString(ctx, "sslmode=disable")
+	if err != nil {
+		t.Fatalf("postgres connection string: %v", err)
+	}
+	conn, err := pgx.Connect(ctx, url)
+	if err != nil {
+		t.Fatalf("connect to postgres: %v", err)
+	}
+	defer conn.Close(ctx)
+	if _, err := conn.Exec(ctx, sql); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+}
+
+func search(t *testing.T, srv *httptest.Server, query string) (int, searchResponseBody) {
+	t.Helper()
+	resp, err := http.Post(srv.URL+"/api/search", "application/json", bytes.NewBufferString(query))
+	if err != nil {
+		t.Fatalf("POST /api/search: %v", err)
+	}
+	defer resp.Body.Close()
+	var body searchResponseBody
+	if resp.StatusCode == http.StatusOK {
+		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+			t.Fatalf("decode body: %v", err)
+		}
+	}
+	return resp.StatusCode, body
+}
+
+func assertOffers(t *testing.T, got, want []offerBody) {
+	t.Helper()
+	gotJSON, _ := json.MarshalIndent(got, "", "  ")
+	wantJSON, _ := json.MarshalIndent(want, "", "  ")
+	if !bytes.Equal(gotJSON, wantJSON) {
+		t.Errorf("offers:\n got: %s\nwant: %s", gotJSON, wantJSON)
+	}
+}

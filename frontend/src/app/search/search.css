@@ -1,0 +1,44 @@
+form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: end;
+}
+
+fieldset {
+  display: flex;
+  gap: 0.5rem;
+  border: 1px solid #ccc;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+}
+
+input:not([type='date']) {
+  width: 4rem;
+  text-transform: uppercase;
+}
+
+.offers {
+  padding: 0;
+  list-style: none;
+}
+
+.offers li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #eee;
+}
+
+.flight,
+.price {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: baseline;
+}

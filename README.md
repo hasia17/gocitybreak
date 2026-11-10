@@ -6,7 +6,7 @@ A search engine for cheap Ryanair flights for short city breaks. Domain vocabula
 
 | Path | What |
 |---|---|
-| `backend/` | Go JSON API (`cmd/api`), database access and migrations (`internal/database/migrations`) |
+| `backend/` | Go JSON API (`cmd/api`), search (`internal/search`), database access and migrations (`internal/database/migrations`), sample data (`seed/`) |
 | `frontend/` | Angular app; in Docker it is served by nginx, which also proxies `/api` to the backend |
 | `docker-compose.yml` | PostgreSQL + backend + frontend |
 | `.github/workflows/ci.yml` | Tests and image builds on every push and pull request |
@@ -20,6 +20,14 @@ docker compose up --build
 ```
 
 Open http://localhost:8080. The API is under http://localhost:8080/api (e.g. `/api/status`).
+
+Until the price worker (#5) fills the database, load hand-made sample flights (KRK⇄BGY, KTW⇄CIA, WRO⇄STN for the next 60 days; safe to re-run):
+
+```bash
+docker compose exec -T postgres psql -U gocitybreak -d gocitybreak < backend/seed/dev.sql
+```
+
+Search is `POST /api/search`, e.g. `{"kind": "oneWay", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}}`.
 
 ## Develop without Docker for the app
 
