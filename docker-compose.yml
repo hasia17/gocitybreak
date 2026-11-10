@@ -1,0 +1,40 @@
+# Local environment: `docker compose up --build`, then open http://localhost:8080.
+name: gocitybreak
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: gocitybreak
+      POSTGRES_USER: gocitybreak
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gocitybreak}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gocitybreak -d gocitybreak"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  backend:
+    build:
+      context: ./backend
+      args:
+        VERSION: ${VERSION:-dev}
+    environment:
+      DATABASE_URL: postgres://gocitybreak:${POSTGRES_PASSWORD:-gocitybreak}@postgres:5432/gocitybreak?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pgdata:
