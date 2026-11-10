@@ -1,0 +1,3 @@
+# Deploy to a single VPS with Docker Compose and GitHub Actions
+
+The whole application (Postgres, the Go backend, the worker, the Angular frontend, and Caddy as a reverse proxy with automatic HTTPS for our domain) runs on a single VPS under Docker Compose. Every push to `main` triggers a GitHub Actions pipeline that tests, builds the images, publishes them to GitHub Container Registry and swaps the version on the server. We chose a VPS over managed services (e.g. Fly.io, Netlify) because it is cheaper, keeps everything in one place, runs locally exactly as in production, and requests to Ryanair's unofficial API from a small VPS's address are less likely to be blocked than from big cloud providers' addresses (see ADR-0002).

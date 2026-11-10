@@ -1,129 +1,129 @@
 # gocitybreak
 
-Wyszukiwarka tanich lotów na krótkie wyjazdy (city breaki), na start oparta wyłącznie na lotach Ryanaira.
+A search engine for cheap flights for short city breaks, initially based exclusively on Ryanair flights.
 
-Pojęcia są po polsku; kod jest po angielsku i używa nazw podanych przy każdym pojęciu jako _W kodzie_.
+Each term lists its name in code under _Code_.
 
-## Język
+## Language
 
-**Lot**:
-Pojedynczy przelot z jednego lotniska na drugie w konkretnym dniu i o konkretnej godzinie, z ceną.
-_W kodzie_: `Flight`
-_Unikaj_: połączenie, przelot
+**Flight**:
+A single flight from one airport to another on a specific date and at a specific time, with a price.
+_Code_: `Flight`
+_Avoid_: connection, hop
 
-**Odcinek**:
-Droga z lotniska początkowego do docelowego w jedną stronę, złożona z jednego lub więcej lotów (odcinek tam, odcinek powrotny).
-_W kodzie_: `Leg` (`outbound`, `inbound`)
-_Unikaj_: etap, kierunek, segment, journey
+**Leg**:
+One-way travel from a start airport to a destination airport, made of one or more flights (outbound leg, inbound leg).
+_Code_: `Leg` (`outbound`, `inbound`)
+_Avoid_: segment, journey, direction
 
-**Lot bezpośredni**:
-Odcinek złożony z dokładnie jednego lotu.
-_W kodzie_: `Leg.isDirect`
-_Unikaj_: non-stop
+**Direct leg**:
+A leg made of exactly one flight.
+_Code_: `Leg.isDirect`
+_Avoid_: non-stop
 
-**Samodzielna przesiadka**:
-Odcinek sklejony z kilku osobnych lotów kupowanych jako osobne bilety; ryzyko spóźnienia na kolejny lot leży po stronie podróżnego.
-_W kodzie_: `SelfTransfer`
-_Unikaj_: połączenie z przesiadką, connection
+**Self-transfer**:
+A leg stitched together from several separate flights bought as separate tickets; the risk of missing the next flight is on the traveller.
+_Code_: `SelfTransfer`
+_Avoid_: connection, layover flight
 
-**Oferta**:
-Pojedynczy wynik wyszukiwania z łączną ceną: albo tam i z powrotem (odcinek tam + odcinek powrotny), albo w jedną stronę (jeden odcinek).
-_W kodzie_: `Offer`
-_Unikaj_: połączenie, wynik, wycieczka, deal, result, trip
+**Offer**:
+A single search result with a total price: either round trip (outbound leg + inbound leg) or one way (a single leg).
+_Code_: `Offer`
+_Avoid_: deal, result, trip, connection
 
-**Oferta tam i z powrotem**:
-Oferta złożona z odcinka tam i odcinka powrotnego; podstawowy rodzaj oferty.
-_W kodzie_: `RoundTripOffer`
-_Unikaj_: return (myli się z odcinkiem powrotnym)
+**Round-trip offer**:
+An offer made of an outbound leg and an inbound leg; the primary kind of offer.
+_Code_: `RoundTripOffer`
+_Avoid_: return offer (confusable with the inbound leg)
 
-**Oferta w jedną stronę**:
-Oferta złożona z jednego odcinka.
-_W kodzie_: `OneWayOffer`
+**One-way offer**:
+An offer made of a single leg.
+_Code_: `OneWayOffer`
 
-**Obsługiwane lotnisko**:
-Lotnisko, z którego trasy pobieramy do naszej bazy cen; na razie wyłącznie polskie lotniska Ryanaira.
-_W kodzie_: `SupportedAirport`
+**Supported airport**:
+An airport whose routes we fetch into our price database; for now only Ryanair's Polish airports.
+_Code_: `SupportedAirport`
 
-**Lotniska domowe**:
-Wybrany przez użytkownika spośród obsługiwanych lotnisk zbiór lotnisk, z których może wylecieć i na które może wrócić; lot powrotny może lądować na innym lotnisku domowym niż to, z którego był wylot.
-_W kodzie_: `homeAirports`
-_Unikaj_: lotniska wylotu, origin
+**Home airports**:
+The set of supported airports chosen by the user, from which they can depart and to which they can return; the inbound leg may land at a different home airport than the one the outbound leg departed from.
+_Code_: `homeAirports`
+_Avoid_: origin airports, departure airports
 
-**Cel**:
-Określenie, dokąd użytkownik chce lecieć: wybrane lotniska, miasta lub kraje (dowolnie wiele) albo „dokądkolwiek”, pomniejszone o wykluczenia.
-_W kodzie_: `Destination`
-_Unikaj_: destynacja, kierunek
+**Destination**:
+Where the user wants to fly: chosen airports, cities or countries (any number of each) or "anywhere", minus exclusions.
+_Code_: `Destination`
+_Avoid_: target, direction
 
-**Dokądkolwiek**:
-Cel obejmujący wszystkie lotniska osiągalne z lotnisk domowych.
-_W kodzie_: `Anywhere`
-_Unikaj_: everywhere
+**Anywhere**:
+A destination covering all airports reachable from the home airports.
+_Code_: `Anywhere`
+_Avoid_: everywhere
 
-**Miasto**:
-Grupa lotnisk, które Ryanair przypisuje do danej nazwy miasta, także tych leżących daleko od niego (np. Mediolan obejmuje Bergamo); oferta zawsze pokazuje konkretne lotnisko.
-_W kodzie_: `City`
-_Unikaj_: lokalizacja, destynacja
+**City**:
+The group of airports Ryanair assigns to a city name, including ones far from it (e.g. Milan includes Bergamo); an offer always shows the specific airport.
+_Code_: `City`
+_Avoid_: location, place
 
-**Wykluczenie**:
-Miejsce, które użytkownik usuwa z celu, żeby nie dostawać do niego ofert.
-_W kodzie_: `Exclusion`
-_Unikaj_: blacklista, filtr
+**Exclusion**:
+A place the user removes from the destination so they get no offers to it.
+_Code_: `Exclusion`
+_Avoid_: blacklist, filter
 
-## Terminy
+## Dates
 
-**Okno podróży**:
-Zakres dat, w którym musi się zmieścić cała oferta: lot tam najwcześniej pierwszego dnia, lot powrotny najpóźniej ostatniego (w ofercie w jedną stronę: jedyny lot w tym zakresie).
-_W kodzie_: `TravelWindow`
-_Unikaj_: okno wylotu, zakres dat, termin
+**Travel window**:
+The date range the whole offer must fit into: outbound flight on the first day at the earliest, inbound flight on the last day at the latest (for a one-way offer: its only flight within the range).
+_Code_: `TravelWindow`
+_Avoid_: departure window, date range
 
-**Długość pobytu**:
-Zakres liczby nocy między lotem tam a lotem powrotnym w ofercie tam i z powrotem.
-_W kodzie_: `StayLength` (w nocach)
-_Unikaj_: liczba dni, czas trwania, duration
+**Stay length**:
+The range of nights between the outbound and the inbound flight of a round-trip offer.
+_Code_: `StayLength` (in nights)
+_Avoid_: number of days, duration
 
-**Przedział godzin**:
-Opcjonalny zakres godzin, w którym musi wypaść wylot lub przylot danego odcinka, żeby oferta została pokazana.
-_W kodzie_: `TimeRange`
-_Unikaj_: dobre godziny, wygoda
+**Time range**:
+An optional range of hours within which a leg's departure or arrival must fall for the offer to be shown.
+_Code_: `TimeRange`
+_Avoid_: good hours, comfort
 
-## Urlop
+## Leave
 
-**Dzień roboczy**:
-Dzień od poniedziałku do piątku, który nie jest polskim świętem ustawowo wolnym od pracy.
-_W kodzie_: `WorkingDay`
-_Unikaj_: dzień pracujący, business day
+**Working day**:
+A day from Monday to Friday that is not a Polish statutory public holiday.
+_Code_: `WorkingDay`
+_Avoid_: business day, workday
 
-**Koniec pracy**:
-Ustawiana przez użytkownika godzina, po której wylot nie zabiera mu dnia roboczego.
-_W kodzie_: `workEnd`
+**Work end**:
+The user-set time after which a departure does not cost them a working day.
+_Code_: `workEnd`
 
-**Początek pracy**:
-Ustawiana przez użytkownika godzina, przed którą powrót nie zabiera mu dnia roboczego.
-_W kodzie_: `workStart`
+**Work start**:
+The user-set time before which a return does not cost them a working day.
+_Code_: `workStart`
 
-**Dni urlopu**:
-Liczba dni roboczych od dnia wylotu do dnia powrotu włącznie, z pominięciem dnia wylotu, gdy lot tam startuje po końcu pracy, i dnia powrotu, gdy lot powrotny ląduje przed początkiem pracy.
-_W kodzie_: `leaveDays`
-_Unikaj_: dni wolne, urlop, vacationDays, daysOff
+**Leave days**:
+The number of working days from the departure date to the return date inclusive, skipping the departure day when the outbound flight departs after work end, and the return day when the inbound flight lands before work start.
+_Code_: `leaveDays`
+_Avoid_: vacation days, days off, holiday days
 
-## Cena
+## Price
 
-**Cena oferty**:
-Suma cen lotów oferty dla jednego dorosłego pasażera w najtańszej taryfie, czyli z samym małym bagażem pod siedzenie (bez walizki kabinowej).
-_W kodzie_: `Offer.price`
-_Unikaj_: cena łączna, cena za wszystkich, total
+**Offer price**:
+The sum of an offer's flight prices for one adult passenger in the cheapest fare, i.e. with only a small under-seat bag (no cabin suitcase).
+_Code_: `Offer.price`
+_Avoid_: total price, price for everyone
 
-**Zapisana cena**:
-Cena lotu pobrana wcześniej w tle i przechowywana w naszej bazie, wraz z momentem pobrania; na niej działa wyszukiwanie.
-_W kodzie_: `StoredPrice`
-_Unikaj_: cena z cache, stara cena, cachedPrice
+**Stored price**:
+A flight price fetched earlier in the background and kept in our database, together with when it was fetched; search runs on it.
+_Code_: `StoredPrice`
+_Avoid_: cached price, old price
 
-**Aktualna cena**:
-Cena lotu pobrana z Ryanaira na żywo w chwili, gdy użytkownik wybiera ofertę.
-_W kodzie_: `LivePrice`
-_Unikaj_: cena rzeczywista, currentPrice
+**Live price**:
+A flight price fetched from Ryanair live at the moment the user selects an offer.
+_Code_: `LivePrice`
+_Avoid_: current price, real price
 
-**Cena za noc**:
-Łączna cena oferty tam i z powrotem podzielona przez liczbę nocy pobytu.
-_W kodzie_: `pricePerNight`
-_Unikaj_: cena za dzień
+**Price per night**:
+The price of a round-trip offer divided by the number of nights of the stay.
+_Code_: `pricePerNight`
+_Avoid_: price per day

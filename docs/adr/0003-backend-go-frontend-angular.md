@@ -1,3 +1,0 @@
-# Backend i worker w Go, frontend w Angularze, komunikacja przez JSON API
-
-Backend (API wyszukiwania) i worker pobierający ceny z Ryanaira do bazy piszemy w Go, a frontend jako osobną aplikację w Angularze, która rozmawia z backendem wyłącznie przez JSON API. PostgreSQL jest bazą cen. Go wybrałyśmy jako preferowany język backendu, a Angulara zamiast Reacta, bo autorka już go trochę zna, a formularz wyszukiwania (wiele lotnisk, krajów, wykluczeń, przedziałów godzin) dobrze pasuje do formularzy reaktywnych Angulara. Odrzuciłyśmy renderowanie HTML w Go z htmx, bo formularz i filtrowanie wyników są zbyt interaktywne, oraz Next.js, bo przy backendzie w Go byłby zbędnym drugim serwerem.

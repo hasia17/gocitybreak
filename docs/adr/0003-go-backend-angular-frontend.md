@@ -1,0 +1,3 @@
+# Backend and worker in Go, frontend in Angular, communicating over a JSON API
+
+The backend (search API) and the worker that fetches Ryanair prices into the database are written in Go; the frontend is a separate Angular application that talks to the backend only through a JSON API. PostgreSQL is the price database. Go is the preferred backend language; Angular was chosen over React because the author already knows it somewhat, and the search form (many airports, countries, exclusions, time ranges) fits Angular's reactive forms well. We rejected server-rendered HTML in Go with htmx because the form and result filtering are too interactive, and Next.js because alongside a Go backend it would be a redundant second server.

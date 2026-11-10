@@ -1,0 +1,3 @@
+# An offer is made of legs, and a leg is a list of flights
+
+Eventually we want self-transfers stitched together from separate Ryanair flights (as Azair does) and returning from a different city than the one we flew to (e.g. fly into Venice, return from Milan). Initially we search direct flights only, but the model assumes from day one that an offer is an outbound leg (and optionally an inbound leg), and each leg is a list of flights rather than a single flight. The arrival airport of the outbound leg and the departure airport of the inbound leg are independent of each other. This lets self-transfers and returns from another city arrive without reworking the model, even though today every leg has exactly one flight.
