@@ -204,6 +204,10 @@ func TestSearchRejectsInvalidQuery(t *testing.T) {
 		"round trip without stay length": `{"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}}`,
 		"negative stay length":           `{"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": -1, "max": 2}}`,
 		"stay length ends too early":     `{"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": 3, "max": 2}}`,
+		"invalid work start":             `{"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": 2, "max": 3}, "workStart": "9 a.m."}`,
+		"invalid work end":               `{"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": 2, "max": 3}, "workEnd": "25:00"}`,
+		"negative maximum leave days":    `{"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": 2, "max": 3}, "maxLeaveDays": -1}`,
+		"unsupported sort":               `{"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": 2, "max": 3}, "sort": "airline"}`,
 		"no home airports":               `{"kind": "oneWay", "homeAirports": [], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}}`,
 		"no destination":                 `{"kind": "oneWay", "homeAirports": ["KRK"], "destination": {"airports": []}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}}`,
 		"invalid date":                   `{"kind": "oneWay", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "10.12.2026"}}`,
@@ -235,6 +239,7 @@ type offerBody struct {
 	Outbound       legBody   `json:"outbound"`
 	Inbound        *legBody  `json:"inbound,omitempty"`
 	Nights         *int      `json:"nights,omitempty"`
+	LeaveDays      *int      `json:"leaveDays,omitempty"`
 	Price          priceBody `json:"price"`
 	PriceFetchedAt string    `json:"priceFetchedAt"`
 }

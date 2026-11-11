@@ -29,6 +29,11 @@ type searchRequest struct {
 		Min int `json:"min"`
 		Max int `json:"max"`
 	} `json:"stayLength"`
+	WorkStart string `json:"workStart"`
+	WorkEnd   string `json:"workEnd"`
+	// MaxLeaveDays is optional; 0 is a valid maximum.
+	MaxLeaveDays *int   `json:"maxLeaveDays"`
+	Sort         string `json:"sort"`
 }
 
 type searchResponse struct {
@@ -43,6 +48,8 @@ type offerJSON struct {
 	Nights         *int      `json:"nights,omitempty"`
 	Price          priceJSON `json:"price"`
 	PriceFetchedAt time.Time `json:"priceFetchedAt"`
+	// LeaveDays is set for round-trip offers only, where 0 is a valid number of leave days.
+	LeaveDays *int `json:"leaveDays,omitempty"`
 }
 
 type legJSON struct {
@@ -124,11 +131,17 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 	if to.Before(from) {
 		return search.Query{}, errors.New("travelWindow.to must not be before travelWindow.from")
 	}
+	// Price is the default sort order.
+	sort := cmp.Or(search.SortOrder(req.Sort), search.ByPrice)
+	if sort != search.ByPrice && sort != search.ByLeaveDays {
+		return search.Query{}, fmt.Errorf("sort must be %q or %q", search.ByPrice, search.ByLeaveDays)
+	}
 	q := search.Query{
 		Kind:         kind,
 		HomeAirports: req.HomeAirports,
 		Destination:  search.Destination{Airports: req.Destination.Airports},
 		TravelWindow: search.TravelWindow{From: from, To: to},
+		Sort:         sort,
 	}
 	if kind == search.RoundTrip {
 		if req.StayLength == nil {
@@ -141,8 +154,33 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 			return search.Query{}, errors.New("stayLength.max must not be less than stayLength.min")
 		}
 		q.StayLength = search.StayLength{Min: req.StayLength.Min, Max: req.StayLength.Max}
+		if q.WorkHours.Start, err = timeOfDay(cmp.Or(req.WorkStart, defaultWorkStart)); err != nil {
+			return search.Query{}, errors.New("workStart must be a time in HH:MM format")
+		}
+		if q.WorkHours.End, err = timeOfDay(cmp.Or(req.WorkEnd, defaultWorkEnd)); err != nil {
+			return search.Query{}, errors.New("workEnd must be a time in HH:MM format")
+		}
+		if req.MaxLeaveDays != nil && *req.MaxLeaveDays < 0 {
+			return search.Query{}, errors.New("maxLeaveDays must not be negative")
+		}
+		q.MaxLeaveDays = req.MaxLeaveDays
 	}
 	return q, nil
+}
+
+// Work hours assumed when the query sets none.
+const (
+	defaultWorkStart = "09:00"
+	defaultWorkEnd   = "17:00"
+)
+
+// timeOfDay parses an HH:MM time into an offset from midnight.
+func timeOfDay(s string) (time.Duration, error) {
+	t, err := time.Parse(timeLayout, s)
+	if err != nil {
+		return 0, err
+	}
+	return time.Duration(t.Hour())*time.Hour + time.Duration(t.Minute())*time.Minute, nil
 }
 
 func toOfferJSON(o search.Offer) offerJSON {
@@ -159,6 +197,7 @@ func toOfferJSON(o search.Offer) offerJSON {
 	if o.Inbound != nil {
 		offer.Inbound = new(toLegJSON(*o.Inbound))
 		offer.Nights = new(o.Nights)
+		offer.LeaveDays = new(o.LeaveDays)
 	}
 	return offer
 }
