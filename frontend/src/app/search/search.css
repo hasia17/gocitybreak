@@ -270,6 +270,9 @@ abbr {
   font-size: 1.05rem;
   font-weight: 600;
 }
+.price a {
+  color: inherit;
+}
 
 @media (max-width: 640px) {
   .hero {
