@@ -194,6 +194,12 @@ func (s *Searcher) Search(ctx context.Context, q Query) ([]Offer, error) {
 	return offers, nil
 }
 
+// The work hours a query's leave days are counted from when it sets none.
+const (
+	defaultWorkStart = 9 * time.Hour
+	defaultWorkEnd   = 17 * time.Hour
+)
+
 // withDefaults returns q with its defaults applied: an empty kind is a round trip, the default
 // kind of offer, and work hours left unset become the default work hours.
 func (q Query) withDefaults() Query {
@@ -208,12 +214,6 @@ func (q Query) withDefaults() Query {
 	}
 	return q
 }
-
-// The work hours a query's leave days are counted from when it sets none.
-const (
-	defaultWorkStart = 9 * time.Hour
-	defaultWorkEnd   = 17 * time.Hour
-)
 
 // validate checks the rules of a query that need no stored data, on a query with its defaults
 // applied; each rule it breaks is reported as a *QueryError.
@@ -242,7 +242,7 @@ func (q Query) validate() error {
 	if q.TravelWindow.To.Before(q.TravelWindow.From) {
 		return &QueryError{"travelWindow.to must not be before travelWindow.from"}
 	}
-	// A stay length and a sound maximum of leave days are round-trip matters only.
+	// A stay length is a round-trip matter only.
 	if q.Kind == RoundTrip {
 		if q.StayLength == nil {
 			return &QueryError{"stayLength is required for a round trip"}

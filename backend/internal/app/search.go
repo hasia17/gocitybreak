@@ -1,7 +1,6 @@
 package app
 
 import (
-	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -122,25 +121,13 @@ func (a *App) search(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
-// parseSearchRequest decodes a search query and checks its format; its errors are meant for the API client.
-// The search itself checks the query against its rules.
+// parseSearchRequest decodes a search query and parses its formats — dates, times of day and
+// weekday names; its errors are meant for the API client. It checks no rule of the search and
+// sets no default: the search module owns both, so they hold for every caller of the search.
 func parseSearchRequest(r *http.Request) (search.Query, error) {
 	var req searchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return search.Query{}, errors.New("search query is not valid JSON")
-	}
-	// Round trip is the default kind of offer.
-	kind := cmp.Or(search.OfferKind(req.Kind), search.RoundTrip)
-	if len(req.HomeAirports) == 0 {
-		return search.Query{}, errors.New("homeAirports must not be empty")
-	}
-	destination := search.Destination{
-		Codes:      req.Destination.codes(),
-		Anywhere:   req.Destination.Anywhere,
-		Exclusions: req.Exclusions.codes(),
-	}
-	if !destination.Anywhere && destination.IsEmpty() {
-		return search.Query{}, errors.New("destination must name airports, cities or countries, or be anywhere")
 	}
 	from, err := time.Parse(time.DateOnly, req.TravelWindow.From)
 	if err != nil {
@@ -150,41 +137,32 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 	if err != nil {
 		return search.Query{}, errors.New("travelWindow.to must be a date in YYYY-MM-DD format")
 	}
-	if to.Before(from) {
-		return search.Query{}, errors.New("travelWindow.to must not be before travelWindow.from")
-	}
 	q := search.Query{
-		Kind:         kind,
+		Kind:         search.OfferKind(req.Kind),
 		HomeAirports: req.HomeAirports,
-		Destination:  destination,
+		Destination: search.Destination{
+			Codes:      req.Destination.codes(),
+			Anywhere:   req.Destination.Anywhere,
+			Exclusions: req.Exclusions.codes(),
+		},
 		TravelWindow: search.TravelWindow{From: from, To: to},
 		Sort:         search.SortOrder(req.Sort),
+	}
+	if req.StayLength != nil {
+		q.StayLength = &search.StayLength{Min: req.StayLength.Min, Max: req.StayLength.Max}
+	}
+	if q.WorkStart, err = req.WorkStart.parse("workStart"); err != nil {
+		return search.Query{}, err
+	}
+	if q.WorkEnd, err = req.WorkEnd.parse("workEnd"); err != nil {
+		return search.Query{}, err
 	}
 	if q.Filters, err = req.Filters.parse(); err != nil {
 		return search.Query{}, err
 	}
-	if kind == search.RoundTrip {
-		if req.StayLength == nil {
-			return search.Query{}, errors.New("stayLength is required for a round trip")
-		}
-		if req.StayLength.Min < 0 {
-			return search.Query{}, errors.New("stayLength.min must not be negative")
-		}
-		if req.StayLength.Max < req.StayLength.Min {
-			return search.Query{}, errors.New("stayLength.max must not be less than stayLength.min")
-		}
-		q.StayLength = &search.StayLength{Min: req.StayLength.Min, Max: req.StayLength.Max}
-		if q.WorkStart, err = req.WorkStart.parse("workStart"); err != nil {
-			return search.Query{}, err
-		}
-		if q.WorkEnd, err = req.WorkEnd.parse("workEnd"); err != nil {
-			return search.Query{}, err
-		}
-		if req.MaxLeaveDays != nil && *req.MaxLeaveDays < 0 {
-			return search.Query{}, errors.New("maxLeaveDays must not be negative")
-		}
-		q.Filters.MaxLeaveDays = req.MaxLeaveDays
-	}
+	// The maximum of leave days sits at the top level of the request but among the query's
+	// filters; moving it there is this adapter's only rule-shaped step (spec #21, story 14).
+	q.Filters.MaxLeaveDays = req.MaxLeaveDays
 	return q, nil
 }
 
