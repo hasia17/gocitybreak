@@ -86,33 +86,35 @@
       </button>
     </div>
     @if (kind() === 'roundTrip') {
-      <div class="options" formGroupName="leave">
-        <label class="field time" [class.invalid]="invalid('leave.workStart')">
-          Work start
-          <input
-            type="time"
-            formControlName="workStart"
-            [attr.aria-invalid]="invalid('leave.workStart')"
-          />
-        </label>
-        <label class="field time" [class.invalid]="invalid('leave.workEnd')">
-          Work end
-          <input
-            type="time"
-            formControlName="workEnd"
-            [attr.aria-invalid]="invalid('leave.workEnd')"
-          />
-        </label>
-        <label class="field leave" [class.invalid]="invalid('leave.maxLeaveDays')">
-          Max leave days
-          <input
-            type="number"
-            min="0"
-            formControlName="maxLeaveDays"
-            placeholder="any"
-            [attr.aria-invalid]="invalid('leave.maxLeaveDays')"
-          />
-        </label>
+      <div class="options">
+        <ng-container formGroupName="leave">
+          <label class="field time" [class.invalid]="invalid('leave.workStart')">
+            Work start
+            <input
+              type="time"
+              formControlName="workStart"
+              [attr.aria-invalid]="invalid('leave.workStart')"
+            />
+          </label>
+          <label class="field time" [class.invalid]="invalid('leave.workEnd')">
+            Work end
+            <input
+              type="time"
+              formControlName="workEnd"
+              [attr.aria-invalid]="invalid('leave.workEnd')"
+            />
+          </label>
+          <label class="field leave" [class.invalid]="invalid('leave.maxLeaveDays')">
+            Max leave days
+            <input
+              type="number"
+              min="0"
+              formControlName="maxLeaveDays"
+              placeholder="any"
+              [attr.aria-invalid]="invalid('leave.maxLeaveDays')"
+            />
+          </label>
+        </ng-container>
         <label class="field">
           Sort
           <select formControlName="sort" aria-label="Sort by">

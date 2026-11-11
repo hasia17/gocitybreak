@@ -44,6 +44,10 @@ function typedCodes(text: string): string[] {
 }
 const nightCount = [Validators.required, Validators.pattern(/^\d+$/)];
 
+/** Office hours the form starts from; the backend assumes the same when a query sets none. */
+const defaultWorkStart = '09:00';
+const defaultWorkEnd = '17:00';
+
 /** A stay length whose maximum is below its minimum. */
 function maxBelowMin(group: AbstractControl): ValidationErrors | null {
   const { min, max } = group.value as { min: number | null; max: number | null };
@@ -84,11 +88,11 @@ export class Search {
       { validators: maxBelowMin },
     ),
     leave: this.fb.group({
-      workStart: ['09:00', Validators.required],
-      workEnd: ['17:00', Validators.required],
+      workStart: [defaultWorkStart, Validators.required],
+      workEnd: [defaultWorkEnd, Validators.required],
       maxLeaveDays: this.fb.control<number | null>(null, Validators.pattern(/^\d+$/)),
-      sort: this.fb.control<SortOrder>('price'),
     }),
+    sort: this.fb.control<SortOrder>('price'),
     filters: filtersForm(this.fb),
   });
   protected readonly moments = moments;
@@ -122,10 +126,12 @@ export class Search {
         error: () => {},
       });
     // These apply to round trips only; a disabled control does not affect the form's validity.
-    const { stayLength, leave, filters } = this.form.controls;
+    // One-way offers sort by price only.
+    const { stayLength, leave, sort, filters } = this.form.controls;
     const roundTripOnly = [
       stayLength,
       leave,
+      sort,
       filters.controls.inboundDeparture,
       filters.controls.inboundArrival,
       filters.controls.inboundDepartureWeekdays,
@@ -160,7 +166,7 @@ export class Search {
       query.workStart = v.leave.workStart;
       query.workEnd = v.leave.workEnd;
       if (v.leave.maxLeaveDays != null) query.maxLeaveDays = Number(v.leave.maxLeaveDays);
-      query.sort = v.leave.sort;
+      query.sort = v.sort;
     }
     const filters = toSearchFilters(v.filters, v.kind);
     if (filters) query.filters = filters;
