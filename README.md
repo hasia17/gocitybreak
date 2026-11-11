@@ -9,7 +9,8 @@ A search engine for cheap Ryanair flights for short city breaks. Domain vocabula
 | `backend/` | Go JSON API (`cmd/api`), search (`internal/search`), database access and migrations (`internal/database/migrations`), sample data (`seed/`) |
 | `frontend/` | Angular app; in Docker it is served by nginx, which also proxies `/api` to the backend |
 | `docker-compose.yml` | PostgreSQL + backend + frontend |
-| `.github/workflows/ci.yml` | Tests and image builds on every push and pull request |
+| `deploy/compose.yml` | The same stack on the server, from published images ([`docs/deploy.md`](docs/deploy.md)) |
+| `.github/workflows/ci.yml` | Tests and image builds on every push and pull request; on `main` also publishes the images and deploys ([`docs/deploy.md`](docs/deploy.md)) |
 
 ## Run locally
 

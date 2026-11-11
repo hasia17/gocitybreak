@@ -1,0 +1,42 @@
+# Production stack on the VPS (see docs/deploy.md). CI copies this file to /opt/gocitybreak/compose.yml
+# and sets VERSION in /opt/gocitybreak/.env; POSTGRES_PASSWORD lives only in that .env on the server.
+name: gocitybreak
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: gocitybreak
+      POSTGRES_USER: gocitybreak
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gocitybreak -d gocitybreak"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+    restart: unless-stopped
+
+  backend:
+    image: ghcr.io/hasia17/gocitybreak-backend:${VERSION:?set in .env}
+    environment:
+      DATABASE_URL: postgres://gocitybreak:${POSTGRES_PASSWORD}@postgres:5432/gocitybreak?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    image: ghcr.io/hasia17/gocitybreak-frontend:${VERSION}
+    ports:
+      # Mikrus forwards this port on the shared IPv4 (20000 + server ID): direct access without Cloudflare.
+      - "20369:80"
+      # Cloudflare reaches the origin over the server's own IPv6 (SSL mode "Flexible": plain HTTP here).
+      - "[::]:80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pgdata:
