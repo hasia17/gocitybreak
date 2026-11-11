@@ -210,57 +210,46 @@
         @for (offer of offers; track $index) {
           <li class="offer" data-testid="offer">
             <div class="legs">
-              @for (leg of legs(offer); track $index) {
+              @for (leg of offer.legs; track $index) {
                 @for (flight of leg.flights; track $index) {
                   <div class="flight">
-                    <time class="date" [attr.datetime]="flight.departure.date">
-                      {{ day(flight.departure.date) }}
+                    <time class="date" [attr.datetime]="flight.departureDate">
+                      {{ flight.day }}
                     </time>
                     <span class="times">
-                      {{ flight.departure.time }} – {{ flight.arrival.time }}
-                      @if (daysLater(flight); as days) {
-                        <abbr title="arrives {{ flight.arrival.date }}">+{{ days }}</abbr>
+                      {{ flight.departureTime }} – {{ flight.arrivalTime }}
+                      @if (flight.daysLater; as days) {
+                        <abbr title="arrives {{ flight.arrivalDate }}">+{{ days }}</abbr>
                       }
                     </span>
-                    <span class="route"
-                      >{{ flight.departureAirport }} → {{ flight.arrivalAirport }}</span
-                    >
+                    <span class="route">{{ flight.route }}</span>
                   </div>
                 }
-                @if (!leg.isDirect) {
-                  <span class="badge">
-                    {{ leg.flights.length - 1 }}
-                    {{ leg.flights.length === 2 ? 'stop' : 'stops' }}
-                  </span>
+                @if (leg.stops; as stops) {
+                  <span class="badge">{{ stops }}</span>
                 }
               }
-              @if (offer.nights !== undefined) {
-                <span class="badge"
-                  >{{ offer.nights }} {{ offer.nights === 1 ? 'night' : 'nights' }}</span
-                >
+              @if (offer.nights; as nights) {
+                <span class="badge">{{ nights }}</span>
               }
-              @if (offer.leaveDays !== undefined) {
-                <span class="badge" [class.free]="offer.leaveDays === 0">{{
-                  leaveDays(offer.leaveDays)
-                }}</span>
+              @if (offer.leaveDays; as leaveDays) {
+                <span class="badge" [class.free]="offer.freeLeave">{{ leaveDays }}</span>
               }
             </div>
             <div class="price">
-              <strong>{{ offer.price.approximate ? '≈ ' : '' }}{{ money(offer.price) }}</strong>
+              <strong>{{ offer.price }}</strong>
               @if (offer.pricePerNight; as perNight) {
-                <small class="per-night"
-                  >{{ perNight.approximate ? '≈ ' : '' }}{{ money(perNight) }} per night</small
-                >
+                <small class="per-night">{{ perNight }}</small>
               }
               <small>
-                @for (original of foreignPrices(offer); track $index) {
-                  {{ money(original) }} ·
+                @for (original of offer.foreignPrices; track $index) {
+                  {{ original }} ·
                 }
-                checked {{ priceAge(offer) }}
+                checked {{ offer.priceAge }}
               </small>
-              @let tickets = ryanairTickets(offer);
+              @let tickets = offer.tickets;
               @if (tickets.length > 1) {
-                <small>Booked as {{ count(tickets.length) }} separate one-way tickets</small>
+                <small>Booked as {{ offer.ticketCount }} separate one-way tickets</small>
               }
               @for (ticket of tickets; track ticket.url) {
                 <a [href]="ticket.url" target="_blank" rel="noopener">
