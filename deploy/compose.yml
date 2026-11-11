@@ -27,6 +27,19 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # The price worker (ADR-0002): the backend image with its second command. It talks to Ryanair and NBP only;
+  # if it fails, search keeps answering from the stored prices.
+  worker:
+    image: ghcr.io/hasia17/gocitybreak-backend:${VERSION}
+    entrypoint: ["/worker"]
+    environment:
+      DATABASE_URL: postgres://gocitybreak:${POSTGRES_PASSWORD}@postgres:5432/gocitybreak?sslmode=disable
+      RYANAIR_REQUESTS_PER_SECOND: "1"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
   frontend:
     image: ghcr.io/hasia17/gocitybreak-frontend:${VERSION}
     ports:

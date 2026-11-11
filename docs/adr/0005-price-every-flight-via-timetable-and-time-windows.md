@@ -11,3 +11,5 @@ Ryanair's `cheapestPerDay` fare endpoint returns only the cheapest flight of eac
 ## Consequences
 
 The time-window filter of `oneWayFares` is undocumented, like everything else here (verified on 2026-11-10: `cheapestPerDay` ignores it, `oneWayFares` honours it). If it stops working, the worker falls back to the timetable-without-prices option, storing the extra flights without a price and excluding them from search until they are priced.
+
+A full refresh at a polite 1 request per second takes more than a day, so the worker doesn't refresh everything at the same pace: it refetches a route's month once its stored prices are older than a limit that grows with how far ahead the flights are (twice a day for the next four weeks, every other day up to three months, weekly beyond), nearest months first. Prices travellers are most likely to book soon stay fresh, and the request volume stays under the rate limit.

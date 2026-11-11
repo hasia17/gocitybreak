@@ -28,6 +28,23 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # The price worker (ADR-0002): fetches Ryanair prices and NBP rates in the background.
+  # Near months are refetched every 12 h, far ones weekly (worker.DefaultFreshness); search works on whatever is stored.
+  worker:
+    build:
+      context: ./backend
+      args:
+        VERSION: ${VERSION:-dev}
+    entrypoint: ["/worker"]
+    environment:
+      DATABASE_URL: postgres://gocitybreak:${POSTGRES_PASSWORD:-gocitybreak}@postgres:5432/gocitybreak?sslmode=disable
+      RYANAIR_REQUESTS_PER_SECOND: ${RYANAIR_REQUESTS_PER_SECOND:-1}
+      PRICE_REFRESH_PAUSE: ${PRICE_REFRESH_PAUSE:-10m}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
   frontend:
     build: ./frontend
     ports:

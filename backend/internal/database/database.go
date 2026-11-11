@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
+	"github.com/pressly/goose/v3/lock"
 )
 
 //go:embed migrations/*.sql
@@ -41,7 +42,13 @@ func newMigratedDB(ctx context.Context, pool *pgxpool.Pool) (*DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open embedded migrations: %w", err)
 	}
-	provider, err := goose.NewProvider(goose.DialectPostgres, stdlib.OpenDBFromPool(pool), dir)
+	// The API and the worker both migrate on startup; the session lock keeps them from racing.
+	locker, err := lock.NewPostgresSessionLocker()
+	if err != nil {
+		return nil, fmt.Errorf("create migration lock: %w", err)
+	}
+	provider, err := goose.NewProvider(goose.DialectPostgres, stdlib.OpenDBFromPool(pool), dir,
+		goose.WithSessionLocker(locker))
 	if err != nil {
 		return nil, fmt.Errorf("load migrations: %w", err)
 	}
