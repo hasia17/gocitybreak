@@ -19,7 +19,7 @@
           />
         </label>
         <span class="arrow" aria-hidden="true">→</span>
-        <label class="field places" [class.invalid]="invalid('destination')">
+        <label class="field names" [class.invalid]="invalid('destination')">
           To
           <input
             formControlName="destination"
@@ -28,7 +28,7 @@
             [attr.aria-invalid]="invalid('destination')"
           />
         </label>
-        <label class="field places" [class.invalid]="invalid('exclusions')">
+        <label class="field names" [class.invalid]="invalid('exclusions')">
           Except
           <input
             formControlName="exclusions"
@@ -178,8 +178,8 @@
       @if (form.controls.homeAirports.hasError('unsupportedAirport')) {
         Search from supported airports only: {{ supportedAirportList() }}.
       }
-      Enter 3-letter airport codes, places as airports, cities or countries (or anywhere), both
-      dates and nights from the minimum up to the maximum.
+      Enter 3-letter airport codes, a destination of airports, cities or countries (or anywhere),
+      both dates and nights from the minimum up to the maximum.
       @if (form.controls.filters.invalid) {
         In Filters, give each time range both ends, or leave both empty.
       }

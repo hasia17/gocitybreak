@@ -1,23 +1,23 @@
-import { Catalogue, Places } from './search-api';
+import { Catalogue, CatalogueCodes } from './search-api';
 
-/** Places typed as text, separated by commas: what they name and what they fail to name. */
-export interface TypedPlaces {
+/** Airports, cities and countries typed as text, separated by commas: what they name and what they fail to name. */
+export interface TypedNames {
   /** "anywhere" was typed. */
   anywhere: boolean;
-  places: Places;
-  /** Typed names that match no place. */
+  codes: CatalogueCodes;
+  /** Typed names that match no airport, city or country. */
   unknown: string[];
 }
 
 /**
- * Reads places typed as "Milan, Spain, OSL" or "anywhere". Each name is, in this order, an airport code,
- * a city, a country or an airport name, all case-insensitive. Without the catalogue only airport codes
- * are known.
+ * Reads airports, cities and countries typed as "Milan, Spain, OSL" or "anywhere". Each name is, in this order,
+ * an airport code, a city, a country or an airport name, all case-insensitive. Without the catalogue only
+ * airport codes are known.
  */
-export function readPlaces(text: string, catalogue: Catalogue | undefined): TypedPlaces {
-  const typed: TypedPlaces = { anywhere: false, places: {}, unknown: [] };
-  const add = (kind: keyof Places, code: string) => {
-    const codes = (typed.places[kind] ??= []);
+export function readTypedNames(text: string, catalogue: Catalogue | undefined): TypedNames {
+  const typed: TypedNames = { anywhere: false, codes: {}, unknown: [] };
+  const add = (kind: keyof CatalogueCodes, code: string) => {
+    const codes = (typed.codes[kind] ??= []);
     if (!codes.includes(code)) codes.push(code);
   };
   const named = <T extends { name: string }>(items: T[] | undefined, name: string) =>

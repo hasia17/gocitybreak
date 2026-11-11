@@ -689,7 +689,7 @@ describe('Search', () => {
       expect(req.request.body.exclusions).toEqual({ airports: ['MXP'], countries: ['no', 'it'] });
     });
 
-    it('marks a place it does not know', async () => {
+    it('marks an airport, city or country it does not know', async () => {
       const root = await searchFrom('Milan, Atlantis', 'anywhere');
 
       httpTesting.expectNone('/api/search');

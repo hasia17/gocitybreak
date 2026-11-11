@@ -9,7 +9,7 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
-import { readPlaces } from './places';
+import { readTypedNames } from './typed-names';
 import { ryanairTickets } from './ryanair-booking';
 import {
   Catalogue,
@@ -73,14 +73,14 @@ export class Search {
   private readonly http = inject(HttpClient);
   private readonly fb = inject(NonNullableFormBuilder);
 
-  /** Airports, cities and countries to resolve typed places against; undefined until loaded. */
+  /** Airports, cities and countries to resolve typed names against; undefined until loaded. */
   private readonly catalogue = signal<Catalogue | undefined>(undefined);
 
   protected readonly form = this.fb.group({
     kind: this.fb.control<OfferKind>('roundTrip'),
     homeAirports: ['', [...airportCodes, this.supportedAirports()]],
-    destination: ['', this.knownPlaces('destination')],
-    exclusions: ['', this.knownPlaces('exclusions')],
+    destination: ['', this.knownNames('destination')],
+    exclusions: ['', this.knownNames('exclusions')],
     from: ['', Validators.required],
     to: ['', Validators.required],
     stayLength: this.fb.group(
@@ -111,7 +111,7 @@ export class Search {
   protected readonly ryanairTickets = ryanairTickets;
 
   constructor() {
-    // Typed airports and places are checked again once the catalogue arrives.
+    // Typed home airports, destination and exclusions are checked again once the catalogue arrives.
     // Without it, any airport code is taken and the backend checks home airports.
     this.http
       .get<Catalogue>('/api/catalogue')
@@ -157,9 +157,9 @@ export class Search {
       destination: {},
       travelWindow: { from: v.from, to: v.to },
     };
-    const destination = readPlaces(v.destination, this.catalogue());
-    query.destination = destination.anywhere ? { anywhere: true } : destination.places;
-    const exclusions = readPlaces(v.exclusions, this.catalogue()).places;
+    const destination = readTypedNames(v.destination, this.catalogue());
+    query.destination = destination.anywhere ? { anywhere: true } : destination.codes;
+    const exclusions = readTypedNames(v.exclusions, this.catalogue()).codes;
     if (Object.keys(exclusions).length > 0) query.exclusions = exclusions;
     if (v.kind === 'roundTrip') {
       query.stayLength = { min: Number(v.stayLength.min), max: Number(v.stayLength.max) };
@@ -204,15 +204,15 @@ export class Search {
   }
 
   /**
-   * A validator of places typed as text: each must name a known place; only a destination may be anywhere,
-   * and a destination needs at least one place.
+   * A validator of airports, cities and countries typed as text: each must name a known one; only a destination
+   * may be anywhere, and a destination needs at least one name.
    */
-  private knownPlaces(field: 'destination' | 'exclusions'): ValidatorFn {
+  private knownNames(field: 'destination' | 'exclusions'): ValidatorFn {
     return (control) => {
-      const typed = readPlaces(control.value as string, this.catalogue());
-      if (typed.unknown.length > 0) return { unknownPlace: typed.unknown };
+      const typed = readTypedNames(control.value as string, this.catalogue());
+      if (typed.unknown.length > 0) return { unknownName: typed.unknown };
       if (field === 'exclusions') return typed.anywhere ? { anywhereExcluded: true } : null;
-      return typed.anywhere || Object.keys(typed.places).length > 0 ? null : { required: true };
+      return typed.anywhere || Object.keys(typed.codes).length > 0 ? null : { required: true };
     };
   }
 
