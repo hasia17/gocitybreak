@@ -66,7 +66,7 @@ const dayFormat = new Intl.DateTimeFormat('en-GB', {
 @Component({
   selector: 'app-search',
   imports: [ReactiveFormsModule],
-  styleUrls: ['./search.css', './search-filters.css'],
+  styleUrls: ['./search.css', './search-filters.css', './search-results.css'],
   templateUrl: './search.html',
 })
 export class Search {
