@@ -4,14 +4,7 @@
  * request. The search component enables, disables and shows fields from the applicability
  * table and builds its request with {@link buildSearchQuery}.
  */
-import {
-  Catalogue,
-  OfferKind,
-  SearchFilters,
-  SearchQuery,
-  SortOrder,
-  Weekday,
-} from './search-api';
+import { Catalogue, OfferKind, SearchFilters, SearchQuery, SortOrder, Weekday } from './search-api';
 import { readTypedNames } from './typed-names';
 
 /** The four moments of an offer that a time range can restrict, in travel order. */
@@ -48,6 +41,11 @@ export const roundTripOnlyFields: readonly string[] = [
   'filters.inboundArrival',
   'filters.inboundDepartureWeekdays',
 ];
+
+/** Whether the form field named by its control path applies to offers of the kind. */
+export function fieldApplies(path: string, kind: OfferKind): boolean {
+  return kind === 'roundTrip' || !roundTripOnlyFields.includes(path);
+}
 
 /** Office hours the form starts from; the backend assumes the same when a query sets none. */
 export const defaultWorkStart = '09:00';
@@ -96,7 +94,10 @@ export interface SearchFormValue {
  * the kind of offer left out. Fields that restrict nothing (leave maximum, filters) are left
  * out as well.
  */
-export function buildSearchQuery(v: SearchFormValue, catalogue: Catalogue | undefined): SearchQuery {
+export function buildSearchQuery(
+  v: SearchFormValue,
+  catalogue: Catalogue | undefined,
+): SearchQuery {
   const query: SearchQuery = {
     kind: v.kind,
     homeAirports: typedCodes(v.homeAirports),
@@ -130,9 +131,4 @@ export function buildSearchQuery(v: SearchFormValue, catalogue: Catalogue | unde
     filters.inboundDepartureWeekdays = inbound;
   if (Object.keys(filters).length > 0) query.filters = filters;
   return query;
-}
-
-/** Whether the form field named by its control path applies to offers of the kind. */
-export function fieldApplies(path: string, kind: OfferKind): boolean {
-  return kind === 'roundTrip' || !roundTripOnlyFields.includes(path);
 }

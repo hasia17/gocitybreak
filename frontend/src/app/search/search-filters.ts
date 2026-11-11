@@ -1,23 +1,4 @@
 import { AbstractControl, NonNullableFormBuilder, ValidationErrors } from '@angular/forms';
-import { OfferKind, SearchFilters, Weekday } from './search-api';
-
-/** The four moments of an offer that a time range can restrict, in travel order. */
-export const moments = [
-  { name: 'outboundDeparture', label: 'Outbound departure', inbound: false },
-  { name: 'outboundArrival', label: 'Outbound arrival', inbound: false },
-  { name: 'inboundDeparture', label: 'Inbound departure', inbound: true },
-  { name: 'inboundArrival', label: 'Inbound arrival', inbound: true },
-] as const;
-
-export const weekdays: { value: Weekday; label: string }[] = [
-  { value: 'mon', label: 'Mon' },
-  { value: 'tue', label: 'Tue' },
-  { value: 'wed', label: 'Wed' },
-  { value: 'thu', label: 'Thu' },
-  { value: 'fri', label: 'Fri' },
-  { value: 'sat', label: 'Sat' },
-  { value: 'sun', label: 'Sun' },
-];
 
 /** A time range with only one of its ends set; a range needs both, or neither to restrict nothing. */
 function halfSet(range: AbstractControl): ValidationErrors | null {
@@ -47,23 +28,4 @@ export function filtersForm(fb: NonNullableFormBuilder) {
     outboundDepartureWeekdays: days(),
     inboundDepartureWeekdays: days(),
   });
-}
-
-type FiltersValue = ReturnType<ReturnType<typeof filtersForm>['getRawValue']>;
-
-/** The query's filters for offers of kind, or undefined when nothing is restricted. */
-export function toSearchFilters(v: FiltersValue, kind: OfferKind): SearchFilters | undefined {
-  const filters: SearchFilters = {};
-  if (v.directOnly) filters.directOnly = true;
-  for (const m of moments) {
-    const { from, to } = v[m.name];
-    if (from && to && (!m.inbound || kind === 'roundTrip')) filters[m.name] = { from, to };
-  }
-  const chosen = (days: Record<Weekday, boolean>) =>
-    weekdays.map((d) => d.value).filter((d) => days[d]);
-  const outbound = chosen(v.outboundDepartureWeekdays);
-  if (outbound.length) filters.outboundDepartureWeekdays = outbound;
-  const inbound = chosen(v.inboundDepartureWeekdays);
-  if (inbound.length && kind === 'roundTrip') filters.inboundDepartureWeekdays = inbound;
-  return Object.keys(filters).length ? filters : undefined;
 }

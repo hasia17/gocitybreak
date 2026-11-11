@@ -46,7 +46,7 @@
           Latest
           <input type="date" formControlName="to" [attr.aria-invalid]="invalid('to')" />
         </label>
-        @if (kind() === 'roundTrip') {
+        @if (applies('stayLength')) {
           <div
             class="field nights"
             formGroupName="stayLength"
@@ -85,7 +85,7 @@
         </svg>
       </button>
     </div>
-    @if (kind() === 'roundTrip') {
+    @if (applies('leave') || applies('sort')) {
       <div class="options">
         <ng-container formGroupName="leave">
           <label class="field time" [class.invalid]="invalid('leave.workStart')">
@@ -134,7 +134,7 @@
         <div class="time-ranges">
           <p class="note">Hours in local time at each airport.</p>
           @for (moment of moments; track moment.name) {
-            @if (!moment.inbound || kind() === 'roundTrip') {
+            @if (applies('filters.' + moment.name)) {
               @let rangeInvalid = invalid('filters.' + moment.name);
               <div class="time-range" [formGroupName]="moment.name" [class.invalid]="rangeInvalid">
                 <span>{{ moment.label }}</span>
@@ -161,7 +161,7 @@
             <label><input type="checkbox" [formControlName]="day.value" />{{ day.label }}</label>
           }
         </fieldset>
-        @if (kind() === 'roundTrip') {
+        @if (applies('filters.inboundDepartureWeekdays')) {
           <fieldset class="days" formGroupName="inboundDepartureWeekdays">
             <legend>Inbound departure days</legend>
             @for (day of weekdays; track day.value) {
