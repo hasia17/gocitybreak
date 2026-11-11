@@ -17,12 +17,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/hasia17/gocitybreak/backend/internal/nbp"
+	"github.com/hasia17/gocitybreak/backend/internal/pricestore"
 	"github.com/hasia17/gocitybreak/backend/internal/pricing"
 	"github.com/hasia17/gocitybreak/backend/internal/ryanair"
 )
-
-// supportedCountry is the country whose Ryanair airports are supported airports.
-const supportedCountry = "pl"
 
 // Config is what the worker works with.
 type Config struct {
@@ -40,6 +38,7 @@ type Config struct {
 // Worker fetches prices and rates into the database.
 type Worker struct {
 	pool      *pgxpool.Pool
+	store     *pricestore.Store
 	ryanair   ryanair.Client
 	nbp       *nbp.Client
 	horizon   time.Duration
@@ -79,7 +78,7 @@ func (f Freshness) maxAge(untilDeparture time.Duration) time.Duration {
 
 // New returns a Worker for cfg.
 func New(cfg Config) *Worker {
-	w := &Worker{pool: cfg.Pool, ryanair: cfg.Ryanair, nbp: cfg.NBP,
+	w := &Worker{pool: cfg.Pool, store: pricestore.New(cfg.Pool), ryanair: cfg.Ryanair, nbp: cfg.NBP,
 		horizon: cfg.Horizon, freshness: cfg.Freshness, now: cfg.Now}
 	if w.horizon <= 0 {
 		w.horizon = 183 * day
@@ -148,20 +147,8 @@ func (w *Worker) RefreshCatalogue(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	batch := &pgx.Batch{}
-	for _, a := range airports {
-		batch.Queue(`
-			INSERT INTO airports (code, name, time_zone, supported, city_code, city_name, country_code, country_name)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-			ON CONFLICT (code) DO UPDATE SET
-				name = EXCLUDED.name, time_zone = EXCLUDED.time_zone, supported = EXCLUDED.supported,
-				city_code = EXCLUDED.city_code, city_name = EXCLUDED.city_name,
-				country_code = EXCLUDED.country_code, country_name = EXCLUDED.country_name`,
-			a.Code, a.Name, a.TimeZone, a.CountryCode == supportedCountry,
-			a.CityCode, a.CityName, a.CountryCode, a.CountryName)
-	}
-	if err := w.pool.SendBatch(ctx, batch).Close(); err != nil {
-		return fmt.Errorf("store airports: %w", err)
+	if err := w.store.UpsertAirports(ctx, airports); err != nil {
+		return err
 	}
 	slog.InfoContext(ctx, "catalogue stored", "airports", len(airports))
 	return nil
@@ -183,14 +170,7 @@ func (w *Worker) refreshExchangeRateTable(ctx context.Context, table string) err
 	if err != nil {
 		return err
 	}
-	batch := &pgx.Batch{}
-	for _, r := range rates {
-		batch.Queue(`
-			INSERT INTO exchange_rates (currency, rate_date, rate) VALUES ($1, $2, $3)
-			ON CONFLICT (currency, rate_date) DO UPDATE SET rate = EXCLUDED.rate`,
-			r.Currency, r.Date, r.PLN)
-	}
-	if err := w.pool.SendBatch(ctx, batch).Close(); err != nil {
+	if err := w.store.UpsertExchangeRates(ctx, rates); err != nil {
 		return fmt.Errorf("store NBP table %s: %w", table, err)
 	}
 	slog.InfoContext(ctx, "exchange rates stored", "table", table, "rates", len(rates))
@@ -244,8 +224,8 @@ func (w *Worker) due(ctx context.Context, routes []route) ([]routeMonth, error) 
 	today, last := dateOf(now), dateOf(now.Add(w.horizon))
 
 	// Refreshes of past months only take up space.
-	if _, err := w.pool.Exec(ctx, `DELETE FROM route_month_refreshes WHERE month < $1`, firstOfMonth(today)); err != nil {
-		return nil, fmt.Errorf("forget past refreshes: %w", err)
+	if err := w.store.ForgetRefreshesBefore(ctx, firstOfMonth(today)); err != nil {
+		return nil, err
 	}
 	type key struct {
 		route route
@@ -330,56 +310,7 @@ func (w *Worker) refreshRouteMonth(ctx context.Context, rm routeMonth) error {
 	if err != nil {
 		return err
 	}
-	return w.store(ctx, rm, flights, complete)
-}
-
-// store upserts the flights of rm with the current fetch time and records the refresh. When the timetable was
-// complete, flights of rm stored by an earlier fetch but gone from it now (cancelled) are deleted.
-func (w *Worker) store(ctx context.Context, rm routeMonth, flights []pricing.Flight, complete bool) error {
-	r, from, to := rm.route, rm.first, rm.last
-	fetchedAt := w.now()
-	return pgx.BeginFunc(ctx, w.pool, func(tx pgx.Tx) error {
-		batch := &pgx.Batch{}
-		var dates, times []string
-		for _, f := range flights {
-			var amount *int64
-			var currency *string
-			if f.Price != nil {
-				amount, currency = &f.Price.Amount, &f.Price.Currency
-			}
-			batch.Queue(`
-				INSERT INTO flights (departure_airport, arrival_airport,
-					departure_date, departure_time, arrival_date, arrival_time,
-					price_amount, price_currency, fetched_at)
-				VALUES ($1, $2, $3, $4::text::time, $5, $6::text::time, $7, $8, $9)
-				ON CONFLICT (departure_airport, arrival_airport, departure_date, departure_time) DO UPDATE SET
-					arrival_date = EXCLUDED.arrival_date, arrival_time = EXCLUDED.arrival_time,
-					price_amount = EXCLUDED.price_amount, price_currency = EXCLUDED.price_currency,
-					fetched_at = EXCLUDED.fetched_at`,
-				r.from, r.to, dateOf(f.Departure), f.Departure.Format("15:04"),
-				dateOf(f.Arrival), f.Arrival.Format("15:04"), amount, currency, fetchedAt)
-			dates = append(dates, f.Departure.Format(time.DateOnly))
-			times = append(times, f.Departure.Format("15:04"))
-		}
-		if complete {
-			batch.Queue(`
-				DELETE FROM flights
-				WHERE departure_airport = $1 AND arrival_airport = $2
-					AND departure_date BETWEEN $3 AND $4
-					AND (departure_date, departure_time) NOT IN (
-						SELECT d, t FROM unnest($5::text[]::date[], $6::text[]::time[]) AS fetched (d, t))`,
-				r.from, r.to, from, to, dates, times)
-		}
-		batch.Queue(`
-			INSERT INTO route_month_refreshes (departure_airport, arrival_airport, month, refreshed_at)
-			VALUES ($1, $2, $3, $4)
-			ON CONFLICT (departure_airport, arrival_airport, month) DO UPDATE SET refreshed_at = EXCLUDED.refreshed_at`,
-			r.from, r.to, rm.month, fetchedAt)
-		if err := tx.SendBatch(ctx, batch).Close(); err != nil {
-			return fmt.Errorf("store flights %s→%s: %w", r.from, r.to, err)
-		}
-		return nil
-	})
+	return w.store.ReplaceRouteMonth(ctx, rm.route.from, rm.route.to, rm.month, rm.first, rm.last, w.now(), flights, complete)
 }
 
 func dateOf(t time.Time) time.Time {

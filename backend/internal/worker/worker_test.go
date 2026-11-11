@@ -20,6 +20,7 @@ import (
 	"github.com/hasia17/gocitybreak/backend/internal/database/databasetest"
 	"github.com/hasia17/gocitybreak/backend/internal/fetch"
 	"github.com/hasia17/gocitybreak/backend/internal/nbp"
+	"github.com/hasia17/gocitybreak/backend/internal/pricestore"
 	"github.com/hasia17/gocitybreak/backend/internal/ryanair"
 	"github.com/hasia17/gocitybreak/backend/internal/worker"
 )
@@ -323,13 +324,22 @@ func storedRates(t *testing.T, pool *pgxpool.Pool) []string {
 // storedFlights describes every stored flight in one line, sorted.
 func storedFlights(t *testing.T, pool *pgxpool.Pool) []string {
 	t.Helper()
-	return queryStrings(t, pool, `
-		SELECT departure_airport || '→' || arrival_airport || ' '
-			|| departure_date || ' ' || to_char(departure_time, 'HH24:MI') || ' → '
-			|| arrival_date || ' ' || to_char(arrival_time, 'HH24:MI') || ' '
-			|| COALESCE(price_amount || ' ' || price_currency, 'no price') || ' @'
-			|| to_char(fetched_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI')
-		FROM flights ORDER BY 1`)
+	flights, err := pricestore.New(pool).Flights(t.Context())
+	if err != nil {
+		t.Fatalf("read flights: %v", err)
+	}
+	var got []string
+	for _, f := range flights {
+		price := "no price"
+		if f.Price != nil {
+			price = fmt.Sprintf("%d %s", f.Price.Amount, f.Price.Currency)
+		}
+		got = append(got, fmt.Sprintf("%s→%s %s → %s %s @%s", f.DepartureAirport, f.ArrivalAirport,
+			f.Departure.Format("2006-01-02 15:04"), f.Arrival.Format("2006-01-02 15:04"), price,
+			f.FetchedAt.UTC().Format("2006-01-02T15:04")))
+	}
+	slices.Sort(got)
+	return got
 }
 
 func queryStrings(t *testing.T, pool *pgxpool.Pool, sql string) []string {

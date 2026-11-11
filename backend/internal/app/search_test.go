@@ -7,19 +7,15 @@ import (
 	"net/http/httptest"
 	"slices"
 	"testing"
-
-	"github.com/jackc/pgx/v5"
 )
 
 func TestSearchReturnsOneWayOfferForDirectFlightInTravelWindow(t *testing.T) {
 	srv, url := startAPI(t, "test")
-	seed(t, url, polishAndItalianAirports+`
-		INSERT INTO flights (departure_airport, arrival_airport,
-			departure_date, departure_time, arrival_date, arrival_time,
-			price_amount, price_currency, fetched_at)
-		VALUES ('KRK', 'BGY', '2026-12-05', '06:15', '2026-12-05', '08:10',
-			8900, 'PLN', '2026-11-10T08:00:00Z');
-	`)
+	seed(t, url, polishAndItalianAirports, fixture{
+		flights: []fixtureFlight{
+			{"KRK", "BGY", "2026-12-05", "06:15", "2026-12-05", "08:10", 8900, "PLN", "2026-11-10T08:00:00Z"},
+		},
+	})
 
 	code, body := search(t, srv, `{
 		"kind": "oneWay",
@@ -52,26 +48,24 @@ func TestSearchReturnsOneWayOfferForDirectFlightInTravelWindow(t *testing.T) {
 
 func TestSearchSkipsFlightsOutsideQuery(t *testing.T) {
 	srv, url := startAPI(t, "test")
-	seed(t, url, polishAndItalianAirports+`
-		INSERT INTO flights (departure_airport, arrival_airport,
-			departure_date, departure_time, arrival_date, arrival_time,
-			price_amount, price_currency, fetched_at)
-		VALUES
-			-- matches
-			('KRK', 'BGY', '2026-12-01', '06:15', '2026-12-01', '08:10', 8900, 'PLN', '2026-11-10T08:00:00Z'),
-			-- the day before the travel window
-			('KRK', 'BGY', '2026-11-30', '06:15', '2026-11-30', '08:10', 5000, 'PLN', '2026-11-10T08:00:00Z'),
-			-- departs on the last day but lands after the travel window
-			('KRK', 'BGY', '2026-12-10', '23:30', '2026-12-11', '01:20', 5000, 'PLN', '2026-11-10T08:00:00Z'),
-			-- from an airport that is not a home airport
-			('KTW', 'BGY', '2026-12-05', '06:15', '2026-12-05', '08:10', 5000, 'PLN', '2026-11-10T08:00:00Z'),
-			-- to another destination
-			('KRK', 'CIA', '2026-12-05', '06:15', '2026-12-05', '08:30', 5000, 'PLN', '2026-11-10T08:00:00Z'),
-			-- the opposite direction
-			('BGY', 'KRK', '2026-12-05', '09:00', '2026-12-05', '10:50', 5000, 'EUR', '2026-11-10T08:00:00Z'),
-			-- no price (ADR-0005 fallback)
-			('KRK', 'BGY', '2026-12-05', '18:00', '2026-12-05', '19:55', NULL, NULL, '2026-11-10T08:00:00Z');
-	`)
+	seed(t, url, polishAndItalianAirports, fixture{
+		flights: []fixtureFlight{
+			// matches
+			{"KRK", "BGY", "2026-12-01", "06:15", "2026-12-01", "08:10", 8900, "PLN", "2026-11-10T08:00:00Z"},
+			// the day before the travel window
+			{"KRK", "BGY", "2026-11-30", "06:15", "2026-11-30", "08:10", 5000, "PLN", "2026-11-10T08:00:00Z"},
+			// departs on the last day but lands after the travel window
+			{"KRK", "BGY", "2026-12-10", "23:30", "2026-12-11", "01:20", 5000, "PLN", "2026-11-10T08:00:00Z"},
+			// from an airport that is not a home airport
+			{"KTW", "BGY", "2026-12-05", "06:15", "2026-12-05", "08:10", 5000, "PLN", "2026-11-10T08:00:00Z"},
+			// to another destination
+			{"KRK", "CIA", "2026-12-05", "06:15", "2026-12-05", "08:30", 5000, "PLN", "2026-11-10T08:00:00Z"},
+			// the opposite direction
+			{"BGY", "KRK", "2026-12-05", "09:00", "2026-12-05", "10:50", 5000, "EUR", "2026-11-10T08:00:00Z"},
+			// no price (ADR-0005 fallback)
+			{"KRK", "BGY", "2026-12-05", "18:00", "2026-12-05", "19:55", -1, "", "2026-11-10T08:00:00Z"},
+		},
+	})
 
 	code, body := search(t, srv, `{
 		"kind": "oneWay",
@@ -94,17 +88,16 @@ func TestSearchSkipsFlightsOutsideQuery(t *testing.T) {
 func TestSearchConvertsForeignCurrencyIntoApproximatePLNAtLatestRate(t *testing.T) {
 	srv, url := startAPI(t, "test")
 	// Ryanair prices a flight in its departure airport's currency, so the inbound flight is in EUR.
-	seed(t, url, polishAndItalianAirports+`
-		INSERT INTO exchange_rates (currency, rate_date, rate) VALUES
-			('EUR', '2026-11-09', 4.3000),
-			('EUR', '2026-11-10', 4.2512);
-		INSERT INTO flights (departure_airport, arrival_airport,
-			departure_date, departure_time, arrival_date, arrival_time,
-			price_amount, price_currency, fetched_at)
-		VALUES
-			('KRK', 'BGY', '2026-12-03', '06:15', '2026-12-03', '08:10', 5000, 'PLN', '2026-11-10T08:00:00Z'),
-			('BGY', 'KRK', '2026-12-05', '09:00', '2026-12-05', '10:50', 1999, 'EUR', '2026-11-10T08:00:00Z');
-	`)
+	seed(t, url, polishAndItalianAirports, fixture{
+		rates: []fixtureRate{
+			{"EUR", "2026-11-09", 4.3000},
+			{"EUR", "2026-11-10", 4.2512},
+		},
+		flights: []fixtureFlight{
+			{"KRK", "BGY", "2026-12-03", "06:15", "2026-12-03", "08:10", 5000, "PLN", "2026-11-10T08:00:00Z"},
+			{"BGY", "KRK", "2026-12-05", "09:00", "2026-12-05", "10:50", 1999, "EUR", "2026-11-10T08:00:00Z"},
+		},
+	})
 
 	code, body := search(t, srv, `{
 		"kind": "roundTrip",
@@ -132,18 +125,18 @@ func TestSearchConvertsForeignCurrencyIntoApproximatePLNAtLatestRate(t *testing.
 
 func TestSearchSortsOffersByAscendingPriceInPLN(t *testing.T) {
 	srv, url := startAPI(t, "test")
-	seed(t, url, polishAndItalianAirports+`
-		INSERT INTO exchange_rates (currency, rate_date, rate) VALUES ('EUR', '2026-11-10', 4.2512);
-		INSERT INTO flights (departure_airport, arrival_airport,
-			departure_date, departure_time, arrival_date, arrival_time,
-			price_amount, price_currency, fetched_at)
-		VALUES
-			('KRK', 'BGY', '2026-12-02', '06:15', '2026-12-02', '08:10', 5000, 'PLN', '2026-11-10T08:00:00Z'),
-			('BGY', 'KRK', '2026-12-03', '09:00', '2026-12-03', '10:50', 12000, 'PLN', '2026-11-10T08:00:00Z'),
-			-- 20.00 EUR ≈ 85.02 PLN: cheaper than 120 PLN, dearer than 70 PLN despite the smaller number
-			('BGY', 'KRK', '2026-12-04', '09:00', '2026-12-04', '10:50', 2000, 'EUR', '2026-11-10T08:00:00Z'),
-			('BGY', 'KRK', '2026-12-05', '09:00', '2026-12-05', '10:50', 7000, 'PLN', '2026-11-10T08:00:00Z');
-	`)
+	seed(t, url, polishAndItalianAirports, fixture{
+		rates: []fixtureRate{
+			{"EUR", "2026-11-10", 4.2512},
+		},
+		flights: []fixtureFlight{
+			{"KRK", "BGY", "2026-12-02", "06:15", "2026-12-02", "08:10", 5000, "PLN", "2026-11-10T08:00:00Z"},
+			{"BGY", "KRK", "2026-12-03", "09:00", "2026-12-03", "10:50", 12000, "PLN", "2026-11-10T08:00:00Z"},
+			// 20.00 EUR ≈ 85.02 PLN: cheaper than 120 PLN, dearer than 70 PLN despite the smaller number
+			{"BGY", "KRK", "2026-12-04", "09:00", "2026-12-04", "10:50", 2000, "EUR", "2026-11-10T08:00:00Z"},
+			{"BGY", "KRK", "2026-12-05", "09:00", "2026-12-05", "10:50", 7000, "PLN", "2026-11-10T08:00:00Z"},
+		},
+	})
 
 	code, body := search(t, srv, `{
 		"kind": "roundTrip",
@@ -168,16 +161,14 @@ func TestSearchSortsOffersByAscendingPriceInPLN(t *testing.T) {
 
 func TestSearchOrdersEquallyPricedOffersByDepartureThenAirports(t *testing.T) {
 	srv, url := startAPI(t, "test")
-	seed(t, url, polishAndItalianAirports+`
-		INSERT INTO flights (departure_airport, arrival_airport,
-			departure_date, departure_time, arrival_date, arrival_time,
-			price_amount, price_currency, fetched_at)
-		VALUES
-			('KTW', 'CIA', '2026-12-05', '06:15', '2026-12-05', '08:30', 8900, 'PLN', '2026-11-10T08:00:00Z'),
-			('KTW', 'BGY', '2026-12-05', '06:15', '2026-12-05', '08:10', 8900, 'PLN', '2026-11-10T08:00:00Z'),
-			('KRK', 'BGY', '2026-12-05', '06:15', '2026-12-05', '08:10', 8900, 'PLN', '2026-11-10T08:00:00Z'),
-			('KTW', 'BGY', '2026-12-04', '20:00', '2026-12-04', '21:55', 8900, 'PLN', '2026-11-10T08:00:00Z');
-	`)
+	seed(t, url, polishAndItalianAirports, fixture{
+		flights: []fixtureFlight{
+			{"KTW", "CIA", "2026-12-05", "06:15", "2026-12-05", "08:30", 8900, "PLN", "2026-11-10T08:00:00Z"},
+			{"KTW", "BGY", "2026-12-05", "06:15", "2026-12-05", "08:10", 8900, "PLN", "2026-11-10T08:00:00Z"},
+			{"KRK", "BGY", "2026-12-05", "06:15", "2026-12-05", "08:10", 8900, "PLN", "2026-11-10T08:00:00Z"},
+			{"KTW", "BGY", "2026-12-04", "20:00", "2026-12-04", "21:55", 8900, "PLN", "2026-11-10T08:00:00Z"},
+		},
+	})
 
 	code, body := search(t, srv, `{
 		"kind": "oneWay",
@@ -241,13 +232,14 @@ func TestSearchRejectsHomeAirportsThatAreNotSupported(t *testing.T) {
 }
 
 // polishAndItalianAirports is a fixture of supported Polish airports and Italian destinations.
-const polishAndItalianAirports = `
-	INSERT INTO airports (code, name, time_zone, supported) VALUES
-		('KRK', 'Kraków', 'Europe/Warsaw', true),
-		('KTW', 'Katowice', 'Europe/Warsaw', true),
-		('BGY', 'Milan Bergamo', 'Europe/Rome', false),
-		('CIA', 'Rome Ciampino', 'Europe/Rome', false);
-`
+var polishAndItalianAirports = fixture{
+	airports: []fixtureAirport{
+		{"KRK", "Kraków", "Europe/Warsaw", true, "", "", "", ""},
+		{"KTW", "Katowice", "Europe/Warsaw", true, "", "", "", ""},
+		{"BGY", "Milan Bergamo", "Europe/Rome", false, "", "", "", ""},
+		{"CIA", "Rome Ciampino", "Europe/Rome", false, "", "", "", ""},
+	},
+}
 
 type searchResponseBody struct {
 	Offers []offerBody `json:"offers"`
@@ -293,20 +285,6 @@ type priceBody struct {
 	Amount      float64 `json:"amount"`
 	Currency    string  `json:"currency"`
 	Approximate bool    `json:"approximate"`
-}
-
-// seed runs SQL against the test database, standing in for the price worker that fills it in production.
-func seed(t *testing.T, url, sql string) {
-	t.Helper()
-	ctx := t.Context()
-	conn, err := pgx.Connect(ctx, url)
-	if err != nil {
-		t.Fatalf("connect to postgres: %v", err)
-	}
-	defer conn.Close(ctx)
-	if _, err := conn.Exec(ctx, sql); err != nil {
-		t.Fatalf("seed: %v", err)
-	}
 }
 
 func search(t *testing.T, srv *httptest.Server, query string) (int, searchResponseBody) {
