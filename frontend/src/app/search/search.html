@@ -77,6 +77,39 @@
         </svg>
       </button>
     </div>
+    @if (kind() === 'roundTrip') {
+      <div class="options" formGroupName="leave">
+        <label class="field time" [class.invalid]="invalidLeave('workStart')">
+          Work start
+          <input
+            type="time"
+            formControlName="workStart"
+            [attr.aria-invalid]="invalidLeave('workStart')"
+          />
+        </label>
+        <label class="field time" [class.invalid]="invalidLeave('workEnd')">
+          Work end
+          <input type="time" formControlName="workEnd" [attr.aria-invalid]="invalidLeave('workEnd')" />
+        </label>
+        <label class="field leave" [class.invalid]="invalidLeave('maxLeaveDays')">
+          Max leave days
+          <input
+            type="number"
+            min="0"
+            formControlName="maxLeaveDays"
+            placeholder="any"
+            [attr.aria-invalid]="invalidLeave('maxLeaveDays')"
+          />
+        </label>
+        <label class="field">
+          Sort
+          <select formControlName="sort" aria-label="Sort by">
+            <option value="price">Price</option>
+            <option value="leaveDays">Leave days</option>
+          </select>
+        </label>
+      </div>
+    }
   </form>
 
   @if (form.invalid && submitted()) {
@@ -131,6 +164,11 @@
                 <span class="badge"
                   >{{ offer.nights }} {{ offer.nights === 1 ? 'night' : 'nights' }}</span
                 >
+              }
+              @if (offer.leaveDays !== undefined) {
+                <span class="badge" [class.free]="offer.leaveDays === 0">{{
+                  leaveDays(offer.leaveDays)
+                }}</span>
               }
             </div>
             <div class="price">

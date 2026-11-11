@@ -32,6 +32,8 @@ Without Task: `docker compose up -d --build`, and for sample flights, once the A
 
 Search is `POST /api/search`, e.g. `{"kind": "roundTrip", "homeAirports": ["KRK", "KTW"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": 2, "max": 3}}`. `kind` defaults to `roundTrip`; `"kind": "oneWay"` takes no `stayLength`.
 
+Round-trip offers carry `leaveDays` (leave-days calculator in `internal/leave`). The query may set `"workStart"` and `"workEnd"` (HH:MM in the home airport's local time, default `09:00` and `17:00`), `"maxLeaveDays"` (0 or more) and `"sort"` (`price`, the default, or `leaveDays`).
+
 ## Develop without Docker for the app
 
 Requires Go 1.26+ and Node.js 26 (`nvm use` in `frontend/`).

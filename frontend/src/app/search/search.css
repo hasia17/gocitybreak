@@ -139,6 +139,36 @@ h1 {
   margin: 0;
   -webkit-appearance: none;
 }
+.options {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem;
+  max-width: 44rem;
+  margin: 0.5rem auto 0;
+  text-align: left;
+}
+.time input {
+  width: 5.5rem;
+}
+.leave input {
+  width: 6.5rem;
+}
+.field select {
+  padding: 0.15rem 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 1.05rem;
+  cursor: pointer;
+}
+.badge.free {
+  border-color: var(--text);
+  color: var(--text);
+  font-weight: 500;
+}
 .arrow {
   color: var(--muted);
 }

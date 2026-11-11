@@ -8,7 +8,16 @@ import {
   ValidationErrors,
   Validators,
 } from '@angular/forms';
-import { Flight, Leg, Money, Offer, OfferKind, SearchQuery, SearchResponse } from './search-api';
+import {
+  Flight,
+  Leg,
+  Money,
+  Offer,
+  OfferKind,
+  SearchQuery,
+  SearchResponse,
+  SortOrder,
+} from './search-api';
 
 const airportCode = [Validators.required, Validators.pattern(/^[A-Za-z]{3}$/)];
 /** One or more airport codes separated by commas or spaces, e.g. "KRK, KTW". */
@@ -53,6 +62,12 @@ export class Search {
       { min: [2, nightCount], max: [3, nightCount] },
       { validators: maxBelowMin },
     ),
+    leave: this.fb.group({
+      workStart: ['09:00', Validators.required],
+      workEnd: ['17:00', Validators.required],
+      maxLeaveDays: this.fb.control<number | null>(null, Validators.pattern(/^\d+$/)),
+      sort: this.fb.control<SortOrder>('price'),
+    }),
   });
 
   protected readonly kind = toSignal(this.form.controls.kind.valueChanges, {
@@ -72,6 +87,12 @@ export class Search {
       const stayLength = this.form.controls.stayLength;
       if (kind === 'roundTrip') stayLength.enable();
       else stayLength.disable();
+    });
+    // So do work hours, the maximum of leave days and the sort, which has only price for one-way offers.
+    this.form.controls.kind.valueChanges.pipe(takeUntilDestroyed()).subscribe((kind) => {
+      const leave = this.form.controls.leave;
+      if (kind === 'roundTrip') leave.enable();
+      else leave.disable();
     });
   }
 
@@ -94,6 +115,10 @@ export class Search {
     };
     if (v.kind === 'roundTrip') {
       query.stayLength = { min: Number(v.stayLength.min), max: Number(v.stayLength.max) };
+      query.workStart = v.leave.workStart;
+      query.workEnd = v.leave.workEnd;
+      if (v.leave.maxLeaveDays != null) query.maxLeaveDays = Number(v.leave.maxLeaveDays);
+      query.sort = v.leave.sort;
     }
     this.loading.set(true);
     this.error.set(undefined);
@@ -112,6 +137,17 @@ export class Search {
   /** Whether a field should be marked invalid: it is, and the user has tried to search. */
   protected invalid(name: keyof typeof this.form.controls): boolean {
     return this.submitted() && this.form.controls[name].invalid;
+  }
+
+  /** Whether a work-hours or leave-days field should be marked invalid, like `invalid`. */
+  protected invalidLeave(name: keyof typeof this.form.controls.leave.controls): boolean {
+    return this.submitted() && this.form.controls.leave.controls[name].invalid;
+  }
+
+  /** Leave days like "no leave days", "1 leave day" or "2 leave days". */
+  protected leaveDays(days: number): string {
+    if (days === 0) return 'no leave days';
+    return `${days} ${days === 1 ? 'leave day' : 'leave days'}`;
   }
 
   /** The offer's legs in travel order: outbound, then inbound for a round trip. */

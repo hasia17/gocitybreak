@@ -9,7 +9,15 @@ export interface SearchQuery {
   travelWindow: { from: string; to: string };
   /** Range of hotel nights, both ends inclusive; round trips only. */
   stayLength?: { min: number; max: number };
+  /** Work start and work end as HH:MM in the home airport's local time; round trips only. */
+  workStart?: string;
+  workEnd?: string;
+  /** Leaves out round-trip offers that cost more leave days; 0 is a valid maximum. */
+  maxLeaveDays?: number;
+  sort?: SortOrder;
 }
+
+export type SortOrder = 'price' | 'leaveDays';
 
 export interface SearchResponse {
   offers: Offer[];
@@ -26,6 +34,8 @@ export interface Offer {
   price: { amount: number; currency: string; approximate: boolean };
   /** When the oldest stored price of the offer's flights was fetched (ISO 8601). */
   priceFetchedAt: string;
+  /** Working days a round trip costs (GLOSSARY: Leave days). */
+  leaveDays?: number;
 }
 
 export interface Leg {
