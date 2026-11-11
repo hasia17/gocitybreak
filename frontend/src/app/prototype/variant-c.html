@@ -1,0 +1,94 @@
+<div class="wrap" [class.empty]="turns().length === 0">
+  <header class="top">
+    <span class="brand">gocitybreak</span>
+    @if (status(); as s) {
+      <span class="ver">{{ s.version }} · DB {{ s.database.status }}</span>
+    }
+  </header>
+
+  @if (turns().length === 0) {
+    <div class="hello">
+      <h1>Hi, where are we flying?</h1>
+      <p>Give me a route and a few days; I'll find the cheapest one-way flights.</p>
+    </div>
+  }
+
+  <ol class="thread">
+    @for (t of turns(); track $index) {
+      <li class="ask">
+        <p>{{ t.ask }}</p>
+      </li>
+      <li class="reply">
+        <div class="avatar" aria-hidden="true">g</div>
+        <div class="body">
+          @if (t.pending) {
+            <p class="typing" aria-label="Searching"><span></span><span></span><span></span></p>
+          } @else if (t.error) {
+            <p>{{ t.error }}</p>
+          } @else if (t.offers?.length === 0) {
+            <p>Nothing in that window. Try a wider travel window or other airports.</p>
+          } @else if (t.offers; as offers) {
+            <p>
+              Found <b>{{ offers.length }}</b> {{ offers.length === 1 ? 'offer' : 'offers' }}. The
+              cheapest is
+              <b>
+                {{ cheapest(offers).price.approximate ? '≈ ' : '' }}{{
+                  money(cheapest(offers).price)
+                }}
+              </b>
+              on {{ cheapest(offers).outbound.flights[0].departure.date }}.
+            </p>
+            <ul class="mini">
+              @for (offer of offers; track $index) {
+                <li data-testid="offer">
+                  <span class="when">{{ offer.outbound.flights[0].departure.date }}</span>
+                  <span class="times">
+                    @for (f of offer.outbound.flights; track $index) {
+                      {{ f.departureAirport }} {{ f.departure.time }} → {{ f.arrivalAirport }}
+                      {{ f.arrival.time }}
+                      @if (daysLater(f); as days) {
+                        <sup>+{{ days }}</sup>
+                      }
+                    }
+                  </span>
+                  <span class="via">
+                    {{ offer.outbound.isDirect ? 'direct' : offer.outbound.flights.length - 1 + ' stop' }}
+                  </span>
+                  <b class="amt">{{ offer.price.approximate ? '≈ ' : '' }}{{ money(offer.price) }}</b>
+                </li>
+              }
+            </ul>
+            <p class="meta">Per person, cheapest fare, no cabin bag · prices checked {{ priceAge(offers[0]) }}</p>
+          }
+        </div>
+      </li>
+    }
+  </ol>
+
+  <form class="composer" [formGroup]="form" (ngSubmit)="submit()">
+    <p class="sentence">
+      Fly from
+      <input class="code" formControlName="homeAirport" placeholder="KRK" maxlength="3" autocomplete="off" aria-label="From airport" />
+      to
+      <input class="code" formControlName="destinationAirport" placeholder="BGY" maxlength="3" autocomplete="off" aria-label="To airport" />
+      between
+      <input type="date" formControlName="from" aria-label="Earliest date" />
+      and
+      <input type="date" formControlName="to" aria-label="Latest date" />
+    </p>
+    <button class="send" type="submit" [disabled]="loading()" aria-label="Search">↑</button>
+  </form>
+  @if (form.invalid && form.touched) {
+    <p class="hint" role="alert">Fill in both airports (3 letters) and both dates.</p>
+  }
+
+  @if (turns().length === 0) {
+    <div class="suggest">
+      @for (r of routes; track r[0]) {
+        <button type="button" class="pill" (click)="fill(r[0], r[1])">
+          {{ r[0] }} → {{ r[1] }} next week
+        </button>
+      }
+    </div>
+  }
+</div>

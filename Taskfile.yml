@@ -24,6 +24,13 @@ tasks:
         i=$((i+1)); if [ $i -ge 60 ]; then echo "API did not start, check: task logs" >&2; exit 1; fi; sleep 1; done'
       - docker compose exec -T postgres psql -q -v ON_ERROR_STOP=1 -U gocitybreak -d gocitybreak < backend/seed/dev.sql
 
+  prototype:
+    desc: PROTOTYPE - start the stack, then the dev server with look-and-feel variants on http://localhost:4200/?variant=A
+    cmds:
+      - task: run
+      - echo "Variants at http://localhost:4200/?variant=A (switch with the yellow bar or arrow keys)"
+      - cd frontend && npm start
+
   logs:
     desc: Follow logs of all services
     cmds:

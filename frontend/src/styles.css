@@ -1,1 +1,6 @@
 /* You can add global styles to this file, and also import other style files */
+
+/* PROTOTYPE: variants paint the whole viewport */
+body {
+  margin: 0;
+}

@@ -1,0 +1,110 @@
+<div class="page">
+  <header class="top">
+    <span class="brand">gocitybreak</span>
+    @if (status(); as s) {
+      <span class="health" [class.ok]="s.status === 'ok' && s.database.status === 'ok'">
+        API {{ s.status }} · DB {{ s.database.status }} · {{ s.version }}
+      </span>
+    }
+  </header>
+
+  <section class="hero" [class.compact]="offers()">
+    <h1>Where to this weekend?</h1>
+    <p class="lede">Cheap one-way Ryanair flights for a short city break.</p>
+
+    <form class="composer" [formGroup]="form" (ngSubmit)="submit()">
+      <div class="fields">
+        <label class="field code">
+          <span>From</span>
+          <input formControlName="homeAirport" placeholder="KRK" maxlength="3" autocomplete="off" />
+        </label>
+        <span class="arrow" aria-hidden="true">→</span>
+        <label class="field code">
+          <span>To</span>
+          <input
+            formControlName="destinationAirport"
+            placeholder="BGY"
+            maxlength="3"
+            autocomplete="off"
+          />
+        </label>
+        <span class="divider" aria-hidden="true"></span>
+        <label class="field">
+          <span>Earliest</span>
+          <input type="date" formControlName="from" />
+        </label>
+        <label class="field">
+          <span>Latest</span>
+          <input type="date" formControlName="to" />
+        </label>
+      </div>
+      <div class="footer">
+        <span class="chip on">One-way</span>
+        <span class="chip off" title="Not supported yet">Return · soon</span>
+        @if (form.invalid && form.touched) {
+          <span class="hint" role="alert">Two airport codes and both dates</span>
+        }
+        <button class="send" type="submit" [disabled]="loading()" aria-label="Search">
+          {{ loading() ? '…' : '↑' }}
+        </button>
+      </div>
+    </form>
+
+    @if (!offers()) {
+      <div class="suggest">
+        @for (r of routes; track r[0]) {
+          <button type="button" class="pill" (click)="fill(r[0], r[1])">
+            {{ r[0] }} → {{ r[1] }} · next week
+          </button>
+        }
+      </div>
+    }
+  </section>
+
+  @if (error(); as message) {
+    <p class="error" role="alert">{{ message }}</p>
+  }
+
+  @if (offers(); as offers) {
+    <section class="results">
+      @if (offers.length === 0) {
+        <p class="empty">No offers match. Try a wider travel window or other airports.</p>
+      } @else {
+        <p class="count">{{ offers.length }} offers</p>
+        <ol class="tiles">
+          @for (offer of offers; track $index) {
+            <li class="tile" data-testid="offer">
+              <div class="price">
+                <strong>{{ offer.price.approximate ? '≈ ' : '' }}{{ money(offer.price) }}</strong>
+                <small>per person, no cabin bag · checked {{ priceAge(offer) }}</small>
+              </div>
+              @for (flight of offer.outbound.flights; track $index) {
+                <div class="leg">
+                  <div class="end">
+                    <b>{{ flight.departure.time }}</b>
+                    <span>{{ flight.departureAirport }}</span>
+                  </div>
+                  <div class="line">
+                    <span>{{ flight.departure.date }}</span>
+                  </div>
+                  <div class="end r">
+                    <b>
+                      {{ flight.arrival.time }}
+                      @if (daysLater(flight); as days) {
+                        <sup>+{{ days }}</sup>
+                      }
+                    </b>
+                    <span>{{ flight.arrivalAirport }}</span>
+                  </div>
+                </div>
+              }
+              @for (original of foreignPrices(offer); track $index) {
+                <small class="orig">{{ money(original) }} at source</small>
+              }
+            </li>
+          }
+        </ol>
+      }
+    </section>
+  }
+</div>

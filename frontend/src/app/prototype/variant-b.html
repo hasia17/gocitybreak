@@ -1,0 +1,128 @@
+<div class="shell">
+  <aside class="side">
+    <div class="brand">gocitybreak</div>
+    <button class="new" type="button" (click)="reset()">＋ New search</button>
+
+    <p class="label">Recent</p>
+    <nav class="recent">
+      @for (r of recent(); track $index) {
+        <button class="item" type="button" (click)="rerun(r)">
+          <span>{{ r.from }} → {{ r.to }}</span>
+          <small>{{ r.start }} – {{ r.end }}</small>
+        </button>
+      } @empty {
+        <p class="none">Your searches will show up here.</p>
+      }
+    </nav>
+
+    <div class="foot">
+      @if (status(); as s) {
+        <span class="dot" [class.ok]="s.status === 'ok' && s.database.status === 'ok'"></span>
+        API {{ s.status }} · DB {{ s.database.status }} · {{ s.version }}
+      } @else {
+        Checking API…
+      }
+    </div>
+  </aside>
+
+  <main class="main">
+    <form class="bar" [formGroup]="form" (ngSubmit)="submit()">
+      <label class="seg">
+        <span>From</span>
+        <input formControlName="homeAirport" placeholder="KRK" maxlength="3" autocomplete="off" />
+      </label>
+      <label class="seg">
+        <span>To</span>
+        <input
+          formControlName="destinationAirport"
+          placeholder="BGY"
+          maxlength="3"
+          autocomplete="off"
+        />
+      </label>
+      <label class="seg">
+        <span>Earliest</span>
+        <input type="date" formControlName="from" />
+      </label>
+      <label class="seg">
+        <span>Latest</span>
+        <input type="date" formControlName="to" />
+      </label>
+      <button type="submit" class="go" [disabled]="loading()">
+        {{ loading() ? 'Searching…' : 'Search' }}
+      </button>
+    </form>
+
+    @if (form.invalid && form.touched) {
+      <p class="hint" role="alert">Enter two 3-letter airport codes and both dates.</p>
+    }
+    @if (error(); as message) {
+      <p class="hint" role="alert">{{ message }}</p>
+    }
+
+    @if (offers(); as offers) {
+      <div class="head">
+        <h2>{{ offers.length }} {{ offers.length === 1 ? 'offer' : 'offers' }}</h2>
+        <span>per person, cheapest fare, no cabin bag</span>
+      </div>
+      @if (offers.length === 0) {
+        <p class="none">No offers match. Try a wider travel window or other airports.</p>
+      } @else {
+        <table class="rows">
+          <thead>
+            <tr>
+              <th>Route</th>
+              <th>Date</th>
+              <th>Times</th>
+              <th>Stops</th>
+              <th class="num">Price</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (offer of offers; track $index) {
+              <tr data-testid="offer">
+                <td>
+                  @for (f of offer.outbound.flights; track $index) {
+                    <div><b>{{ f.departureAirport }}</b> → <b>{{ f.arrivalAirport }}</b></div>
+                  }
+                </td>
+                <td>
+                  @for (f of offer.outbound.flights; track $index) {
+                    <div>{{ f.departure.date }}</div>
+                  }
+                </td>
+                <td>
+                  @for (f of offer.outbound.flights; track $index) {
+                    <div>
+                      {{ f.departure.time }} – {{ f.arrival.time }}
+                      @if (daysLater(f); as days) {
+                        <sup>+{{ days }}</sup>
+                      }
+                    </div>
+                  }
+                </td>
+                <td>
+                  <span class="tag">
+                    {{ offer.outbound.isDirect ? 'Direct' : offer.outbound.flights.length - 1 + ' stop' }}
+                  </span>
+                </td>
+                <td class="num">
+                  <b>{{ offer.price.approximate ? '≈ ' : '' }}{{ money(offer.price) }}</b>
+                  @for (original of foreignPrices(offer); track $index) {
+                    <small>{{ money(original) }}</small>
+                  }
+                  <small>checked {{ priceAge(offer) }}</small>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    } @else {
+      <div class="blank">
+        <h1>Pick a route and a travel window.</h1>
+        <p>Every cheap one-way flight in it, on one list.</p>
+      </div>
+    }
+  </main>
+</div>

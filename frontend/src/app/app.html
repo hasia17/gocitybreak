@@ -1,19 +1,36 @@
-<main>
-  <h1>gocitybreak</h1>
-  <app-search />
-</main>
-
-<footer>
-  @if (apiStatus.hasValue()) {
-    @let status = apiStatus.value();
-    <ul>
-      <li>API: {{ status.status }}</li>
-      <li>Version: {{ status.version }}</li>
-      <li>Database: {{ status.database.status }}</li>
-    </ul>
-  } @else if (apiStatus.error()) {
-    <p role="alert">API unavailable.</p>
-  } @else {
-    <p>Checking API…</p>
+@switch (variant()) {
+  @case ('A') {
+    <app-variant-a [status]="status()" />
   }
-</footer>
+  @case ('B') {
+    <app-variant-b [status]="status()" />
+  }
+  @case ('C') {
+    <app-variant-c [status]="status()" />
+  }
+  @default {
+    <main>
+      <h1>gocitybreak</h1>
+      <app-search />
+    </main>
+
+    <footer>
+      @if (apiStatus.hasValue()) {
+        @let status = apiStatus.value();
+        <ul>
+          <li>API: {{ status.status }}</li>
+          <li>Version: {{ status.version }}</li>
+          <li>Database: {{ status.database.status }}</li>
+        </ul>
+      } @else if (apiStatus.error()) {
+        <p role="alert">API unavailable.</p>
+      } @else {
+        <p>Checking API…</p>
+      }
+    </footer>
+  }
+}
+
+@if (dev) {
+  <app-prototype-switcher [(current)]="variant" />
+}
