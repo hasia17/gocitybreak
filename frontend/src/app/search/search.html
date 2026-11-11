@@ -166,6 +166,9 @@
 
   @if (form.invalid && submitted()) {
     <p class="hint" role="alert">
+      @if (form.controls.homeAirports.hasError('unsupportedAirport')) {
+        Search from supported airports only: {{ supportedAirportList() }}.
+      }
       Enter 3-letter airport codes, places as airports, cities or countries (or anywhere), both
       dates and nights from the minimum up to the maximum.
     </p>

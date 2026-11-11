@@ -610,6 +610,24 @@ describe('Search', () => {
     expect(root.textContent).toContain('No offers');
   });
 
+  it('takes only supported airports as home airports, and lists them when another is typed', async () => {
+    const fixture = TestBed.createComponent(Search);
+    httpTesting.expectOne({ method: 'GET', url: '/api/catalogue' }).flush(catalogue);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+
+    fill(root, 'From', 'KRK, BGY');
+    fill(root, 'To', 'Oslo');
+    fill(root, 'Earliest', '2026-12-01');
+    fill(root, 'Latest', '2026-12-10');
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+    await fixture.whenStable();
+
+    httpTesting.expectNone('/api/search');
+    expect(labelled<HTMLInputElement>(root, 'From').getAttribute('aria-invalid')).toBe('true');
+    expect(root.querySelector('[role="alert"]')?.textContent).toContain('KRK (Kraków)');
+  });
+
   describe('destination', () => {
     async function searchFrom(destination: string, exclusions = '') {
       const fixture = TestBed.createComponent(Search);

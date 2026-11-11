@@ -30,6 +30,18 @@ const airportCodes = [
   Validators.required,
   Validators.pattern(/^[\s,]*[A-Za-z]{3}(?:[\s,]+[A-Za-z]{3})*[\s,]*$/),
 ];
+
+/** The distinct airport codes typed as "krk, KTW", upper-cased. */
+function typedCodes(text: string): string[] {
+  return [
+    ...new Set(
+      text
+        .split(/[\s,]+/)
+        .filter(Boolean)
+        .map((code) => code.toUpperCase()),
+    ),
+  ];
+}
 const nightCount = [Validators.required, Validators.pattern(/^\d+$/)];
 
 /** A stay length whose maximum is below its minimum. */
@@ -62,7 +74,7 @@ export class Search {
 
   protected readonly form = this.fb.group({
     kind: this.fb.control<OfferKind>('roundTrip'),
-    homeAirports: ['', airportCodes],
+    homeAirports: ['', [...airportCodes, this.supportedAirports()]],
     destination: ['', this.knownPlaces('destination')],
     exclusions: ['', this.knownPlaces('exclusions')],
     from: ['', Validators.required],
@@ -95,13 +107,15 @@ export class Search {
   protected readonly ryanairTickets = ryanairTickets;
 
   constructor() {
-    // Typed places are checked again once the catalogue arrives. Without it, airport codes still work.
+    // Typed airports and places are checked again once the catalogue arrives.
+    // Without it, any airport code is taken and the backend checks home airports.
     this.http
       .get<Catalogue>('/api/catalogue')
       .pipe(takeUntilDestroyed())
       .subscribe({
         next: (catalogue) => {
           this.catalogue.set(catalogue);
+          this.form.controls.homeAirports.updateValueAndValidity();
           this.form.controls.destination.updateValueAndValidity();
           this.form.controls.exclusions.updateValueAndValidity();
         },
@@ -130,14 +144,7 @@ export class Search {
     saveSearchSettings(v);
     const query: SearchQuery = {
       kind: v.kind,
-      homeAirports: [
-        ...new Set(
-          v.homeAirports
-            .split(/[\s,]+/)
-            .filter(Boolean)
-            .map((code) => code.toUpperCase()),
-        ),
-      ],
+      homeAirports: typedCodes(v.homeAirports),
       destination: {},
       travelWindow: { from: v.from, to: v.to },
     };
@@ -166,6 +173,23 @@ export class Search {
         this.loading.set(false);
       },
     });
+  }
+
+  /** A validator of home airports: each must be a supported airport of the catalogue, once it is loaded. */
+  private supportedAirports(): ValidatorFn {
+    return (control) => {
+      const supported = this.catalogue()?.supportedAirports;
+      if (!supported) return null;
+      const unsupported = typedCodes(control.value as string).filter(
+        (code) => !supported.some((a) => a.code === code),
+      );
+      return unsupported.length > 0 ? { unsupportedAirport: unsupported } : null;
+    };
+  }
+
+  /** The supported airports, like "KRK (Kraków), KTW (Katowice)". */
+  protected supportedAirportList(): string {
+    return (this.catalogue()?.supportedAirports ?? []).map((a) => `${a.code} (${a.name})`).join(', ');
   }
 
   /**
