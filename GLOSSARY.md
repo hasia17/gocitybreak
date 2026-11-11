@@ -64,8 +64,18 @@ The group of airports Ryanair assigns to a city name, plus the few airports Ryan
 _Code_: `City`
 _Avoid_: location, place
 
+**Country**:
+A country with at least one airport we know; as a destination or an exclusion it stands for all its airports.
+_Code_: `Country`
+_Avoid_: region, place
+
+**Catalogue**:
+Every airport we know, with the supported airports among them, grouped into cities and countries: the airports, cities and countries the user picks home airports, destinations and exclusions from.
+_Code_: `Catalogue`
+_Avoid_: places, locations, airport list
+
 **Exclusion**:
-A place the user removes from the destination so they get no offers to it.
+An airport, city or country the user removes from the destination so they get no offers to it.
 _Code_: `Exclusion`
 _Avoid_: blacklist, filter
 

@@ -1,55 +1,189 @@
 <section class="hero" [class.compact]="offers() !== undefined">
   <h1>Where to this weekend?</h1>
-  <p class="lede">Cheap one-way Ryanair flights for a short city break.</p>
+  <p class="lede">Cheap Ryanair flights for a short city break.</p>
 
-  <form class="composer" [formGroup]="form" (ngSubmit)="submit()">
-    <div class="fields">
-      <label class="field code" [class.invalid]="invalid('homeAirport')">
-        From
-        <input
-          formControlName="homeAirport"
-          placeholder="KRK"
-          maxlength="3"
-          autocomplete="off"
-          [attr.aria-invalid]="invalid('homeAirport')"
-        />
-      </label>
-      <span class="arrow" aria-hidden="true">→</span>
-      <label class="field code" [class.invalid]="invalid('destinationAirport')">
-        To
-        <input
-          formControlName="destinationAirport"
-          placeholder="BGY"
-          maxlength="3"
-          autocomplete="off"
-          [attr.aria-invalid]="invalid('destinationAirport')"
-        />
-      </label>
-      <span class="divider" aria-hidden="true"></span>
-      <label class="field" [class.invalid]="invalid('from')">
-        Earliest
-        <input type="date" formControlName="from" [attr.aria-invalid]="invalid('from')" />
-      </label>
-      <label class="field" [class.invalid]="invalid('to')">
-        Latest
-        <input type="date" formControlName="to" [attr.aria-invalid]="invalid('to')" />
-      </label>
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <div class="kind" role="radiogroup" aria-label="Kind of offer">
+      <label><input type="radio" formControlName="kind" value="roundTrip" />Round trip</label>
+      <label><input type="radio" formControlName="kind" value="oneWay" />One way</label>
     </div>
-    <button
-      class="send"
-      type="submit"
-      [disabled]="loading()"
-      [attr.aria-busy]="loading()"
-      aria-label="Search"
-    >
-      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-        <path d="M5 12h14M13 6l6 6-6 6" />
-      </svg>
-    </button>
+    <div class="composer">
+      <div class="fields">
+        <label class="field codes" [class.invalid]="invalid('homeAirports')">
+          From
+          <input
+            formControlName="homeAirports"
+            placeholder="KRK, KTW"
+            autocomplete="off"
+            [attr.aria-invalid]="invalid('homeAirports')"
+          />
+        </label>
+        <span class="arrow" aria-hidden="true">→</span>
+        <label class="field names" [class.invalid]="invalid('destination')">
+          To
+          <input
+            formControlName="destination"
+            placeholder="Milan, Spain, anywhere"
+            autocomplete="off"
+            [attr.aria-invalid]="invalid('destination')"
+          />
+        </label>
+        <label class="field names" [class.invalid]="invalid('exclusions')">
+          Except
+          <input
+            formControlName="exclusions"
+            placeholder="Norway, BGY"
+            autocomplete="off"
+            [attr.aria-invalid]="invalid('exclusions')"
+          />
+        </label>
+        <span class="divider" aria-hidden="true"></span>
+        <label class="field" [class.invalid]="invalid('from')">
+          Earliest
+          <input type="date" formControlName="from" [attr.aria-invalid]="invalid('from')" />
+        </label>
+        <label class="field" [class.invalid]="invalid('to')">
+          Latest
+          <input type="date" formControlName="to" [attr.aria-invalid]="invalid('to')" />
+        </label>
+        @if (kind() === 'roundTrip') {
+          <div
+            class="field nights"
+            formGroupName="stayLength"
+            [class.invalid]="invalid('stayLength')"
+          >
+            Nights
+            <span class="range">
+              <input
+                type="number"
+                min="0"
+                formControlName="min"
+                aria-label="Minimum nights"
+                [attr.aria-invalid]="invalid('stayLength')"
+              />
+              <span aria-hidden="true">–</span>
+              <input
+                type="number"
+                min="0"
+                formControlName="max"
+                aria-label="Maximum nights"
+                [attr.aria-invalid]="invalid('stayLength')"
+              />
+            </span>
+          </div>
+        }
+      </div>
+      <button
+        class="send"
+        type="submit"
+        [disabled]="loading()"
+        [attr.aria-busy]="loading()"
+        aria-label="Search"
+      >
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M5 12h14M13 6l6 6-6 6" />
+        </svg>
+      </button>
+    </div>
+    @if (kind() === 'roundTrip') {
+      <div class="options">
+        <ng-container formGroupName="leave">
+          <label class="field time" [class.invalid]="invalid('leave.workStart')">
+            Work start
+            <input
+              type="time"
+              formControlName="workStart"
+              [attr.aria-invalid]="invalid('leave.workStart')"
+            />
+          </label>
+          <label class="field time" [class.invalid]="invalid('leave.workEnd')">
+            Work end
+            <input
+              type="time"
+              formControlName="workEnd"
+              [attr.aria-invalid]="invalid('leave.workEnd')"
+            />
+          </label>
+          <label class="field leave" [class.invalid]="invalid('leave.maxLeaveDays')">
+            Max leave days
+            <input
+              type="number"
+              min="0"
+              formControlName="maxLeaveDays"
+              placeholder="any"
+              [attr.aria-invalid]="invalid('leave.maxLeaveDays')"
+            />
+          </label>
+        </ng-container>
+        <label class="field">
+          Sort
+          <select formControlName="sort" aria-label="Sort by">
+            <option value="price">Price</option>
+            <option value="leaveDays">Leave days</option>
+            <option value="pricePerNight">Price per night</option>
+          </select>
+        </label>
+      </div>
+    }
+    <details class="filters" formGroupName="filters">
+      <summary>Filters</summary>
+      <div class="filters-body">
+        <label class="check"
+          ><input type="checkbox" formControlName="directOnly" />Direct flights only</label
+        >
+        <div class="time-ranges">
+          <p class="note">Hours in local time at each airport.</p>
+          @for (moment of moments; track moment.name) {
+            @if (!moment.inbound || kind() === 'roundTrip') {
+              @let rangeInvalid = invalid('filters.' + moment.name);
+              <div class="time-range" [formGroupName]="moment.name" [class.invalid]="rangeInvalid">
+                <span>{{ moment.label }}</span>
+                <input
+                  type="time"
+                  formControlName="from"
+                  [attr.aria-label]="moment.label + ' from'"
+                  [attr.aria-invalid]="rangeInvalid"
+                />
+                <span aria-hidden="true">–</span>
+                <input
+                  type="time"
+                  formControlName="to"
+                  [attr.aria-label]="moment.label + ' to'"
+                  [attr.aria-invalid]="rangeInvalid"
+                />
+              </div>
+            }
+          }
+        </div>
+        <fieldset class="days" formGroupName="outboundDepartureWeekdays">
+          <legend>Outbound departure days</legend>
+          @for (day of weekdays; track day.value) {
+            <label><input type="checkbox" [formControlName]="day.value" />{{ day.label }}</label>
+          }
+        </fieldset>
+        @if (kind() === 'roundTrip') {
+          <fieldset class="days" formGroupName="inboundDepartureWeekdays">
+            <legend>Inbound departure days</legend>
+            @for (day of weekdays; track day.value) {
+              <label><input type="checkbox" [formControlName]="day.value" />{{ day.label }}</label>
+            }
+          </fieldset>
+        }
+      </div>
+    </details>
   </form>
 
   @if (form.invalid && submitted()) {
-    <p class="hint" role="alert">Enter two 3-letter airport codes and both dates.</p>
+    <p class="hint" role="alert">
+      @if (form.controls.homeAirports.hasError('unsupportedAirport')) {
+        Search from supported airports only: {{ supportedAirportList() }}.
+      }
+      Enter 3-letter airport codes, a destination of airports, cities or countries (or anywhere),
+      both dates and nights from the minimum up to the maximum.
+      @if (form.controls.filters.invalid) {
+        In Filters, give each time range both ends, or leave both empty.
+      }
+    </p>
   }
 </section>
 
@@ -60,7 +194,13 @@
 @if (offers(); as offers) {
   <section class="results" data-testid="results" aria-live="polite">
     @if (offers.length === 0) {
-      <p class="empty">No offers match your search. Try a wider travel window or other airports.</p>
+      <p class="empty">
+        No offers match your search. Try loosening it: a wider travel window, more airports,
+        @if (kind() === 'roundTrip') {
+          more nights to choose from, more leave days,
+        }
+        or fewer filters: wider time ranges, more weekdays.
+      </p>
     } @else {
       <header class="results-head">
         <h2>{{ offers.length }} {{ offers.length === 1 ? 'offer' : 'offers' }}</h2>
@@ -70,37 +210,63 @@
         @for (offer of offers; track $index) {
           <li class="offer" data-testid="offer">
             <div class="legs">
-              @for (flight of offer.outbound.flights; track $index) {
-                <div class="flight">
-                  <time class="date" [attr.datetime]="flight.departure.date">
-                    {{ day(flight.departure.date) }}
-                  </time>
-                  <span class="times">
-                    {{ flight.departure.time }} – {{ flight.arrival.time }}
-                    @if (daysLater(flight); as days) {
-                      <abbr title="arrives {{ flight.arrival.date }}">+{{ days }}</abbr>
-                    }
+              @for (leg of legs(offer); track $index) {
+                @for (flight of leg.flights; track $index) {
+                  <div class="flight">
+                    <time class="date" [attr.datetime]="flight.departure.date">
+                      {{ day(flight.departure.date) }}
+                    </time>
+                    <span class="times">
+                      {{ flight.departure.time }} – {{ flight.arrival.time }}
+                      @if (daysLater(flight); as days) {
+                        <abbr title="arrives {{ flight.arrival.date }}">+{{ days }}</abbr>
+                      }
+                    </span>
+                    <span class="route"
+                      >{{ flight.departureAirport }} → {{ flight.arrivalAirport }}</span
+                    >
+                  </div>
+                }
+                @if (!leg.isDirect) {
+                  <span class="badge">
+                    {{ leg.flights.length - 1 }}
+                    {{ leg.flights.length === 2 ? 'stop' : 'stops' }}
                   </span>
-                  <span class="route"
-                    >{{ flight.departureAirport }} → {{ flight.arrivalAirport }}</span
-                  >
-                </div>
+                }
               }
-              @if (!offer.outbound.isDirect) {
-                <span class="badge">
-                  {{ offer.outbound.flights.length - 1 }}
-                  {{ offer.outbound.flights.length === 2 ? 'stop' : 'stops' }}
-                </span>
+              @if (offer.nights !== undefined) {
+                <span class="badge"
+                  >{{ offer.nights }} {{ offer.nights === 1 ? 'night' : 'nights' }}</span
+                >
+              }
+              @if (offer.leaveDays !== undefined) {
+                <span class="badge" [class.free]="offer.leaveDays === 0">{{
+                  leaveDays(offer.leaveDays)
+                }}</span>
               }
             </div>
             <div class="price">
               <strong>{{ offer.price.approximate ? '≈ ' : '' }}{{ money(offer.price) }}</strong>
+              @if (offer.pricePerNight; as perNight) {
+                <small class="per-night"
+                  >{{ perNight.approximate ? '≈ ' : '' }}{{ money(perNight) }} per night</small
+                >
+              }
               <small>
                 @for (original of foreignPrices(offer); track $index) {
                   {{ money(original) }} ·
                 }
                 checked {{ priceAge(offer) }}
               </small>
+              @let tickets = ryanairTickets(offer);
+              @if (tickets.length > 1) {
+                <small>Booked as {{ count(tickets.length) }} separate one-way tickets</small>
+              }
+              @for (ticket of tickets; track ticket.url) {
+                <a [href]="ticket.url" target="_blank" rel="noopener">
+                  {{ tickets.length > 1 ? ticket.route : 'Book' }} on Ryanair ↗
+                </a>
+              }
             </div>
           </li>
         }

@@ -94,6 +94,7 @@ func TestSearchSkipsFlightsOutsideQuery(t *testing.T) {
 
 func TestSearchConvertsForeignCurrencyIntoApproximatePLNAtLatestRate(t *testing.T) {
 	srv, pg := startAPI(t, "test")
+	// Ryanair prices a flight in its departure airport's currency, so the inbound flight is in EUR.
 	seed(t, pg, polishAndItalianAirports+`
 		INSERT INTO exchange_rates (currency, rate_date, rate) VALUES
 			('EUR', '2026-11-09', 4.3000),
@@ -101,15 +102,17 @@ func TestSearchConvertsForeignCurrencyIntoApproximatePLNAtLatestRate(t *testing.
 		INSERT INTO flights (departure_airport, arrival_airport,
 			departure_date, departure_time, arrival_date, arrival_time,
 			price_amount, price_currency, fetched_at)
-		VALUES ('BGY', 'KRK', '2026-12-05', '09:00', '2026-12-05', '10:50',
-			1999, 'EUR', '2026-11-10T08:00:00Z');
+		VALUES
+			('KRK', 'BGY', '2026-12-03', '06:15', '2026-12-03', '08:10', 5000, 'PLN', '2026-11-10T08:00:00Z'),
+			('BGY', 'KRK', '2026-12-05', '09:00', '2026-12-05', '10:50', 1999, 'EUR', '2026-11-10T08:00:00Z');
 	`)
 
 	code, body := search(t, srv, `{
-		"kind": "oneWay",
-		"homeAirports": ["BGY"],
-		"destination": {"airports": ["KRK"]},
-		"travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}
+		"kind": "roundTrip",
+		"homeAirports": ["KRK"],
+		"destination": {"airports": ["BGY"]},
+		"travelWindow": {"from": "2026-12-01", "to": "2026-12-10"},
+		"stayLength": {"min": 0, "max": 10}
 	}`)
 
 	if code != http.StatusOK {
@@ -119,12 +122,12 @@ func TestSearchConvertsForeignCurrencyIntoApproximatePLNAtLatestRate(t *testing.
 		t.Fatalf("got %d offers, want 1: %+v", len(body.Offers), body.Offers)
 	}
 	offer := body.Offers[0]
-	// 19.99 EUR × 4.2512 PLN/EUR = 84.981488 PLN, rounded to 84.98.
-	if want := (priceBody{Amount: 84.98, Currency: "PLN", Approximate: true}); offer.Price != want {
+	// 50.00 PLN + 19.99 EUR × 4.2512 PLN/EUR (84.981488 PLN, rounded to 84.98).
+	if want := (priceBody{Amount: 134.98, Currency: "PLN", Approximate: true}); offer.Price != want {
 		t.Errorf("price = %+v, want %+v", offer.Price, want)
 	}
-	if want := (moneyBody{Amount: 19.99, Currency: "EUR"}); offer.Outbound.Flights[0].OriginalPrice != want {
-		t.Errorf("original price = %+v, want %+v", offer.Outbound.Flights[0].OriginalPrice, want)
+	if want := (moneyBody{Amount: 19.99, Currency: "EUR"}); offer.Inbound.Flights[0].OriginalPrice != want {
+		t.Errorf("original price = %+v, want %+v", offer.Inbound.Flights[0].OriginalPrice, want)
 	}
 }
 
@@ -136,17 +139,19 @@ func TestSearchSortsOffersByAscendingPriceInPLN(t *testing.T) {
 			departure_date, departure_time, arrival_date, arrival_time,
 			price_amount, price_currency, fetched_at)
 		VALUES
-			('KRK', 'BGY', '2026-12-02', '06:15', '2026-12-02', '08:10', 12000, 'PLN', '2026-11-10T08:00:00Z'),
+			('KRK', 'BGY', '2026-12-02', '06:15', '2026-12-02', '08:10', 5000, 'PLN', '2026-11-10T08:00:00Z'),
+			('BGY', 'KRK', '2026-12-03', '09:00', '2026-12-03', '10:50', 12000, 'PLN', '2026-11-10T08:00:00Z'),
 			-- 20.00 EUR ≈ 85.02 PLN: cheaper than 120 PLN, dearer than 70 PLN despite the smaller number
-			('BGY', 'KRK', '2026-12-03', '09:00', '2026-12-03', '10:50', 2000, 'EUR', '2026-11-10T08:00:00Z'),
-			('KRK', 'BGY', '2026-12-04', '06:15', '2026-12-04', '08:10', 7000, 'PLN', '2026-11-10T08:00:00Z');
+			('BGY', 'KRK', '2026-12-04', '09:00', '2026-12-04', '10:50', 2000, 'EUR', '2026-11-10T08:00:00Z'),
+			('BGY', 'KRK', '2026-12-05', '09:00', '2026-12-05', '10:50', 7000, 'PLN', '2026-11-10T08:00:00Z');
 	`)
 
 	code, body := search(t, srv, `{
-		"kind": "oneWay",
-		"homeAirports": ["KRK", "BGY"],
-		"destination": {"airports": ["BGY", "KRK"]},
-		"travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}
+		"kind": "roundTrip",
+		"homeAirports": ["KRK"],
+		"destination": {"airports": ["BGY"]},
+		"travelWindow": {"from": "2026-12-01", "to": "2026-12-10"},
+		"stayLength": {"min": 0, "max": 10}
 	}`)
 
 	if code != http.StatusOK {
@@ -156,7 +161,8 @@ func TestSearchSortsOffersByAscendingPriceInPLN(t *testing.T) {
 	for _, o := range body.Offers {
 		got = append(got, o.Price.Amount)
 	}
-	if want := []float64{70.00, 85.02, 120.00}; !slices.Equal(got, want) {
+	// The same 50 PLN outbound flight with each inbound flight.
+	if want := []float64{120.00, 135.02, 170.00}; !slices.Equal(got, want) {
 		t.Errorf("offer prices = %v, want %v", got, want)
 	}
 }
@@ -199,15 +205,44 @@ func TestSearchRejectsInvalidQuery(t *testing.T) {
 	srv, _ := startAPI(t, "test")
 
 	for name, query := range map[string]string{
-		"malformed JSON":        `{"kind": "oneWay",`,
-		"unsupported kind":      `{"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}}`,
-		"no home airports":      `{"kind": "oneWay", "homeAirports": [], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}}`,
-		"no destination":        `{"kind": "oneWay", "homeAirports": ["KRK"], "destination": {"airports": []}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}}`,
-		"invalid date":          `{"kind": "oneWay", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "10.12.2026"}}`,
-		"window ends too early": `{"kind": "oneWay", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-10", "to": "2026-12-01"}}`,
+		"malformed JSON":                 `{"kind": "oneWay",`,
+		"unsupported kind":               `{"kind": "multiCity", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}}`,
+		"round trip without stay length": `{"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}}`,
+		"negative stay length":           `{"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": -1, "max": 2}}`,
+		"stay length ends too early":     `{"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": 3, "max": 2}}`,
+		"invalid work start":             `{"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": 2, "max": 3}, "workStart": "9 a.m."}`,
+		"invalid work end":               `{"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": 2, "max": 3}, "workEnd": "25:00"}`,
+		"negative maximum leave days":    `{"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": 2, "max": 3}, "maxLeaveDays": -1}`,
+		"unsupported sort":               `{"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": 2, "max": 3}, "sort": "airline"}`,
+		"no home airports":               `{"kind": "oneWay", "homeAirports": [], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}}`,
+		"no destination":                 `{"kind": "oneWay", "homeAirports": ["KRK"], "destination": {"airports": []}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}}`,
+		"invalid date":                   `{"kind": "oneWay", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "10.12.2026"}}`,
+		"window ends too early":          `{"kind": "oneWay", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-10", "to": "2026-12-01"}}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			if code, _ := search(t, srv, query); code != http.StatusBadRequest {
+				t.Errorf("status code = %d, want %d", code, http.StatusBadRequest)
+			}
+		})
+	}
+}
+
+func TestSearchRejectsHomeAirportsThatAreNotSupported(t *testing.T) {
+	srv, pg := startAPI(t, "test")
+	seed(t, pg, polishAndItalianAirports)
+
+	for name, homeAirports := range map[string]string{
+		"airport we fetch no routes from": `["KRK", "BGY"]`,
+		"airport we do not know":          `["XXX"]`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			code, _ := search(t, srv, `{
+				"kind": "oneWay",
+				"homeAirports": `+homeAirports+`,
+				"destination": {"airports": ["CIA"]},
+				"travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}
+			}`)
+			if code != http.StatusBadRequest {
 				t.Errorf("status code = %d, want %d", code, http.StatusBadRequest)
 			}
 		})
@@ -228,10 +263,14 @@ type searchResponseBody struct {
 }
 
 type offerBody struct {
-	Kind           string    `json:"kind"`
-	Outbound       legBody   `json:"outbound"`
-	Price          priceBody `json:"price"`
-	PriceFetchedAt string    `json:"priceFetchedAt"`
+	Kind           string     `json:"kind"`
+	Outbound       legBody    `json:"outbound"`
+	Inbound        *legBody   `json:"inbound,omitempty"`
+	Nights         *int       `json:"nights,omitempty"`
+	LeaveDays      *int       `json:"leaveDays,omitempty"`
+	Price          priceBody  `json:"price"`
+	PricePerNight  *priceBody `json:"pricePerNight,omitempty"`
+	PriceFetchedAt string     `json:"priceFetchedAt"`
 }
 
 type legBody struct {

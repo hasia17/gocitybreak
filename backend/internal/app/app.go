@@ -38,6 +38,7 @@ func (a *App) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/status", a.status)
 	mux.HandleFunc("POST /api/search", a.search)
+	mux.HandleFunc("GET /api/catalogue", a.catalogue)
 	return mux
 }
 

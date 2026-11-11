@@ -1,14 +1,16 @@
 package app
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
 
+	"github.com/hasia17/gocitybreak/backend/internal/catalogue"
 	"github.com/hasia17/gocitybreak/backend/internal/search"
+	"github.com/hasia17/gocitybreak/backend/internal/wallclock"
 )
 
 // timeLayout formats local times without seconds; dates use time.DateOnly.
@@ -18,12 +20,35 @@ type searchRequest struct {
 	Kind         string   `json:"kind"`
 	HomeAirports []string `json:"homeAirports"`
 	Destination  struct {
-		Airports []string `json:"airports"`
+		codesJSON
+		Anywhere bool `json:"anywhere"`
 	} `json:"destination"`
+	Exclusions   codesJSON `json:"exclusions"`
 	TravelWindow struct {
 		From string `json:"from"`
 		To   string `json:"to"`
 	} `json:"travelWindow"`
+	StayLength *struct {
+		Min int `json:"min"`
+		Max int `json:"max"`
+	} `json:"stayLength"`
+	WorkStart string `json:"workStart"`
+	WorkEnd   string `json:"workEnd"`
+	// MaxLeaveDays is optional; 0 is a valid maximum.
+	MaxLeaveDays *int        `json:"maxLeaveDays"`
+	Filters      filtersJSON `json:"filters"`
+	Sort         string      `json:"sort"`
+}
+
+// codesJSON names airports, cities and countries by the codes the catalogue gives them.
+type codesJSON struct {
+	Airports  []string `json:"airports"`
+	Cities    []string `json:"cities"`
+	Countries []string `json:"countries"`
+}
+
+func (c codesJSON) codes() catalogue.Codes {
+	return catalogue.Codes{Airports: c.Airports, Cities: c.Cities, Countries: c.Countries}
 }
 
 type searchResponse struct {
@@ -31,10 +56,17 @@ type searchResponse struct {
 }
 
 type offerJSON struct {
-	Kind           string    `json:"kind"`
-	Outbound       legJSON   `json:"outbound"`
-	Price          priceJSON `json:"price"`
-	PriceFetchedAt time.Time `json:"priceFetchedAt"`
+	Kind     string   `json:"kind"`
+	Outbound legJSON  `json:"outbound"`
+	Inbound  *legJSON `json:"inbound,omitempty"`
+	// Nights is set for round-trip offers only, where 0 is a valid number of nights.
+	Nights *int      `json:"nights,omitempty"`
+	Price  priceJSON `json:"price"`
+	// PricePerNight is set for round-trip offers of at least one night.
+	PricePerNight  *priceJSON `json:"pricePerNight,omitempty"`
+	PriceFetchedAt time.Time  `json:"priceFetchedAt"`
+	// LeaveDays is set for round-trip offers only, where 0 is a valid number of leave days.
+	LeaveDays *int `json:"leaveDays,omitempty"`
 }
 
 type legJSON struct {
@@ -75,7 +107,11 @@ func (a *App) search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	offers, err := a.searcher.OneWay(r.Context(), q)
+	offers, err := a.searcher.Search(r.Context(), q)
+	if invalid, ok := errors.AsType[*search.QueryError](err); ok {
+		http.Error(w, invalid.Error(), http.StatusBadRequest)
+		return
+	}
 	if err != nil {
 		slog.ErrorContext(r.Context(), "search failed", "err", err)
 		http.Error(w, "search failed", http.StatusInternalServerError)
@@ -88,20 +124,25 @@ func (a *App) search(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
-// parseSearchRequest decodes and validates a search query; its errors are meant for the API client.
+// parseSearchRequest decodes a search query and checks its format; its errors are meant for the API client.
+// The search itself checks the query against its rules.
 func parseSearchRequest(r *http.Request) (search.Query, error) {
 	var req searchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return search.Query{}, errors.New("search query is not valid JSON")
 	}
-	if req.Kind != string(search.OneWay) {
-		return search.Query{}, fmt.Errorf("unsupported kind %q: only %q is supported", req.Kind, search.OneWay)
-	}
+	// Round trip is the default kind of offer.
+	kind := cmp.Or(search.OfferKind(req.Kind), search.RoundTrip)
 	if len(req.HomeAirports) == 0 {
 		return search.Query{}, errors.New("homeAirports must not be empty")
 	}
-	if len(req.Destination.Airports) == 0 {
-		return search.Query{}, errors.New("destination.airports must not be empty")
+	destination := search.Destination{
+		Codes:      req.Destination.codes(),
+		Anywhere:   req.Destination.Anywhere,
+		Exclusions: req.Exclusions.codes(),
+	}
+	if !destination.Anywhere && destination.IsEmpty() {
+		return search.Query{}, errors.New("destination must name airports, cities or countries, or be anywhere")
 	}
 	from, err := time.Parse(time.DateOnly, req.TravelWindow.From)
 	if err != nil {
@@ -114,16 +155,81 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 	if to.Before(from) {
 		return search.Query{}, errors.New("travelWindow.to must not be before travelWindow.from")
 	}
-	return search.Query{
+	q := search.Query{
+		Kind:         kind,
 		HomeAirports: req.HomeAirports,
-		Destination:  search.Destination{Airports: req.Destination.Airports},
+		Destination:  destination,
 		TravelWindow: search.TravelWindow{From: from, To: to},
-	}, nil
+		Sort:         search.SortOrder(req.Sort),
+	}
+	if q.Filters, err = req.Filters.parse(); err != nil {
+		return search.Query{}, err
+	}
+	if kind == search.RoundTrip {
+		if req.StayLength == nil {
+			return search.Query{}, errors.New("stayLength is required for a round trip")
+		}
+		if req.StayLength.Min < 0 {
+			return search.Query{}, errors.New("stayLength.min must not be negative")
+		}
+		if req.StayLength.Max < req.StayLength.Min {
+			return search.Query{}, errors.New("stayLength.max must not be less than stayLength.min")
+		}
+		q.StayLength = search.StayLength{Min: req.StayLength.Min, Max: req.StayLength.Max}
+		if q.WorkStart, err = timeOfDay(cmp.Or(req.WorkStart, defaultWorkStart)); err != nil {
+			return search.Query{}, errors.New("workStart must be a time in HH:MM format")
+		}
+		if q.WorkEnd, err = timeOfDay(cmp.Or(req.WorkEnd, defaultWorkEnd)); err != nil {
+			return search.Query{}, errors.New("workEnd must be a time in HH:MM format")
+		}
+		if req.MaxLeaveDays != nil && *req.MaxLeaveDays < 0 {
+			return search.Query{}, errors.New("maxLeaveDays must not be negative")
+		}
+		q.Filters.MaxLeaveDays = req.MaxLeaveDays
+	}
+	return q, nil
+}
+
+// Work hours assumed when the query sets none.
+const (
+	defaultWorkStart = "09:00"
+	defaultWorkEnd   = "17:00"
+)
+
+// timeOfDay parses an HH:MM time into an offset from midnight.
+func timeOfDay(s string) (time.Duration, error) {
+	t, err := time.Parse(timeLayout, s)
+	if err != nil {
+		return 0, err
+	}
+	return wallclock.TimeOfDay(t), nil
 }
 
 func toOfferJSON(o search.Offer) offerJSON {
-	leg := legJSON{IsDirect: o.Outbound.IsDirect(), Flights: make([]flightJSON, 0, len(o.Outbound.Flights))}
-	for _, f := range o.Outbound.Flights {
+	offer := offerJSON{
+		Kind:           string(o.Kind),
+		Outbound:       toLegJSON(o.Outbound),
+		Price:          toPriceJSON(o.Price),
+		PriceFetchedAt: o.PriceFetchedAt.UTC(),
+	}
+	if o.Inbound != nil {
+		offer.Inbound = new(toLegJSON(*o.Inbound))
+		offer.Nights = new(o.Nights)
+		offer.LeaveDays = new(o.LeaveDays)
+	}
+	if p, ok := o.PricePerNight(); ok {
+		offer.PricePerNight = new(toPriceJSON(p))
+	}
+	return offer
+}
+
+func toPriceJSON(p search.Price) priceJSON {
+	return priceJSON{Amount: majorUnits(p.Amount), Currency: p.Currency, Approximate: p.Approximate}
+}
+
+func toLegJSON(l search.Leg) legJSON {
+	leg := legJSON{IsDirect: l.IsDirect(), Flights: make([]flightJSON, 0, len(l.Flights))}
+	for _, f := range l.Flights {
 		leg.Flights = append(leg.Flights, flightJSON{
 			DepartureAirport: f.DepartureAirport,
 			ArrivalAirport:   f.ArrivalAirport,
@@ -133,16 +239,7 @@ func toOfferJSON(o search.Offer) offerJSON {
 			FetchedAt:        f.FetchedAt.UTC(),
 		})
 	}
-	return offerJSON{
-		Kind:     string(o.Kind),
-		Outbound: leg,
-		Price: priceJSON{
-			Amount:      majorUnits(o.Price.Amount),
-			Currency:    o.Price.Currency,
-			Approximate: o.Price.Approximate,
-		},
-		PriceFetchedAt: o.PriceFetchedAt.UTC(),
-	}
+	return leg
 }
 
 func toLocalTimeJSON(t search.LocalTime) localTimeJSON {

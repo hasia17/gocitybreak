@@ -1,9 +1,58 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
-import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Flight, Money, Offer, SearchQuery, SearchResponse } from './search-api';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import {
+  AbstractControl,
+  NonNullableFormBuilder,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
+import { readTypedNames } from './typed-names';
+import { ryanairTickets } from './ryanair-booking';
+import {
+  Catalogue,
+  Flight,
+  Leg,
+  Money,
+  Offer,
+  OfferKind,
+  SearchQuery,
+  SearchResponse,
+  SortOrder,
+} from './search-api';
+import { filtersForm, moments, toSearchFilters, weekdays } from './search-filters';
+import { loadSearchSettings, saveSearchSettings } from './search-settings';
 
-const airportCode = [Validators.required, Validators.pattern(/^[A-Za-z]{3}$/)];
+/** One or more airport codes separated by commas or spaces, e.g. "KRK, KTW". */
+const airportCodes = [
+  Validators.required,
+  Validators.pattern(/^[\s,]*[A-Za-z]{3}(?:[\s,]+[A-Za-z]{3})*[\s,]*$/),
+];
+
+/** The distinct airport codes typed as "krk, KTW", upper-cased. */
+function typedCodes(text: string): string[] {
+  return [
+    ...new Set(
+      text
+        .split(/[\s,]+/)
+        .filter(Boolean)
+        .map((code) => code.toUpperCase()),
+    ),
+  ];
+}
+const nightCount = [Validators.required, Validators.pattern(/^\d+$/)];
+
+/** Office hours the form starts from; the backend assumes the same when a query sets none. */
+const defaultWorkStart = '09:00';
+const defaultWorkEnd = '17:00';
+
+/** A stay length whose maximum is below its minimum. */
+function maxBelowMin(group: AbstractControl): ValidationErrors | null {
+  const { min, max } = group.value as { min: number | null; max: number | null };
+  return min != null && max != null && max < min ? { maxBelowMin: true } : null;
+}
 
 const thisYear = new Date().getFullYear();
 const dayFormat = new Intl.DateTimeFormat('en-GB', {
@@ -13,21 +62,44 @@ const dayFormat = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'UTC',
 });
 
-/** Search form for one-way offers and the list of offers it finds. */
+/** Search form for round-trip (default) or one-way offers, and the list of offers it finds. */
 @Component({
   selector: 'app-search',
   imports: [ReactiveFormsModule],
-  styleUrl: './search.css',
+  styleUrls: ['./search.css', './search-filters.css', './search-results.css'],
   templateUrl: './search.html',
 })
 export class Search {
   private readonly http = inject(HttpClient);
+  private readonly fb = inject(NonNullableFormBuilder);
 
-  protected readonly form = inject(NonNullableFormBuilder).group({
-    homeAirport: ['', airportCode],
-    destinationAirport: ['', airportCode],
+  /** Airports, cities and countries to resolve typed names against; undefined until loaded. */
+  private readonly catalogue = signal<Catalogue | undefined>(undefined);
+
+  protected readonly form = this.fb.group({
+    kind: this.fb.control<OfferKind>('roundTrip'),
+    homeAirports: ['', [...airportCodes, this.supportedAirports()]],
+    destination: ['', this.knownNames('destination')],
+    exclusions: ['', this.knownNames('exclusions')],
     from: ['', Validators.required],
     to: ['', Validators.required],
+    stayLength: this.fb.group(
+      { min: [2, nightCount], max: [3, nightCount] },
+      { validators: maxBelowMin },
+    ),
+    leave: this.fb.group({
+      workStart: [defaultWorkStart, Validators.required],
+      workEnd: [defaultWorkEnd, Validators.required],
+      maxLeaveDays: this.fb.control<number | null>(null, Validators.pattern(/^\d+$/)),
+    }),
+    sort: this.fb.control<SortOrder>('price'),
+    filters: filtersForm(this.fb),
+  });
+  protected readonly moments = moments;
+  protected readonly weekdays = weekdays;
+
+  protected readonly kind = toSignal(this.form.controls.kind.valueChanges, {
+    initialValue: this.form.controls.kind.value,
   });
 
   /** Offers of the last search; undefined before the first search. */
@@ -36,17 +108,68 @@ export class Search {
   protected readonly error = signal<string | undefined>(undefined);
   /** Whether the user has tried to search; invalid fields are marked only after that. */
   protected readonly submitted = signal(false);
+  protected readonly ryanairTickets = ryanairTickets;
+
+  constructor() {
+    // Typed home airports, destination and exclusions are checked again once the catalogue arrives.
+    // Without it, any airport code is taken and the backend checks home airports.
+    this.http
+      .get<Catalogue>('/api/catalogue')
+      .pipe(takeUntilDestroyed())
+      .subscribe({
+        next: (catalogue) => {
+          this.catalogue.set(catalogue);
+          this.form.controls.homeAirports.updateValueAndValidity();
+          this.form.controls.destination.updateValueAndValidity();
+          this.form.controls.exclusions.updateValueAndValidity();
+        },
+        error: () => {},
+      });
+    // These apply to round trips only; a disabled control does not affect the form's validity.
+    // One-way offers sort by price only.
+    const { stayLength, leave, sort, filters } = this.form.controls;
+    const roundTripOnly = [
+      stayLength,
+      leave,
+      sort,
+      filters.controls.inboundDeparture,
+      filters.controls.inboundArrival,
+      filters.controls.inboundDepartureWeekdays,
+    ];
+    this.form.controls.kind.valueChanges.pipe(takeUntilDestroyed()).subscribe((kind) => {
+      for (const control of roundTripOnly) {
+        if (kind === 'roundTrip') control.enable();
+        else control.disable();
+      }
+    });
+    const settings = loadSearchSettings();
+    if (settings) this.form.patchValue(settings);
+  }
 
   protected submit() {
     this.submitted.set(true);
     if (this.form.invalid) return;
     const v = this.form.getRawValue();
+    saveSearchSettings(v);
     const query: SearchQuery = {
-      kind: 'oneWay',
-      homeAirports: [v.homeAirport.toUpperCase()],
-      destination: { airports: [v.destinationAirport.toUpperCase()] },
+      kind: v.kind,
+      homeAirports: typedCodes(v.homeAirports),
+      destination: {},
       travelWindow: { from: v.from, to: v.to },
     };
+    const destination = readTypedNames(v.destination, this.catalogue());
+    query.destination = destination.anywhere ? { anywhere: true } : destination.codes;
+    const exclusions = readTypedNames(v.exclusions, this.catalogue()).codes;
+    if (Object.keys(exclusions).length > 0) query.exclusions = exclusions;
+    if (v.kind === 'roundTrip') {
+      query.stayLength = { min: Number(v.stayLength.min), max: Number(v.stayLength.max) };
+      query.workStart = v.leave.workStart;
+      query.workEnd = v.leave.workEnd;
+      if (v.leave.maxLeaveDays != null) query.maxLeaveDays = Number(v.leave.maxLeaveDays);
+      query.sort = v.sort;
+    }
+    const filters = toSearchFilters(v.filters, v.kind);
+    if (filters) query.filters = filters;
     this.loading.set(true);
     this.error.set(undefined);
     this.http.post<SearchResponse>('/api/search', query).subscribe({
@@ -61,9 +184,52 @@ export class Search {
     });
   }
 
-  /** Whether a field should be marked invalid: it is, and the user has tried to search. */
-  protected invalid(name: keyof typeof this.form.controls): boolean {
-    return this.submitted() && this.form.controls[name].invalid;
+  /** A validator of home airports: each must be a supported airport of the catalogue, once it is loaded. */
+  private supportedAirports(): ValidatorFn {
+    return (control) => {
+      const supported = this.catalogue()?.supportedAirports;
+      if (!supported) return null;
+      const unsupported = typedCodes(control.value as string).filter(
+        (code) => !supported.some((a) => a.code === code),
+      );
+      return unsupported.length > 0 ? { unsupportedAirport: unsupported } : null;
+    };
+  }
+
+  /** The supported airports, like "KRK (Kraków), KTW (Katowice)". */
+  protected supportedAirportList(): string {
+    return (this.catalogue()?.supportedAirports ?? [])
+      .map((a) => `${a.code} (${a.name})`)
+      .join(', ');
+  }
+
+  /**
+   * A validator of airports, cities and countries typed as text: each must name a known one; only a destination
+   * may be anywhere, and a destination needs at least one name.
+   */
+  private knownNames(field: 'destination' | 'exclusions'): ValidatorFn {
+    return (control) => {
+      const typed = readTypedNames(control.value as string, this.catalogue());
+      if (typed.unknown.length > 0) return { unknownName: typed.unknown };
+      if (field === 'exclusions') return typed.anywhere ? { anywhereExcluded: true } : null;
+      return typed.anywhere || Object.keys(typed.codes).length > 0 ? null : { required: true };
+    };
+  }
+
+  /** Whether a field, named by its path like "leave.workStart", should be marked invalid: it is, and the user has tried to search. */
+  protected invalid(path: string): boolean {
+    return this.submitted() && !!this.form.get(path)?.invalid;
+  }
+
+  /** Leave days like "no leave days", "1 leave day" or "2 leave days". */
+  protected leaveDays(days: number): string {
+    if (days === 0) return 'no leave days';
+    return `${days} ${days === 1 ? 'leave day' : 'leave days'}`;
+  }
+
+  /** The offer's legs in travel order: outbound, then inbound for a round trip. */
+  protected legs(offer: Offer): Leg[] {
+    return offer.inbound ? [offer.outbound, offer.inbound] : [offer.outbound];
   }
 
   /** A local date like "Sat 5 Dec", with the year added outside the current year. */
@@ -73,18 +239,29 @@ export class Search {
     return year === thisYear ? label : `${label} ${year}`;
   }
 
+  /** A small count in words, e.g. "two"; numerals from 10 on. */
+  protected count(n: number): string {
+    const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+    return words[n] ?? `${n}`;
+  }
+
   protected money(m: Money): string {
     return `${m.amount.toFixed(2)} ${m.currency}`;
   }
 
   /** How many days after its departure date the flight lands, in local dates; 0 for the same day. */
   protected daysLater(flight: Flight): number {
-    return Math.round((Date.parse(flight.arrival.date) - Date.parse(flight.departure.date)) / 86_400_000);
+    return Math.round(
+      (Date.parse(flight.arrival.date) - Date.parse(flight.departure.date)) / 86_400_000,
+    );
   }
 
   /** Flights of the offer priced in a currency other than PLN, whose original amount is shown. */
   protected foreignPrices(offer: Offer): Money[] {
-    return offer.outbound.flights.map((f) => f.originalPrice).filter((p) => p.currency !== 'PLN');
+    return this.legs(offer)
+      .flatMap((leg) => leg.flights)
+      .map((f) => f.originalPrice)
+      .filter((p) => p.currency !== 'PLN');
   }
 
   /** How long ago the offer's stored price was fetched, e.g. "3 h ago". */
