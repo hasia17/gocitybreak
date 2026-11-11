@@ -19,14 +19,22 @@
           />
         </label>
         <span class="arrow" aria-hidden="true">→</span>
-        <label class="field code" [class.invalid]="invalid('destinationAirport')">
+        <label class="field places" [class.invalid]="invalid('destination')">
           To
           <input
-            formControlName="destinationAirport"
-            placeholder="BGY"
-            maxlength="3"
+            formControlName="destination"
+            placeholder="Milan, Spain, anywhere"
             autocomplete="off"
-            [attr.aria-invalid]="invalid('destinationAirport')"
+            [attr.aria-invalid]="invalid('destination')"
+          />
+        </label>
+        <label class="field places" [class.invalid]="invalid('exclusions')">
+          Except
+          <input
+            formControlName="exclusions"
+            placeholder="Norway, BGY"
+            autocomplete="off"
+            [attr.aria-invalid]="invalid('exclusions')"
           />
         </label>
         <span class="divider" aria-hidden="true"></span>
@@ -81,7 +89,8 @@
 
   @if (form.invalid && submitted()) {
     <p class="hint" role="alert">
-      Enter 3-letter airport codes, both dates and nights from the minimum up to the maximum.
+      Enter 3-letter airport codes, places as airports, cities or countries (or anywhere), both
+      dates and nights from the minimum up to the maximum.
     </p>
   }
 </section>

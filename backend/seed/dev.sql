@@ -6,13 +6,14 @@
 
 BEGIN;
 
-INSERT INTO airports (code, name, time_zone, supported) VALUES
-    ('KRK', 'Kraków', 'Europe/Warsaw', true),
-    ('KTW', 'Katowice', 'Europe/Warsaw', true),
-    ('WRO', 'Wrocław', 'Europe/Warsaw', true),
-    ('BGY', 'Milan Bergamo', 'Europe/Rome', false),
-    ('CIA', 'Rome Ciampino', 'Europe/Rome', false),
-    ('STN', 'London Stansted', 'Europe/London', false)
+INSERT INTO airports (code, name, time_zone, supported, city_code, city_name, country_code, country_name) VALUES
+    ('KRK', 'Kraków', 'Europe/Warsaw', true, 'KRAKOW', 'Kraków', 'pl', 'Poland'),
+    ('KTW', 'Katowice', 'Europe/Warsaw', true, 'KATOWICE', 'Katowice', 'pl', 'Poland'),
+    ('WRO', 'Wrocław', 'Europe/Warsaw', true, 'WROCLAW', 'Wrocław', 'pl', 'Poland'),
+    ('BGY', 'Milan Bergamo', 'Europe/Rome', false, 'BERGAMO', 'Bergamo', 'it', 'Italy'),
+    ('MXP', 'Milan Malpensa', 'Europe/Rome', false, 'MILAN', 'Milan', 'it', 'Italy'),
+    ('CIA', 'Rome Ciampino', 'Europe/Rome', false, 'ROME', 'Rome', 'it', 'Italy'),
+    ('STN', 'London Stansted', 'Europe/London', false, 'LONDON', 'London', 'gb', 'United Kingdom')
 ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO exchange_rates (currency, rate_date, rate) VALUES

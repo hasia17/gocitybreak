@@ -2,6 +2,29 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Search } from './search';
+import { Catalogue } from './search-api';
+
+const catalogue: Catalogue = {
+  supportedAirports: [{ code: 'KRK', name: 'Kraków' }],
+  airports: [
+    { code: 'BGY', name: 'Milan Bergamo', cities: ['BERGAMO', 'MILAN'], country: 'it' },
+    { code: 'KRK', name: 'Kraków', cities: ['KRAKOW'], country: 'pl' },
+    { code: 'MXP', name: 'Milan Malpensa', cities: ['MILAN'], country: 'it' },
+    { code: 'OSL', name: 'Oslo', cities: ['OSLO'], country: 'no' },
+  ],
+  cities: [
+    { code: 'BERGAMO', name: 'Bergamo', country: 'it', airports: ['BGY'] },
+    { code: 'KRAKOW', name: 'Kraków', country: 'pl', airports: ['KRK'] },
+    { code: 'MILAN', name: 'Milan', country: 'it', airports: ['BGY', 'MXP'] },
+    { code: 'OSLO', name: 'Oslo', country: 'no', airports: ['OSL'] },
+  ],
+  countries: [
+    { code: 'it', name: 'Italy' },
+    { code: 'no', name: 'Norway' },
+    { code: 'pl', name: 'Poland' },
+    { code: 'es', name: 'Spain' },
+  ],
+};
 
 describe('Search', () => {
   let httpTesting: HttpTestingController;
@@ -15,7 +38,11 @@ describe('Search', () => {
     httpTesting = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => httpTesting.verify());
+  afterEach(() => {
+    // Tests that type only airport codes leave the catalogue request unanswered.
+    httpTesting.match('/api/catalogue');
+    httpTesting.verify();
+  });
 
   function fill(root: HTMLElement, label: string, value: string) {
     const input = Array.from(root.querySelectorAll('label'))
@@ -296,5 +323,54 @@ describe('Search', () => {
     await fixture.whenStable();
 
     expect(root.textContent).toContain('No offers');
+  });
+
+  describe('destination', () => {
+    async function searchFrom(destination: string, exclusions = '') {
+      const fixture = TestBed.createComponent(Search);
+      httpTesting.expectOne({ method: 'GET', url: '/api/catalogue' }).flush(catalogue);
+      await fixture.whenStable();
+      const root = fixture.nativeElement as HTMLElement;
+      root.querySelector<HTMLInputElement>('input[type="radio"][value="oneWay"]')!.click();
+      fill(root, 'From', 'KRK');
+      fill(root, 'To', destination);
+      fill(root, 'Except', exclusions);
+      fill(root, 'Earliest', '2026-12-01');
+      fill(root, 'Latest', '2026-12-10');
+      root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+      await fixture.whenStable();
+      return root;
+    }
+
+    it('takes cities, countries and airports by name or code, minus exclusions', async () => {
+      await searchFrom('milan, Spain, osl', 'Bergamo');
+
+      const req = httpTesting.expectOne({ method: 'POST', url: '/api/search' });
+      expect(req.request.body.destination).toEqual({
+        airports: ['OSL'],
+        cities: ['MILAN'],
+        countries: ['es'],
+      });
+      expect(req.request.body.exclusions).toEqual({ cities: ['BERGAMO'] });
+    });
+
+    it('takes anywhere, minus countries and airports', async () => {
+      await searchFrom('Anywhere', 'Norway, italy, Milan Malpensa');
+
+      const req = httpTesting.expectOne({ method: 'POST', url: '/api/search' });
+      expect(req.request.body.destination).toEqual({ anywhere: true });
+      expect(req.request.body.exclusions).toEqual({ airports: ['MXP'], countries: ['no', 'it'] });
+    });
+
+    it('marks a place it does not know', async () => {
+      const root = await searchFrom('Milan, Atlantis', 'anywhere');
+
+      httpTesting.expectNone('/api/search');
+      const invalid = Array.from(root.querySelectorAll('input[aria-invalid="true"]')).map(
+        (i) => i.closest('label')?.textContent?.trim().split(/\s/)[0],
+      );
+      expect(invalid).toEqual(['To', 'Except']);
+      expect(root.querySelector('[role="alert"]')?.textContent).toContain('cities or countries');
+    });
   });
 });

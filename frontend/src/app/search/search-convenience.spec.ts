@@ -17,6 +17,8 @@ describe('Search conveniences', () => {
   });
 
   afterEach(() => {
+    // These tests type only airport codes and leave the catalogue request unanswered.
+    httpTesting.match('/api/catalogue');
     httpTesting.verify();
     vi.restoreAllMocks();
     localStorage.clear();
