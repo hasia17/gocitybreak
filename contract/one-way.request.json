@@ -1,0 +1,6 @@
+{
+  "kind": "oneWay",
+  "homeAirports": ["KRK"],
+  "destination": {"airports": ["BGY"]},
+  "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}
+}
