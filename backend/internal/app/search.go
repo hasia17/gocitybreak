@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/hasia17/gocitybreak/backend/internal/catalogue"
 	"github.com/hasia17/gocitybreak/backend/internal/search"
 )
 
@@ -19,8 +20,10 @@ type searchRequest struct {
 	Kind         string   `json:"kind"`
 	HomeAirports []string `json:"homeAirports"`
 	Destination  struct {
-		Airports []string `json:"airports"`
+		placesJSON
+		Anywhere bool `json:"anywhere"`
 	} `json:"destination"`
+	Exclusions   placesJSON `json:"exclusions"`
 	TravelWindow struct {
 		From string `json:"from"`
 		To   string `json:"to"`
@@ -29,6 +32,17 @@ type searchRequest struct {
 		Min int `json:"min"`
 		Max int `json:"max"`
 	} `json:"stayLength"`
+}
+
+// placesJSON names airports, cities and countries by the codes the catalogue gives them.
+type placesJSON struct {
+	Airports  []string `json:"airports"`
+	Cities    []string `json:"cities"`
+	Countries []string `json:"countries"`
+}
+
+func (p placesJSON) places() catalogue.Places {
+	return catalogue.Places{Airports: p.Airports, Cities: p.Cities, Countries: p.Countries}
 }
 
 type searchResponse struct {
@@ -110,8 +124,13 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 	if len(req.HomeAirports) == 0 {
 		return search.Query{}, errors.New("homeAirports must not be empty")
 	}
-	if len(req.Destination.Airports) == 0 {
-		return search.Query{}, errors.New("destination.airports must not be empty")
+	destination := search.Destination{
+		Places:     req.Destination.places(),
+		Anywhere:   req.Destination.Anywhere,
+		Exclusions: req.Exclusions.places(),
+	}
+	if !destination.Anywhere && destination.IsEmpty() {
+		return search.Query{}, errors.New("destination must name airports, cities or countries, or be anywhere")
 	}
 	from, err := time.Parse(time.DateOnly, req.TravelWindow.From)
 	if err != nil {
@@ -127,7 +146,7 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 	q := search.Query{
 		Kind:         kind,
 		HomeAirports: req.HomeAirports,
-		Destination:  search.Destination{Airports: req.Destination.Airports},
+		Destination:  destination,
 		TravelWindow: search.TravelWindow{From: from, To: to},
 	}
 	if kind == search.RoundTrip {
