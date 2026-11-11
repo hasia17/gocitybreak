@@ -1,0 +1,11 @@
+{
+  "month": 12,
+  "days": [
+    {
+      "day": 4,
+      "flights": [
+        {"carrierCode": "FR", "number": "1234", "departureTime": "05:50", "arrivalTime": "0740"}
+      ]
+    }
+  ]
+}
