@@ -1,0 +1,69 @@
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <fieldset>
+    <legend>One-way flight</legend>
+    <label>
+      From
+      <input formControlName="homeAirport" placeholder="KRK" maxlength="3" autocomplete="off" />
+    </label>
+    <label>
+      To
+      <input
+        formControlName="destinationAirport"
+        placeholder="BGY"
+        maxlength="3"
+        autocomplete="off"
+      />
+    </label>
+  </fieldset>
+  <fieldset>
+    <legend>Travel window</legend>
+    <label>
+      Earliest
+      <input type="date" formControlName="from" />
+    </label>
+    <label>
+      Latest
+      <input type="date" formControlName="to" />
+    </label>
+  </fieldset>
+  @if (form.invalid && form.touched) {
+    <p role="alert">Enter two 3-letter airport codes and both dates.</p>
+  }
+  <button type="submit" [disabled]="loading()">Search</button>
+</form>
+
+@if (error(); as message) {
+  <p role="alert">{{ message }}</p>
+}
+
+@if (offers(); as offers) {
+  @if (offers.length === 0) {
+    <p>No offers match your search. Try a wider travel window or other airports.</p>
+  } @else {
+    <ol class="offers">
+      @for (offer of offers; track $index) {
+        <li data-testid="offer">
+          @for (flight of offer.outbound.flights; track $index) {
+            <div class="flight">
+              <strong>{{ flight.departureAirport }} → {{ flight.arrivalAirport }}</strong>
+              <span>{{ flight.departure.date }}</span>
+              <span>
+                {{ flight.departure.time }} – {{ flight.arrival.time }}
+                @if (daysLater(flight); as days) {
+                  <abbr title="arrives {{ flight.arrival.date }}">+{{ days }}</abbr>
+                }
+              </span>
+            </div>
+          }
+          <div class="price">
+            <strong>{{ offer.price.approximate ? '≈ ' : '' }}{{ money(offer.price) }}</strong>
+            @for (original of foreignPrices(offer); track $index) {
+              <span>({{ money(original) }})</span>
+            }
+            <small>per person, no cabin bag · price checked {{ priceAge(offer) }}</small>
+          </div>
+        </li>
+      }
+    </ol>
+  }
+}

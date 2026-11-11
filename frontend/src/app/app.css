@@ -1,0 +1,19 @@
+main,
+footer {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+footer {
+  margin-top: 3rem;
+  color: #666;
+  font-size: 0.8rem;
+}
+
+footer ul {
+  display: flex;
+  gap: 1rem;
+  padding: 0;
+  list-style: none;
+}

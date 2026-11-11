@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/hasia17/gocitybreak/backend/internal/database"
+	"github.com/hasia17/gocitybreak/backend/internal/search"
 )
 
 // Config is everything the API needs to start.
@@ -18,8 +19,9 @@ type Config struct {
 
 // App is a running API backed by a migrated database.
 type App struct {
-	db      *database.DB
-	version string
+	db       *database.DB
+	searcher *search.Searcher
+	version  string
 }
 
 // New connects to the database, applies pending migrations and returns a ready API.
@@ -28,13 +30,14 @@ func New(ctx context.Context, cfg Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &App{db: db, version: cfg.Version}, nil
+	return &App{db: db, searcher: search.NewSearcher(db.Pool), version: cfg.Version}, nil
 }
 
 // Handler returns the HTTP handler serving the API under /api.
 func (a *App) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/status", a.status)
+	mux.HandleFunc("POST /api/search", a.search)
 	return mux
 }
 

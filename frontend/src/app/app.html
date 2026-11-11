@@ -1,6 +1,9 @@
 <main>
   <h1>gocitybreak</h1>
+  <app-search />
+</main>
 
+<footer>
   @if (apiStatus.hasValue()) {
     @let status = apiStatus.value();
     <ul>
@@ -13,4 +16,4 @@
   } @else {
     <p>Checking API…</p>
   }
-</main>
+</footer>
