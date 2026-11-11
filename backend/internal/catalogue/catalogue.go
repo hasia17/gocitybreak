@@ -10,6 +10,7 @@ import (
 	"slices"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // cityAdditions are airports Ryanair names after a nearby city but assigns to another one;
@@ -60,30 +61,30 @@ type Country struct {
 	Name string
 }
 
-// Places are airports, cities and countries, each named by its code.
-type Places struct {
+// Codes name airports, cities and countries of the catalogue.
+type Codes struct {
 	Airports  []string
 	Cities    []string
 	Countries []string
 }
 
-// IsEmpty reports whether p names no place at all.
-func (p Places) IsEmpty() bool {
-	return len(p.Airports) == 0 && len(p.Cities) == 0 && len(p.Countries) == 0
+// IsEmpty reports whether c names no airport, city or country.
+func (c Codes) IsEmpty() bool {
+	return len(c.Airports) == 0 && len(c.Cities) == 0 && len(c.Countries) == 0
 }
 
-// AirportsIn returns the codes of the catalogue's airports that are in any of places, sorted:
+// AirportsIn returns the codes of the catalogue's airports that codes name, sorted:
 // the airports themselves, the airports of the cities and the airports of the countries.
-func (c *Catalogue) AirportsIn(places Places) []string {
-	var codes []string
+func (c *Catalogue) AirportsIn(codes Codes) []string {
+	var airports []string
 	for _, a := range c.Airports {
-		if slices.Contains(places.Airports, a.Code) ||
-			slices.ContainsFunc(a.Cities, func(city string) bool { return slices.Contains(places.Cities, city) }) ||
-			a.Country != "" && slices.Contains(places.Countries, a.Country) {
-			codes = append(codes, a.Code)
+		if slices.Contains(codes.Airports, a.Code) ||
+			slices.ContainsFunc(a.Cities, func(city string) bool { return slices.Contains(codes.Cities, city) }) ||
+			a.Country != "" && slices.Contains(codes.Countries, a.Country) {
+			airports = append(airports, a.Code)
 		}
 	}
-	return codes
+	return airports
 }
 
 // IsSupported reports whether code names a supported airport of the catalogue.
@@ -100,13 +101,8 @@ func (c *Catalogue) AirportCodes() []string {
 	return codes
 }
 
-// querier runs a query; *pgxpool.Pool satisfies it.
-type querier interface {
-	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
-}
-
 // Load reads the catalogue from the airports the price worker stored, adding our additions to Ryanair's cities.
-func Load(ctx context.Context, db querier) (*Catalogue, error) {
+func Load(ctx context.Context, db *pgxpool.Pool) (*Catalogue, error) {
 	type row struct {
 		Code, Name                                   string
 		Supported                                    bool
@@ -157,9 +153,17 @@ func Load(ctx context.Context, db querier) (*Catalogue, error) {
 	for _, city := range cities {
 		c.Cities = append(c.Cities, *city)
 	}
-	slices.SortFunc(c.Cities, func(a, b City) int { return cmp.Or(cmp.Compare(a.Name, b.Name), cmp.Compare(a.Code, b.Code)) })
-	c.Countries = slices.SortedFunc(maps.Values(countries), func(a, b Country) int {
-		return cmp.Or(cmp.Compare(a.Name, b.Name), cmp.Compare(a.Code, b.Code))
-	})
+	slices.SortFunc(c.Cities, byNameThenCode)
+	c.Countries = slices.SortedFunc(maps.Values(countries), byNameThenCode)
 	return c, nil
+}
+
+func (c City) nameAndCode() (string, string)    { return c.Name, c.Code }
+func (c Country) nameAndCode() (string, string) { return c.Name, c.Code }
+
+// byNameThenCode orders cities or countries by name, then by code.
+func byNameThenCode[T interface{ nameAndCode() (string, string) }](a, b T) int {
+	aName, aCode := a.nameAndCode()
+	bName, bCode := b.nameAndCode()
+	return cmp.Or(cmp.Compare(aName, bName), cmp.Compare(aCode, bCode))
 }

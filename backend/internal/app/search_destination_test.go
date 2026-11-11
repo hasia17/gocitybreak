@@ -160,7 +160,7 @@ func TestSearchRejectsDestinationWithNoPlaceAndNotAnywhere(t *testing.T) {
 
 	for name, destination := range map[string]map[string]any{
 		"no field":              {},
-		"empty places":          {"airports": []string{}, "cities": []string{}, "countries": []string{}},
+		"empty codes":           {"airports": []string{}, "cities": []string{}, "countries": []string{}},
 		"anywhere set to false": {"anywhere": false},
 	} {
 		t.Run(name, func(t *testing.T) {

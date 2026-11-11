@@ -20,10 +20,10 @@ type searchRequest struct {
 	Kind         string   `json:"kind"`
 	HomeAirports []string `json:"homeAirports"`
 	Destination  struct {
-		placesJSON
+		codesJSON
 		Anywhere bool `json:"anywhere"`
 	} `json:"destination"`
-	Exclusions   placesJSON `json:"exclusions"`
+	Exclusions   codesJSON `json:"exclusions"`
 	TravelWindow struct {
 		From string `json:"from"`
 		To   string `json:"to"`
@@ -40,15 +40,15 @@ type searchRequest struct {
 	Sort         string      `json:"sort"`
 }
 
-// placesJSON names airports, cities and countries by the codes the catalogue gives them.
-type placesJSON struct {
+// codesJSON names airports, cities and countries by the codes the catalogue gives them.
+type codesJSON struct {
 	Airports  []string `json:"airports"`
 	Cities    []string `json:"cities"`
 	Countries []string `json:"countries"`
 }
 
-func (p placesJSON) places() catalogue.Places {
-	return catalogue.Places{Airports: p.Airports, Cities: p.Cities, Countries: p.Countries}
+func (c codesJSON) codes() catalogue.Codes {
+	return catalogue.Codes{Airports: c.Airports, Cities: c.Cities, Countries: c.Countries}
 }
 
 type searchResponse struct {
@@ -137,9 +137,9 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 		return search.Query{}, errors.New("homeAirports must not be empty")
 	}
 	destination := search.Destination{
-		Places:     req.Destination.places(),
+		Codes:      req.Destination.codes(),
 		Anywhere:   req.Destination.Anywhere,
-		Exclusions: req.Exclusions.places(),
+		Exclusions: req.Exclusions.codes(),
 	}
 	if !destination.Anywhere && destination.IsEmpty() {
 		return search.Query{}, errors.New("destination must name airports, cities or countries, or be anywhere")

@@ -59,11 +59,11 @@ const (
 // Destination is where the traveller wants to fly: any number of airports, cities and countries,
 // or anywhere, minus the exclusions.
 type Destination struct {
-	catalogue.Places
-	// Anywhere covers all airports reachable from the home airports; the places are then ignored.
+	catalogue.Codes
+	// Anywhere covers all airports reachable from the home airports; the codes are then ignored.
 	Anywhere bool
-	// Exclusions are places removed from the destination.
-	Exclusions catalogue.Places
+	// Exclusions are airports, cities and countries removed from the destination.
+	Exclusions catalogue.Codes
 }
 
 // TravelWindow is the date range the whole offer must fit into. Both days are inclusive.
@@ -216,7 +216,7 @@ func (d Destination) airports(c *catalogue.Catalogue) []string {
 	if d.Anywhere {
 		airports = c.AirportCodes()
 	} else {
-		airports = c.AirportsIn(d.Places)
+		airports = c.AirportsIn(d.Codes)
 	}
 	excluded := c.AirportsIn(d.Exclusions)
 	return slices.DeleteFunc(airports, func(a string) bool { return slices.Contains(excluded, a) })

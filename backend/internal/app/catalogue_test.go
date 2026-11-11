@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestCatalogueListsSupportedAirportsAndDestinationPlaces(t *testing.T) {
+func TestCatalogueListsSupportedAirportsAndDestinationAirportsCitiesAndCountries(t *testing.T) {
 	srv, pg := startAPI(t, "test")
 	seed(t, pg, europeanAirports)
 
