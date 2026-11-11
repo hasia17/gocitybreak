@@ -1,9 +1,9 @@
 package app
 
 import (
-	"cmp"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -28,12 +28,9 @@ type searchRequest struct {
 		From string `json:"from"`
 		To   string `json:"to"`
 	} `json:"travelWindow"`
-	StayLength *struct {
-		Min int `json:"min"`
-		Max int `json:"max"`
-	} `json:"stayLength"`
-	WorkStart string `json:"workStart"`
-	WorkEnd   string `json:"workEnd"`
+	StayLength *stayLengthJSON `json:"stayLength"`
+	WorkStart  workHourJSON    `json:"workStart"`
+	WorkEnd    workHourJSON    `json:"workEnd"`
 	// MaxLeaveDays is optional; 0 is a valid maximum.
 	MaxLeaveDays *int        `json:"maxLeaveDays"`
 	Filters      filtersJSON `json:"filters"`
@@ -124,25 +121,13 @@ func (a *App) search(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
-// parseSearchRequest decodes a search query and checks its format; its errors are meant for the API client.
-// The search itself checks the query against its rules.
+// parseSearchRequest decodes a search query and parses its formats — dates, times of day and
+// weekday names; its errors are meant for the API client. It checks no rule of the search and
+// sets no default: the search module owns both, so they hold for every caller of the search.
 func parseSearchRequest(r *http.Request) (search.Query, error) {
 	var req searchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return search.Query{}, errors.New("search query is not valid JSON")
-	}
-	// Round trip is the default kind of offer.
-	kind := cmp.Or(search.OfferKind(req.Kind), search.RoundTrip)
-	if len(req.HomeAirports) == 0 {
-		return search.Query{}, errors.New("homeAirports must not be empty")
-	}
-	destination := search.Destination{
-		Codes:      req.Destination.codes(),
-		Anywhere:   req.Destination.Anywhere,
-		Exclusions: req.Exclusions.codes(),
-	}
-	if !destination.Anywhere && destination.IsEmpty() {
-		return search.Query{}, errors.New("destination must name airports, cities or countries, or be anywhere")
 	}
 	from, err := time.Parse(time.DateOnly, req.TravelWindow.From)
 	if err != nil {
@@ -152,49 +137,55 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 	if err != nil {
 		return search.Query{}, errors.New("travelWindow.to must be a date in YYYY-MM-DD format")
 	}
-	if to.Before(from) {
-		return search.Query{}, errors.New("travelWindow.to must not be before travelWindow.from")
-	}
 	q := search.Query{
-		Kind:         kind,
+		Kind:         search.OfferKind(req.Kind),
 		HomeAirports: req.HomeAirports,
-		Destination:  destination,
+		Destination: search.Destination{
+			Codes:      req.Destination.codes(),
+			Anywhere:   req.Destination.Anywhere,
+			Exclusions: req.Exclusions.codes(),
+		},
 		TravelWindow: search.TravelWindow{From: from, To: to},
 		Sort:         search.SortOrder(req.Sort),
+	}
+	if req.StayLength != nil {
+		q.StayLength = &search.StayLength{Min: req.StayLength.Min, Max: req.StayLength.Max}
+	}
+	if q.WorkStart, err = req.WorkStart.parse("workStart"); err != nil {
+		return search.Query{}, err
+	}
+	if q.WorkEnd, err = req.WorkEnd.parse("workEnd"); err != nil {
+		return search.Query{}, err
 	}
 	if q.Filters, err = req.Filters.parse(); err != nil {
 		return search.Query{}, err
 	}
-	if kind == search.RoundTrip {
-		if req.StayLength == nil {
-			return search.Query{}, errors.New("stayLength is required for a round trip")
-		}
-		if req.StayLength.Min < 0 {
-			return search.Query{}, errors.New("stayLength.min must not be negative")
-		}
-		if req.StayLength.Max < req.StayLength.Min {
-			return search.Query{}, errors.New("stayLength.max must not be less than stayLength.min")
-		}
-		q.StayLength = search.StayLength{Min: req.StayLength.Min, Max: req.StayLength.Max}
-		if q.WorkStart, err = timeOfDay(cmp.Or(req.WorkStart, defaultWorkStart)); err != nil {
-			return search.Query{}, errors.New("workStart must be a time in HH:MM format")
-		}
-		if q.WorkEnd, err = timeOfDay(cmp.Or(req.WorkEnd, defaultWorkEnd)); err != nil {
-			return search.Query{}, errors.New("workEnd must be a time in HH:MM format")
-		}
-		if req.MaxLeaveDays != nil && *req.MaxLeaveDays < 0 {
-			return search.Query{}, errors.New("maxLeaveDays must not be negative")
-		}
-		q.Filters.MaxLeaveDays = req.MaxLeaveDays
-	}
+	// The maximum of leave days sits at the top level of the request but among the query's
+	// filters; moving it there is this adapter's only rule-shaped step (spec #21, story 14).
+	q.Filters.MaxLeaveDays = req.MaxLeaveDays
 	return q, nil
 }
 
-// Work hours assumed when the query sets none.
-const (
-	defaultWorkStart = "09:00"
-	defaultWorkEnd   = "17:00"
-)
+// stayLengthJSON is the range of nights of a round-trip offer, both ends inclusive.
+type stayLengthJSON struct {
+	Min int `json:"min"`
+	Max int `json:"max"`
+}
+
+// workHourJSON is an HH:MM time of day of the request, empty when the query sets none.
+type workHourJSON string
+
+// parse turns the work hour called name into an offset from midnight; an unset work hour stays nil.
+func (w workHourJSON) parse(name string) (*time.Duration, error) {
+	if w == "" {
+		return nil, nil
+	}
+	d, err := timeOfDay(string(w))
+	if err != nil {
+		return nil, fmt.Errorf("%s must be a time in HH:MM format", name)
+	}
+	return new(d), nil
+}
 
 // timeOfDay parses an HH:MM time into an offset from midnight.
 func timeOfDay(s string) (time.Duration, error) {

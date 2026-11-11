@@ -204,20 +204,12 @@ func TestSearchOrdersEquallyPricedOffersByDepartureThenAirports(t *testing.T) {
 func TestSearchRejectsInvalidQuery(t *testing.T) {
 	srv, _ := startAPI(t, "test")
 
+	// Formats only: the rules of the query are the search module's, tested in internal/search.
 	for name, query := range map[string]string{
-		"malformed JSON":                 `{"kind": "oneWay",`,
-		"unsupported kind":               `{"kind": "multiCity", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}}`,
-		"round trip without stay length": `{"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}}`,
-		"negative stay length":           `{"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": -1, "max": 2}}`,
-		"stay length ends too early":     `{"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": 3, "max": 2}}`,
-		"invalid work start":             `{"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": 2, "max": 3}, "workStart": "9 a.m."}`,
-		"invalid work end":               `{"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": 2, "max": 3}, "workEnd": "25:00"}`,
-		"negative maximum leave days":    `{"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": 2, "max": 3}, "maxLeaveDays": -1}`,
-		"unsupported sort":               `{"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": 2, "max": 3}, "sort": "airline"}`,
-		"no home airports":               `{"kind": "oneWay", "homeAirports": [], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}}`,
-		"no destination":                 `{"kind": "oneWay", "homeAirports": ["KRK"], "destination": {"airports": []}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}}`,
-		"invalid date":                   `{"kind": "oneWay", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "10.12.2026"}}`,
-		"window ends too early":          `{"kind": "oneWay", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-10", "to": "2026-12-01"}}`,
+		"malformed JSON":     `{"kind": "oneWay",`,
+		"invalid date":       `{"kind": "oneWay", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "10.12.2026"}}`,
+		"invalid work start": `{"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": 2, "max": 3}, "workStart": "9 a.m."}`,
+		"invalid work end":   `{"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": 2, "max": 3}, "workEnd": "25:00"}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			if code, _ := search(t, srv, query); code != http.StatusBadRequest {

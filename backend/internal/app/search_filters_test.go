@@ -272,18 +272,16 @@ func TestSearchSortsRoundTripOffersByPricePerNight(t *testing.T) {
 	}
 }
 
-func TestSearchRejectsInvalidFiltersAndSort(t *testing.T) {
+func TestSearchRejectsInvalidFilters(t *testing.T) {
 	srv, _ := startAPI(t, "test")
 
+	// Formats only: the rules of the query are the search module's, tested in internal/search.
 	const roundTrip = `"kind": "roundTrip", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": 1, "max": 3}`
 	for name, query := range map[string]string{
-		"hour out of range":             `{` + roundTrip + `, "filters": {"outboundDeparture": {"from": "06:00", "to": "25:00"}}}`,
-		"time not in HH:MM":             `{` + roundTrip + `, "filters": {"inboundArrival": {"from": "noon", "to": "18:00"}}}`,
-		"time range without an end":     `{` + roundTrip + `, "filters": {"inboundDeparture": {"from": "06:00"}}}`,
-		"unknown weekday":               `{` + roundTrip + `, "filters": {"outboundDepartureWeekdays": ["friday"]}}`,
-		"unknown sort":                  `{` + roundTrip + `, "sort": "duration"}`,
-		"price per night for a one way": `{"kind": "oneWay", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "sort": "pricePerNight"}`,
-		"leave days for a one way":      `{"kind": "oneWay", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "sort": "leaveDays"}`,
+		"hour out of range":         `{` + roundTrip + `, "filters": {"outboundDeparture": {"from": "06:00", "to": "25:00"}}}`,
+		"time not in HH:MM":         `{` + roundTrip + `, "filters": {"inboundArrival": {"from": "noon", "to": "18:00"}}}`,
+		"time range without an end": `{` + roundTrip + `, "filters": {"inboundDeparture": {"from": "06:00"}}}`,
+		"unknown weekday":           `{` + roundTrip + `, "filters": {"outboundDepartureWeekdays": ["friday"]}}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			if code, _ := search(t, srv, query); code != http.StatusBadRequest {
