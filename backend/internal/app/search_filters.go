@@ -15,8 +15,8 @@ type filtersJSON struct {
 	InboundDeparture  *timeRangeJSON `json:"inboundDeparture"`
 	InboundArrival    *timeRangeJSON `json:"inboundArrival"`
 	// Weekdays as "mon" … "sun".
-	DepartureWeekdays []string `json:"departureWeekdays"`
-	ReturnWeekdays    []string `json:"returnWeekdays"`
+	OutboundDepartureWeekdays []string `json:"outboundDepartureWeekdays"`
+	InboundDepartureWeekdays  []string `json:"inboundDepartureWeekdays"`
 }
 
 // parse validates the filters; its errors are meant for the API client.
@@ -37,10 +37,12 @@ func (f filtersJSON) parse() (search.Filters, error) {
 			return search.Filters{}, err
 		}
 	}
-	if filters.DepartureWeekdays, err = parseWeekdays("filters.departureWeekdays", f.DepartureWeekdays); err != nil {
+	filters.OutboundDepartureWeekdays, err = parseWeekdays("filters.outboundDepartureWeekdays", f.OutboundDepartureWeekdays)
+	if err != nil {
 		return search.Filters{}, err
 	}
-	if filters.ReturnWeekdays, err = parseWeekdays("filters.returnWeekdays", f.ReturnWeekdays); err != nil {
+	filters.InboundDepartureWeekdays, err = parseWeekdays("filters.inboundDepartureWeekdays", f.InboundDepartureWeekdays)
+	if err != nil {
 		return search.Filters{}, err
 	}
 	return filters, nil
@@ -86,21 +88,4 @@ func parseWeekdays(name string, names []string) ([]time.Weekday, error) {
 		days = append(days, day)
 	}
 	return days, nil
-}
-
-// parseSort validates the sort order of a search for offers of kind; empty means by price.
-func parseSort(sort string, kind search.OfferKind) (search.SortOrder, error) {
-	switch order := search.SortOrder(sort); order {
-	case "", search.ByPrice:
-		return search.ByPrice, nil
-	case search.ByLeaveDays:
-		return order, nil
-	case search.ByPricePerNight:
-		if kind != search.RoundTrip {
-			return "", fmt.Errorf("sort %q applies to round trips only", order)
-		}
-		return order, nil
-	default:
-		return "", fmt.Errorf("sort must be %q, %q or %q", search.ByPrice, search.ByLeaveDays, search.ByPricePerNight)
-	}
 }

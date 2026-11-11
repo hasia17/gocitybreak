@@ -155,6 +155,21 @@ describe('Search conveniences', () => {
     httpTesting.expectOne('/api/search').flush({ offers: [] });
   });
 
+  it('restores what it can of settings remembered in an older shape', async () => {
+    // The sort used to be remembered among the work hours.
+    localStorage.setItem(
+      'gocitybreak.searchSettings.v1',
+      JSON.stringify({ homeAirports: 'KTW', leave: { workStart: '07:30', sort: 'leaveDays' } }),
+    );
+    const { root } = await render();
+
+    expect(input(root, 'From').value).toBe('KTW');
+    expect(input(root, 'Work start').value).toBe('07:30');
+    expect(root.querySelector<HTMLSelectElement>('select[aria-label="Sort by"]')!.value).toBe(
+      'price',
+    );
+  });
+
   it('ignores stored settings it cannot read', async () => {
     localStorage.setItem('gocitybreak.searchSettings.v1', '{not json');
     const { root } = await render();
@@ -250,5 +265,8 @@ describe('Search conveniences', () => {
     const results = root.querySelector('[data-testid="results"]')!.textContent!;
     expect(results).toContain('No offers match');
     expect(results).toMatch(/loosen/i);
+    expect(results).toContain('leave days');
+    expect(results).toContain('time ranges');
+    expect(results).toContain('weekdays');
   });
 });

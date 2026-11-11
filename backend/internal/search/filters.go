@@ -3,6 +3,8 @@ package search
 import (
 	"slices"
 	"time"
+
+	"github.com/hasia17/gocitybreak/backend/internal/wallclock"
 )
 
 // Filters narrow the offers down; the zero value restricts nothing.
@@ -13,9 +15,12 @@ type Filters struct {
 	// nil leaves the moment unrestricted. Inbound ranges apply to round-trip offers only.
 	OutboundDeparture, OutboundArrival *TimeRange
 	InboundDeparture, InboundArrival   *TimeRange
-	// DepartureWeekdays are the days of the outbound departure, ReturnWeekdays those of the inbound departure
-	// (round-trip offers only), both by local date; an empty list allows every day.
-	DepartureWeekdays, ReturnWeekdays []time.Weekday
+	// Weekdays of the outbound and of the inbound departure (round-trip offers only), both by local date
+	// at the departure airport; an empty list allows every day. They go by departure, unlike leave days,
+	// which go by the inbound arrival.
+	OutboundDepartureWeekdays, InboundDepartureWeekdays []time.Weekday
+	// MaxLeaveDays, when set, leaves out round-trip offers that cost more leave days.
+	MaxLeaveDays *int
 }
 
 // TimeRange is a range of times of day, both ends inclusive, each measured from midnight.
@@ -26,8 +31,7 @@ type TimeRange struct {
 
 // contains reports whether the time of day of t falls within the range.
 func (r TimeRange) contains(t LocalTime) bool {
-	h, m, s := t.DateTime.Clock()
-	clock := time.Duration(h)*time.Hour + time.Duration(m)*time.Minute + time.Duration(s)*time.Second
+	clock := wallclock.TimeOfDay(t.DateTime)
 	if r.To < r.From {
 		return clock >= r.From || clock <= r.To
 	}
@@ -44,13 +48,14 @@ func (f Filters) keep(o Offer) bool {
 	out := o.Outbound
 	if f.DirectOnly && !out.IsDirect() ||
 		!within(f.OutboundDeparture, out.departure()) || !within(f.OutboundArrival, out.arrival()) ||
-		!onDay(f.DepartureWeekdays, out.departure()) {
+		!onDay(f.OutboundDepartureWeekdays, out.departure()) {
 		return false
 	}
 	if in := o.Inbound; in != nil {
 		return (!f.DirectOnly || in.IsDirect()) &&
 			within(f.InboundDeparture, in.departure()) && within(f.InboundArrival, in.arrival()) &&
-			onDay(f.ReturnWeekdays, in.departure())
+			onDay(f.InboundDepartureWeekdays, in.departure()) &&
+			(f.MaxLeaveDays == nil || o.LeaveDays <= *f.MaxLeaveDays)
 	}
 	return true
 }

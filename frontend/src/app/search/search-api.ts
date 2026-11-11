@@ -3,14 +3,14 @@
 export type OfferKind = 'roundTrip' | 'oneWay';
 
 /** Airports, cities and countries, each named by its code from the catalogue. */
-export interface Places {
+export interface CatalogueCodes {
   airports?: string[];
   cities?: string[];
   countries?: string[];
 }
 
-/** Where to fly: any number of places, or anywhere (all airports reachable from the home airports). */
-export interface Destination extends Places {
+/** Where to fly: any number of airports, cities and countries, or anywhere (all airports reachable from the home airports). */
+export interface Destination extends CatalogueCodes {
   anywhere?: boolean;
 }
 
@@ -18,8 +18,8 @@ export interface SearchQuery {
   kind: OfferKind;
   homeAirports: string[];
   destination: Destination;
-  /** Places removed from the destination. */
-  exclusions?: Places;
+  /** Airports, cities and countries removed from the destination. */
+  exclusions?: CatalogueCodes;
   travelWindow: { from: string; to: string };
   /** Range of hotel nights, both ends inclusive; round trips only. */
   stayLength?: { min: number; max: number };
@@ -28,7 +28,7 @@ export interface SearchQuery {
   workEnd?: string;
   /** Leaves out round-trip offers that cost more leave days; 0 is a valid maximum. */
   maxLeaveDays?: number;
-  /** Absent filters restrict nothing; inbound ones and returnWeekdays apply to round trips only. */
+  /** Absent filters restrict nothing; inbound ones apply to round trips only. */
   filters?: SearchFilters;
   /** Price by default; price per night for round trips only. */
   sort?: SortOrder;
@@ -44,10 +44,10 @@ export interface SearchFilters {
   outboundArrival?: TimeRange;
   inboundDeparture?: TimeRange;
   inboundArrival?: TimeRange;
-  /** Days of the outbound departure, by local date. */
-  departureWeekdays?: Weekday[];
-  /** Days of the inbound departure, by local date. */
-  returnWeekdays?: Weekday[];
+  /** Days of the outbound departure, by local date at the departure airport. */
+  outboundDepartureWeekdays?: Weekday[];
+  /** Days of the inbound departure, by local date at the departure airport. */
+  inboundDepartureWeekdays?: Weekday[];
 }
 
 /**

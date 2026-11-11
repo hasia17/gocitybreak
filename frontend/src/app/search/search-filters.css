@@ -71,6 +71,12 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
 }
+.time-range.invalid {
+  color: var(--danger);
+}
+.time-range.invalid input {
+  border-color: var(--danger);
+}
 .days {
   display: flex;
   flex-wrap: wrap;

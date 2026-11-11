@@ -35,12 +35,10 @@ type Query struct {
 	TravelWindow TravelWindow
 	// StayLength applies to round-trip offers only.
 	StayLength StayLength
-	// WorkHours are the traveller's work start and work end, from which the leave days
-	// of round-trip offers are counted.
-	WorkHours leave.WorkHours
-	// MaxLeaveDays, when set, leaves out round-trip offers that cost more leave days.
-	MaxLeaveDays *int
-	Filters      Filters
+	// WorkStart and WorkEnd are offsets from midnight in the home airport's local time,
+	// from which the leave days of round-trip offers are counted.
+	WorkStart, WorkEnd time.Duration
+	Filters            Filters
 	// Sort is the order of the offers; by price when unset.
 	Sort SortOrder
 }
@@ -61,11 +59,11 @@ const (
 // Destination is where the traveller wants to fly: any number of airports, cities and countries,
 // or anywhere, minus the exclusions.
 type Destination struct {
-	catalogue.Places
-	// Anywhere covers all airports reachable from the home airports; the places are then ignored.
+	catalogue.Codes
+	// Anywhere covers all airports reachable from the home airports; the codes are then ignored.
 	Anywhere bool
-	// Exclusions are places removed from the destination.
-	Exclusions catalogue.Places
+	// Exclusions are airports, cities and countries removed from the destination.
+	Exclusions catalogue.Codes
 }
 
 // TravelWindow is the date range the whole offer must fit into. Both days are inclusive.
@@ -91,6 +89,17 @@ type Offer struct {
 	PriceFetchedAt time.Time
 	// LeaveDays is the number of leave days of a round-trip offer (GLOSSARY: Leave days); 0 for a one-way offer.
 	LeaveDays int
+}
+
+// PricePerNight is the offer price divided by the number of hotel nights (GLOSSARY: Price per night),
+// rounded to minor units; ok is false for an offer of 0 nights, including every one-way offer.
+func (o Offer) PricePerNight() (price Price, ok bool) {
+	if o.Nights <= 0 {
+		return Price{}, false
+	}
+	price = o.Price
+	price.Amount = (o.Price.Amount + int64(o.Nights)/2) / int64(o.Nights)
+	return price, true
 }
 
 // Leg is one-way travel made of one or more flights.
@@ -141,16 +150,31 @@ func NewSearcher(pool *pgxpool.Pool) *Searcher {
 	return &Searcher{pool: pool}
 }
 
+// QueryError reports a query that breaks a rule of the search; its message is meant for the traveller.
+type QueryError struct {
+	Reason string
+}
+
+func (e *QueryError) Error() string { return e.Reason }
+
 // Search returns offers of q's kind made of direct flights that pass q's filters, in q's sort order.
-// Flights in a currency with no exchange rate yet are left out.
+// Flights in a currency with no exchange rate yet are left out. A query that breaks a rule of the search
+// returns a *QueryError.
 func (s *Searcher) Search(ctx context.Context, q Query) ([]Offer, error) {
-	if q.Kind != RoundTrip && q.Kind != OneWay {
-		return nil, fmt.Errorf("unknown kind of offer %q", q.Kind)
-	}
-	destination, err := s.destinationAirports(ctx, q.Destination)
-	if err != nil {
+	if err := q.validate(); err != nil {
 		return nil, err
 	}
+	c, err := catalogue.Load(ctx, s.pool)
+	if err != nil {
+		return nil, fmt.Errorf("load airport catalogue: %w", err)
+	}
+	// GLOSSARY: Home airports are chosen among the supported airports only.
+	for _, code := range q.HomeAirports {
+		if !c.IsSupported(code) {
+			return nil, &QueryError{fmt.Sprintf("home airport %q is not a supported airport", code)}
+		}
+	}
+	destination := q.Destination.airports(c)
 	var offers []Offer
 	if q.Kind == RoundTrip {
 		offers, err = s.roundTrip(ctx, q, destination)
@@ -165,21 +189,37 @@ func (s *Searcher) Search(ctx context.Context, q Query) ([]Offer, error) {
 	return offers, nil
 }
 
-// destinationAirports expands d into the codes of its airports: a city into every airport of the city,
-// a country into every airport of the country, anywhere into every airport we know; then removes the exclusions.
-func (s *Searcher) destinationAirports(ctx context.Context, d Destination) ([]string, error) {
-	c, err := catalogue.Load(ctx, s.pool)
-	if err != nil {
-		return nil, fmt.Errorf("load airport catalogue: %w", err)
+// validate checks the rules of a query that need no stored data.
+func (q Query) validate() error {
+	switch q.Kind {
+	case RoundTrip, OneWay:
+	default:
+		return &QueryError{fmt.Sprintf("kind must be %q or %q", RoundTrip, OneWay)}
 	}
+	switch q.Sort {
+	case "", ByPrice:
+	case ByLeaveDays, ByPricePerNight:
+		// One-way offers have neither leave days nor nights.
+		if q.Kind != RoundTrip {
+			return &QueryError{fmt.Sprintf("sort %q applies to round trips only", q.Sort)}
+		}
+	default:
+		return &QueryError{fmt.Sprintf("sort must be %q, %q or %q", ByPrice, ByLeaveDays, ByPricePerNight)}
+	}
+	return nil
+}
+
+// airports expands d into the codes of its airports in c: a city into every airport of the city,
+// a country into every airport of the country, anywhere into every airport we know; then removes the exclusions.
+func (d Destination) airports(c *catalogue.Catalogue) []string {
 	var airports []string
 	if d.Anywhere {
 		airports = c.AirportCodes()
 	} else {
-		airports = c.AirportsIn(d.Places)
+		airports = c.AirportsIn(d.Codes)
 	}
 	excluded := c.AirportsIn(d.Exclusions)
-	return slices.DeleteFunc(airports, func(a string) bool { return slices.Contains(excluded, a) }), nil
+	return slices.DeleteFunc(airports, func(a string) bool { return slices.Contains(excluded, a) })
 }
 
 // pricedFlights is a common table expression of the flights that have a price in PLN:
@@ -288,7 +328,7 @@ func (s *Searcher) roundTrip(ctx context.Context, q Query, destination []string)
 		price, fetchedAt := offerPrice(out, in)
 		// The outbound flight departs from a home airport and the inbound flight lands at one,
 		// so both times are in a home airport's local time.
-		leaveDays := leave.Days(out.Departure.DateTime, in.Arrival.DateTime, q.WorkHours)
+		leaveDays := leave.Days(out.Departure.DateTime, in.Arrival.DateTime, q.WorkStart, q.WorkEnd)
 		return Offer{
 			Kind:           RoundTrip,
 			Outbound:       Leg{Flights: []Flight{out.Flight}},
@@ -301,9 +341,6 @@ func (s *Searcher) roundTrip(ctx context.Context, q Query, destination []string)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("read flight pairs: %w", err)
-	}
-	if q.MaxLeaveDays != nil {
-		offers = slices.DeleteFunc(offers, func(o Offer) bool { return o.LeaveDays > *q.MaxLeaveDays })
 	}
 	return offers, nil
 }

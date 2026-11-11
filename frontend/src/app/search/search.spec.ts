@@ -68,7 +68,7 @@ describe('Search', () => {
     input.dispatchEvent(new Event('input'));
   }
 
-  /** Ticks a weekday checkbox, e.g. "Fri" among the "Departure days". */
+  /** Ticks a weekday checkbox, e.g. "Fri" among the "Outbound departure days". */
   function day(root: HTMLElement, days: string, weekday: string) {
     const fieldset = Array.from(root.querySelectorAll('fieldset')).find(
       (f) => f.querySelector('legend')?.textContent?.trim() === days,
@@ -280,12 +280,13 @@ describe('Search', () => {
     labelled<HTMLInputElement>(root, 'Direct flights only').click();
     time(root, 'Outbound departure from', '06:00');
     time(root, 'Outbound departure to', '12:00');
-    // An open-ended range runs to the end of the day, or from its start.
+    time(root, 'Inbound arrival from', '00:00');
     time(root, 'Inbound arrival to', '22:00');
     time(root, 'Outbound arrival from', '09:00');
-    day(root, 'Departure days', 'Thu');
-    day(root, 'Departure days', 'Fri');
-    day(root, 'Return days', 'Sun');
+    time(root, 'Outbound arrival to', '23:59');
+    day(root, 'Outbound departure days', 'Thu');
+    day(root, 'Outbound departure days', 'Fri');
+    day(root, 'Inbound departure days', 'Sun');
     const sort = labelled<HTMLSelectElement>(root, 'Sort by');
     sort.value = 'pricePerNight';
     sort.dispatchEvent(new Event('change'));
@@ -305,8 +306,8 @@ describe('Search', () => {
         outboundDeparture: { from: '06:00', to: '12:00' },
         outboundArrival: { from: '09:00', to: '23:59' },
         inboundArrival: { from: '00:00', to: '22:00' },
-        departureWeekdays: ['thu', 'fri'],
-        returnWeekdays: ['sun'],
+        outboundDepartureWeekdays: ['thu', 'fri'],
+        inboundDepartureWeekdays: ['sun'],
       },
       sort: 'pricePerNight',
     });
@@ -322,8 +323,9 @@ describe('Search', () => {
     fill(root, 'To', 'BGY');
     fill(root, 'Earliest', '2026-12-01');
     fill(root, 'Latest', '2026-12-10');
+    // Half a range is invalid, but inbound filters do not apply to one-way offers.
     time(root, 'Inbound departure from', '14:00');
-    day(root, 'Return days', 'Sun');
+    day(root, 'Inbound departure days', 'Sun');
     const sort = labelled<HTMLSelectElement>(root, 'Sort by');
     sort.value = 'pricePerNight';
     sort.dispatchEvent(new Event('change'));
@@ -331,8 +333,9 @@ describe('Search', () => {
     await fixture.whenStable();
 
     expect(root.querySelector('input[aria-label="Inbound departure from"]')).toBeNull();
-    expect(root.textContent).not.toContain('Return days');
+    expect(root.textContent).not.toContain('Inbound departure days');
     expect(root.querySelector('option[value="pricePerNight"]')).toBeNull();
+    time(root, 'Outbound arrival from', '06:00');
     time(root, 'Outbound arrival to', '10:00');
     root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
 
@@ -342,9 +345,29 @@ describe('Search', () => {
       homeAirports: ['KRK'],
       destination: { airports: ['BGY'] },
       travelWindow: { from: '2026-12-01', to: '2026-12-10' },
-      filters: { outboundArrival: { from: '00:00', to: '10:00' } },
+      filters: { outboundArrival: { from: '06:00', to: '10:00' } },
     });
     req.flush({ offers: [] });
+  });
+
+  it('marks a time range with only one end set invalid instead of searching', async () => {
+    const fixture = TestBed.createComponent(Search);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+
+    fill(root, 'From', 'KRK');
+    fill(root, 'To', 'BGY');
+    fill(root, 'Earliest', '2026-12-01');
+    fill(root, 'Latest', '2026-12-10');
+    time(root, 'Inbound arrival to', '22:00');
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+    await fixture.whenStable();
+
+    httpTesting.expectNone('/api/search');
+    expect(
+      labelled<HTMLInputElement>(root, 'Inbound arrival from').getAttribute('aria-invalid'),
+    ).toBe('true');
+    expect(root.querySelector('[role="alert"]')?.textContent).toContain('both ends');
   });
 
   it('remembers the filters for the next visit', async () => {
@@ -356,7 +379,8 @@ describe('Search', () => {
     fill(root, 'Earliest', '2026-12-01');
     fill(root, 'Latest', '2026-12-10');
     time(root, 'Outbound departure from', '06:00');
-    day(root, 'Departure days', 'Fri');
+    time(root, 'Outbound departure to', '12:00');
+    day(root, 'Outbound departure days', 'Fri');
     root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
     httpTesting.expectOne('/api/search').flush({ offers: [] });
     first.destroy();
@@ -367,7 +391,7 @@ describe('Search', () => {
 
     expect(labelled<HTMLInputElement>(root, 'Outbound departure from').value).toBe('06:00');
     const friday = Array.from(root.querySelectorAll('fieldset'))
-      .find((f) => f.querySelector('legend')?.textContent?.trim() === 'Departure days')
+      .find((f) => f.querySelector('legend')?.textContent?.trim() === 'Outbound departure days')
       ?.querySelectorAll('input')[4];
     expect(friday?.checked).toBe(true);
   });
@@ -610,6 +634,24 @@ describe('Search', () => {
     expect(root.textContent).toContain('No offers');
   });
 
+  it('takes only supported airports as home airports, and lists them when another is typed', async () => {
+    const fixture = TestBed.createComponent(Search);
+    httpTesting.expectOne({ method: 'GET', url: '/api/catalogue' }).flush(catalogue);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+
+    fill(root, 'From', 'KRK, BGY');
+    fill(root, 'To', 'Oslo');
+    fill(root, 'Earliest', '2026-12-01');
+    fill(root, 'Latest', '2026-12-10');
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+    await fixture.whenStable();
+
+    httpTesting.expectNone('/api/search');
+    expect(labelled<HTMLInputElement>(root, 'From').getAttribute('aria-invalid')).toBe('true');
+    expect(root.querySelector('[role="alert"]')?.textContent).toContain('KRK (Kraków)');
+  });
+
   describe('destination', () => {
     async function searchFrom(destination: string, exclusions = '') {
       const fixture = TestBed.createComponent(Search);
@@ -647,7 +689,7 @@ describe('Search', () => {
       expect(req.request.body.exclusions).toEqual({ airports: ['MXP'], countries: ['no', 'it'] });
     });
 
-    it('marks a place it does not know', async () => {
+    it('marks an airport, city or country it does not know', async () => {
       const root = await searchFrom('Milan, Atlantis', 'anywhere');
 
       httpTesting.expectNone('/api/search');

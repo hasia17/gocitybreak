@@ -5,17 +5,6 @@ import (
 	"slices"
 )
 
-// PricePerNight is the offer price divided by the number of hotel nights (GLOSSARY: Price per night),
-// rounded to minor units; ok is false for an offer of 0 nights, including every one-way offer.
-func (o Offer) PricePerNight() (price Price, ok bool) {
-	if o.Nights <= 0 {
-		return Price{}, false
-	}
-	price = o.Price
-	price.Amount = (o.Price.Amount + int64(o.Nights)/2) / int64(o.Nights)
-	return price, true
-}
-
 // apply sorts offers that come cheapest first. The sort is stable, so offers equal in s stay in price order.
 func (s SortOrder) apply(offers []Offer) {
 	switch s {

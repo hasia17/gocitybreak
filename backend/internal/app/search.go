@@ -4,13 +4,13 @@ import (
 	"cmp"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/hasia17/gocitybreak/backend/internal/catalogue"
 	"github.com/hasia17/gocitybreak/backend/internal/search"
+	"github.com/hasia17/gocitybreak/backend/internal/wallclock"
 )
 
 // timeLayout formats local times without seconds; dates use time.DateOnly.
@@ -20,10 +20,10 @@ type searchRequest struct {
 	Kind         string   `json:"kind"`
 	HomeAirports []string `json:"homeAirports"`
 	Destination  struct {
-		placesJSON
+		codesJSON
 		Anywhere bool `json:"anywhere"`
 	} `json:"destination"`
-	Exclusions   placesJSON `json:"exclusions"`
+	Exclusions   codesJSON `json:"exclusions"`
 	TravelWindow struct {
 		From string `json:"from"`
 		To   string `json:"to"`
@@ -40,15 +40,15 @@ type searchRequest struct {
 	Sort         string      `json:"sort"`
 }
 
-// placesJSON names airports, cities and countries by the codes the catalogue gives them.
-type placesJSON struct {
+// codesJSON names airports, cities and countries by the codes the catalogue gives them.
+type codesJSON struct {
 	Airports  []string `json:"airports"`
 	Cities    []string `json:"cities"`
 	Countries []string `json:"countries"`
 }
 
-func (p placesJSON) places() catalogue.Places {
-	return catalogue.Places{Airports: p.Airports, Cities: p.Cities, Countries: p.Countries}
+func (c codesJSON) codes() catalogue.Codes {
+	return catalogue.Codes{Airports: c.Airports, Cities: c.Cities, Countries: c.Countries}
 }
 
 type searchResponse struct {
@@ -108,6 +108,10 @@ func (a *App) search(w http.ResponseWriter, r *http.Request) {
 	}
 
 	offers, err := a.searcher.Search(r.Context(), q)
+	if invalid, ok := errors.AsType[*search.QueryError](err); ok {
+		http.Error(w, invalid.Error(), http.StatusBadRequest)
+		return
+	}
 	if err != nil {
 		slog.ErrorContext(r.Context(), "search failed", "err", err)
 		http.Error(w, "search failed", http.StatusInternalServerError)
@@ -120,7 +124,8 @@ func (a *App) search(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
-// parseSearchRequest decodes and validates a search query; its errors are meant for the API client.
+// parseSearchRequest decodes a search query and checks its format; its errors are meant for the API client.
+// The search itself checks the query against its rules.
 func parseSearchRequest(r *http.Request) (search.Query, error) {
 	var req searchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -128,16 +133,13 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 	}
 	// Round trip is the default kind of offer.
 	kind := cmp.Or(search.OfferKind(req.Kind), search.RoundTrip)
-	if kind != search.RoundTrip && kind != search.OneWay {
-		return search.Query{}, fmt.Errorf("kind must be %q or %q", search.RoundTrip, search.OneWay)
-	}
 	if len(req.HomeAirports) == 0 {
 		return search.Query{}, errors.New("homeAirports must not be empty")
 	}
 	destination := search.Destination{
-		Places:     req.Destination.places(),
+		Codes:      req.Destination.codes(),
 		Anywhere:   req.Destination.Anywhere,
-		Exclusions: req.Exclusions.places(),
+		Exclusions: req.Exclusions.codes(),
 	}
 	if !destination.Anywhere && destination.IsEmpty() {
 		return search.Query{}, errors.New("destination must name airports, cities or countries, or be anywhere")
@@ -158,6 +160,10 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 		HomeAirports: req.HomeAirports,
 		Destination:  destination,
 		TravelWindow: search.TravelWindow{From: from, To: to},
+		Sort:         search.SortOrder(req.Sort),
+	}
+	if q.Filters, err = req.Filters.parse(); err != nil {
+		return search.Query{}, err
 	}
 	if kind == search.RoundTrip {
 		if req.StayLength == nil {
@@ -170,22 +176,16 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 			return search.Query{}, errors.New("stayLength.max must not be less than stayLength.min")
 		}
 		q.StayLength = search.StayLength{Min: req.StayLength.Min, Max: req.StayLength.Max}
-		if q.WorkHours.Start, err = timeOfDay(cmp.Or(req.WorkStart, defaultWorkStart)); err != nil {
+		if q.WorkStart, err = timeOfDay(cmp.Or(req.WorkStart, defaultWorkStart)); err != nil {
 			return search.Query{}, errors.New("workStart must be a time in HH:MM format")
 		}
-		if q.WorkHours.End, err = timeOfDay(cmp.Or(req.WorkEnd, defaultWorkEnd)); err != nil {
+		if q.WorkEnd, err = timeOfDay(cmp.Or(req.WorkEnd, defaultWorkEnd)); err != nil {
 			return search.Query{}, errors.New("workEnd must be a time in HH:MM format")
 		}
 		if req.MaxLeaveDays != nil && *req.MaxLeaveDays < 0 {
 			return search.Query{}, errors.New("maxLeaveDays must not be negative")
 		}
-		q.MaxLeaveDays = req.MaxLeaveDays
-	}
-	if q.Filters, err = req.Filters.parse(); err != nil {
-		return search.Query{}, err
-	}
-	if q.Sort, err = parseSort(req.Sort, kind); err != nil {
-		return search.Query{}, err
+		q.Filters.MaxLeaveDays = req.MaxLeaveDays
 	}
 	return q, nil
 }
@@ -202,7 +202,7 @@ func timeOfDay(s string) (time.Duration, error) {
 	if err != nil {
 		return 0, err
 	}
-	return time.Duration(t.Hour())*time.Hour + time.Duration(t.Minute())*time.Minute, nil
+	return wallclock.TimeOfDay(t), nil
 }
 
 func toOfferJSON(o search.Offer) offerJSON {

@@ -3,7 +3,7 @@ package leave
 import "time"
 
 // isPublicHoliday reports whether the date is a Polish statutory public holiday
-// (ustawa o dniach wolnych od pracy).
+// (as set by the Polish Public Holidays Act).
 func isPublicHoliday(date time.Time) bool {
 	switch m, d := date.Month(), date.Day(); {
 	case m == time.January && (d == 1 || d == 6),
@@ -26,10 +26,8 @@ func isPublicHoliday(date time.Time) bool {
 }
 
 // daysAfterEaster returns how many days the date is after Easter Sunday of its year (negative before it).
-func daysAfterEaster(date time.Time) int {
-	y := date.Year()
-	easter := easterSunday(y)
-	return int(time.Date(y, date.Month(), date.Day(), 0, 0, 0, 0, time.UTC).Sub(easter).Hours() / 24)
+func daysAfterEaster(day time.Time) int {
+	return int(date(day).Sub(easterSunday(day.Year())).Hours() / 24)
 }
 
 // easterSunday returns the date of Western (Gregorian) Easter Sunday in year y,
