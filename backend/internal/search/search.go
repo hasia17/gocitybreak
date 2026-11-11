@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/hasia17/gocitybreak/backend/internal/catalogue"
 	"github.com/hasia17/gocitybreak/backend/internal/leave"
 )
 
@@ -54,9 +55,14 @@ const (
 	ByLeaveDays SortOrder = "leaveDays"
 )
 
-// Destination is where the traveller wants to fly; for now a set of airports.
+// Destination is where the traveller wants to fly: any number of airports, cities and countries,
+// or anywhere, minus the exclusions.
 type Destination struct {
-	Airports []string
+	catalogue.Places
+	// Anywhere covers all airports reachable from the home airports; the places are then ignored.
+	Anywhere bool
+	// Exclusions are places removed from the destination.
+	Exclusions catalogue.Places
 }
 
 // TravelWindow is the date range the whole offer must fit into. Both days are inclusive.
@@ -135,14 +141,34 @@ func NewSearcher(pool *pgxpool.Pool) *Searcher {
 // Search returns offers of q's kind made of direct flights, cheapest first.
 // Flights in a currency with no exchange rate yet are left out.
 func (s *Searcher) Search(ctx context.Context, q Query) ([]Offer, error) {
-	switch q.Kind {
-	case RoundTrip:
-		return s.roundTrip(ctx, q)
-	case OneWay:
-		return s.oneWay(ctx, q)
-	default:
+	if q.Kind != RoundTrip && q.Kind != OneWay {
 		return nil, fmt.Errorf("unknown kind of offer %q", q.Kind)
 	}
+	destination, err := s.destinationAirports(ctx, q.Destination)
+	if err != nil {
+		return nil, err
+	}
+	if q.Kind == RoundTrip {
+		return s.roundTrip(ctx, q, destination)
+	}
+	return s.oneWay(ctx, q, destination)
+}
+
+// destinationAirports expands d into the codes of its airports: a city into every airport of the city,
+// a country into every airport of the country, anywhere into every airport we know; then removes the exclusions.
+func (s *Searcher) destinationAirports(ctx context.Context, d Destination) ([]string, error) {
+	c, err := catalogue.Load(ctx, s.pool)
+	if err != nil {
+		return nil, fmt.Errorf("load airport catalogue: %w", err)
+	}
+	var airports []string
+	if d.Anywhere {
+		airports = c.AirportCodes()
+	} else {
+		airports = c.AirportsIn(d.Places)
+	}
+	excluded := c.AirportsIn(d.Exclusions)
+	return slices.DeleteFunc(airports, func(a string) bool { return slices.Contains(excluded, a) }), nil
 }
 
 // pricedFlights is a common table expression of the flights that have a price in PLN:
@@ -177,9 +203,9 @@ func flightColumns(alias string) string {
 		%[1]s.price_amount, %[1]s.price_currency, %[1]s.fetched_at, %[1]s.price_pln`, alias)
 }
 
-// oneWay returns one-way offers from the home airports to the destination within the travel window;
+// oneWay returns one-way offers from the home airports to the destination airports within the travel window;
 // equally priced offers go by departure, then by airports.
-func (s *Searcher) oneWay(ctx context.Context, q Query) ([]Offer, error) {
+func (s *Searcher) oneWay(ctx context.Context, q Query, destination []string) ([]Offer, error) {
 	rows, err := s.pool.Query(ctx, `WITH`+pricedFlights+`
 		SELECT `+flightColumns("o")+`
 		FROM priced o
@@ -188,7 +214,7 @@ func (s *Searcher) oneWay(ctx context.Context, q Query) ([]Offer, error) {
 			AND o.departure_date >= $3
 			AND o.arrival_date <= $4
 		ORDER BY o.price_pln, o.departure_date, o.departure_time, o.departure_airport, o.arrival_airport`,
-		q.HomeAirports, q.Destination.Airports, q.TravelWindow.From, q.TravelWindow.To)
+		q.HomeAirports, destination, q.TravelWindow.From, q.TravelWindow.To)
 	if err != nil {
 		return nil, fmt.Errorf("query flights: %w", err)
 	}
@@ -211,12 +237,12 @@ func (s *Searcher) oneWay(ctx context.Context, q Query) ([]Offer, error) {
 	return offers, nil
 }
 
-// roundTrip pairs an outbound flight from a home airport to the destination with an inbound flight
+// roundTrip pairs an outbound flight from a home airport to a destination airport with an inbound flight
 // from the same destination airport back to any home airport. The pair fits within the travel window
 // (outbound departure on its first day at the earliest, inbound arrival on its last day at the latest)
 // and its nights within the stay length. Equally priced offers go by outbound departure,
 // then inbound departure, then airports.
-func (s *Searcher) roundTrip(ctx context.Context, q Query) ([]Offer, error) {
+func (s *Searcher) roundTrip(ctx context.Context, q Query, destination []string) ([]Offer, error) {
 	rows, err := s.pool.Query(ctx, `WITH`+pricedFlights+`
 		SELECT `+flightColumns("o")+`, `+flightColumns("i")+`, n.nights
 		FROM priced o
@@ -237,7 +263,7 @@ func (s *Searcher) roundTrip(ctx context.Context, q Query) ([]Offer, error) {
 		ORDER BY o.price_pln + i.price_pln,
 			o.departure_date, o.departure_time, i.departure_date, i.departure_time,
 			o.departure_airport, o.arrival_airport, i.arrival_airport`,
-		q.HomeAirports, q.Destination.Airports, q.TravelWindow.From, q.TravelWindow.To,
+		q.HomeAirports, destination, q.TravelWindow.From, q.TravelWindow.To,
 		q.StayLength.Min, q.StayLength.Max)
 	if err != nil {
 		return nil, fmt.Errorf("query flight pairs: %w", err)

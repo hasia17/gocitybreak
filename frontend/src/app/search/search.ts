@@ -6,10 +6,13 @@ import {
   NonNullableFormBuilder,
   ReactiveFormsModule,
   ValidationErrors,
+  ValidatorFn,
   Validators,
 } from '@angular/forms';
+import { readPlaces } from './places';
 import { ryanairTickets } from './ryanair-booking';
 import {
+  Catalogue,
   Flight,
   Leg,
   Money,
@@ -21,7 +24,6 @@ import {
 } from './search-api';
 import { loadSearchSettings, saveSearchSettings } from './search-settings';
 
-const airportCode = [Validators.required, Validators.pattern(/^[A-Za-z]{3}$/)];
 /** One or more airport codes separated by commas or spaces, e.g. "KRK, KTW". */
 const airportCodes = [
   Validators.required,
@@ -54,10 +56,14 @@ export class Search {
   private readonly http = inject(HttpClient);
   private readonly fb = inject(NonNullableFormBuilder);
 
+  /** Airports, cities and countries to resolve typed places against; undefined until loaded. */
+  private readonly catalogue = signal<Catalogue | undefined>(undefined);
+
   protected readonly form = this.fb.group({
     kind: this.fb.control<OfferKind>('roundTrip'),
     homeAirports: ['', airportCodes],
-    destinationAirport: ['', airportCode],
+    destination: ['', this.knownPlaces('destination')],
+    exclusions: ['', this.knownPlaces('exclusions')],
     from: ['', Validators.required],
     to: ['', Validators.required],
     stayLength: this.fb.group(
@@ -85,6 +91,18 @@ export class Search {
   protected readonly ryanairTickets = ryanairTickets;
 
   constructor() {
+    // Typed places are checked again once the catalogue arrives. Without it, airport codes still work.
+    this.http
+      .get<Catalogue>('/api/catalogue')
+      .pipe(takeUntilDestroyed())
+      .subscribe({
+        next: (catalogue) => {
+          this.catalogue.set(catalogue);
+          this.form.controls.destination.updateValueAndValidity();
+          this.form.controls.exclusions.updateValueAndValidity();
+        },
+        error: () => {},
+      });
     // The stay length applies to round trips only; a disabled group does not affect the form's validity.
     this.form.controls.kind.valueChanges.pipe(takeUntilDestroyed()).subscribe((kind) => {
       const stayLength = this.form.controls.stayLength;
@@ -116,9 +134,13 @@ export class Search {
             .map((code) => code.toUpperCase()),
         ),
       ],
-      destination: { airports: [v.destinationAirport.toUpperCase()] },
+      destination: {},
       travelWindow: { from: v.from, to: v.to },
     };
+    const destination = readPlaces(v.destination, this.catalogue());
+    query.destination = destination.anywhere ? { anywhere: true } : destination.places;
+    const exclusions = readPlaces(v.exclusions, this.catalogue()).places;
+    if (Object.keys(exclusions).length > 0) query.exclusions = exclusions;
     if (v.kind === 'roundTrip') {
       query.stayLength = { min: Number(v.stayLength.min), max: Number(v.stayLength.max) };
       query.workStart = v.leave.workStart;
@@ -138,6 +160,19 @@ export class Search {
         this.loading.set(false);
       },
     });
+  }
+
+  /**
+   * A validator of places typed as text: each must name a known place; only a destination may be anywhere,
+   * and a destination needs at least one place.
+   */
+  private knownPlaces(field: 'destination' | 'exclusions'): ValidatorFn {
+    return (control) => {
+      const typed = readPlaces(control.value as string, this.catalogue());
+      if (typed.unknown.length > 0) return { unknownPlace: typed.unknown };
+      if (field === 'exclusions') return typed.anywhere ? { anywhereExcluded: true } : null;
+      return typed.anywhere || Object.keys(typed.places).length > 0 ? null : { required: true };
+    };
   }
 
   /** Whether a field should be marked invalid: it is, and the user has tried to search. */

@@ -30,7 +30,7 @@ To work offline or without waiting, `task seed` loads hand-made sample flights (
 
 Without Task: `docker compose up -d --build`, and for sample flights, once the API has started, `docker compose exec -T postgres psql -U gocitybreak -d gocitybreak < backend/seed/dev.sql`.
 
-Search is `POST /api/search`, e.g. `{"kind": "roundTrip", "homeAirports": ["KRK", "KTW"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": 2, "max": 3}}`. `kind` defaults to `roundTrip`; `"kind": "oneWay"` takes no `stayLength`.
+Search is `POST /api/search`, e.g. `{"kind": "roundTrip", "homeAirports": ["KRK", "KTW"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": 2, "max": 3}}`. `kind` defaults to `roundTrip`; `"kind": "oneWay"` takes no `stayLength`. `destination` takes any of `airports`, `cities` and `countries` (codes from `GET /api/catalogue`, e.g. `"cities": ["MILAN"], "countries": ["it"]`) or `"anywhere": true`; `exclusions` takes the same three lists and removes them from the destination.
 
 Round-trip offers carry `leaveDays` (leave-days calculator in `internal/leave`). The query may set `"workStart"` and `"workEnd"` (HH:MM in the home airport's local time, default `09:00` and `17:00`), `"maxLeaveDays"` (0 or more) and `"sort"` (`price`, the default, or `leaveDays`).
 
