@@ -86,6 +86,11 @@ func (c *Catalogue) AirportsIn(places Places) []string {
 	return codes
 }
 
+// IsSupported reports whether code names a supported airport of the catalogue.
+func (c *Catalogue) IsSupported(code string) bool {
+	return slices.ContainsFunc(c.Airports, func(a Airport) bool { return a.Code == code && a.Supported })
+}
+
 // AirportCodes returns the codes of every airport in the catalogue, sorted.
 func (c *Catalogue) AirportCodes() []string {
 	codes := make([]string, 0, len(c.Airports))

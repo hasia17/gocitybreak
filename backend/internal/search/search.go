@@ -155,10 +155,17 @@ func (s *Searcher) Search(ctx context.Context, q Query) ([]Offer, error) {
 	if err := q.validate(); err != nil {
 		return nil, err
 	}
-	destination, err := s.destinationAirports(ctx, q.Destination)
+	c, err := catalogue.Load(ctx, s.pool)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("load airport catalogue: %w", err)
 	}
+	// GLOSSARY: Home airports are chosen among the supported airports only.
+	for _, code := range q.HomeAirports {
+		if !c.IsSupported(code) {
+			return nil, &QueryError{fmt.Sprintf("home airport %q is not a supported airport", code)}
+		}
+	}
+	destination := q.Destination.airports(c)
 	var offers []Offer
 	if q.Kind == RoundTrip {
 		offers, err = s.roundTrip(ctx, q, destination)
@@ -193,13 +200,9 @@ func (q Query) validate() error {
 	return nil
 }
 
-// destinationAirports expands d into the codes of its airports: a city into every airport of the city,
+// airports expands d into the codes of its airports in c: a city into every airport of the city,
 // a country into every airport of the country, anywhere into every airport we know; then removes the exclusions.
-func (s *Searcher) destinationAirports(ctx context.Context, d Destination) ([]string, error) {
-	c, err := catalogue.Load(ctx, s.pool)
-	if err != nil {
-		return nil, fmt.Errorf("load airport catalogue: %w", err)
-	}
+func (d Destination) airports(c *catalogue.Catalogue) []string {
 	var airports []string
 	if d.Anywhere {
 		airports = c.AirportCodes()
@@ -207,7 +210,7 @@ func (s *Searcher) destinationAirports(ctx context.Context, d Destination) ([]st
 		airports = c.AirportsIn(d.Places)
 	}
 	excluded := c.AirportsIn(d.Exclusions)
-	return slices.DeleteFunc(airports, func(a string) bool { return slices.Contains(excluded, a) }), nil
+	return slices.DeleteFunc(airports, func(a string) bool { return slices.Contains(excluded, a) })
 }
 
 // pricedFlights is a common table expression of the flights that have a price in PLN:
