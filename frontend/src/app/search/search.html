@@ -87,30 +87,30 @@
     </div>
     @if (kind() === 'roundTrip') {
       <div class="options" formGroupName="leave">
-        <label class="field time" [class.invalid]="invalidLeave('workStart')">
+        <label class="field time" [class.invalid]="invalid('leave.workStart')">
           Work start
           <input
             type="time"
             formControlName="workStart"
-            [attr.aria-invalid]="invalidLeave('workStart')"
+            [attr.aria-invalid]="invalid('leave.workStart')"
           />
         </label>
-        <label class="field time" [class.invalid]="invalidLeave('workEnd')">
+        <label class="field time" [class.invalid]="invalid('leave.workEnd')">
           Work end
           <input
             type="time"
             formControlName="workEnd"
-            [attr.aria-invalid]="invalidLeave('workEnd')"
+            [attr.aria-invalid]="invalid('leave.workEnd')"
           />
         </label>
-        <label class="field leave" [class.invalid]="invalidLeave('maxLeaveDays')">
+        <label class="field leave" [class.invalid]="invalid('leave.maxLeaveDays')">
           Max leave days
           <input
             type="number"
             min="0"
             formControlName="maxLeaveDays"
             placeholder="any"
-            [attr.aria-invalid]="invalidLeave('maxLeaveDays')"
+            [attr.aria-invalid]="invalid('leave.maxLeaveDays')"
           />
         </label>
         <label class="field">
@@ -133,15 +133,22 @@
           <p class="note">Hours in local time at each airport.</p>
           @for (moment of moments; track moment.name) {
             @if (!moment.inbound || kind() === 'roundTrip') {
-              <div class="time-range" [formGroupName]="moment.name">
+              @let rangeInvalid = invalid('filters.' + moment.name);
+              <div class="time-range" [formGroupName]="moment.name" [class.invalid]="rangeInvalid">
                 <span>{{ moment.label }}</span>
                 <input
                   type="time"
                   formControlName="from"
                   [attr.aria-label]="moment.label + ' from'"
+                  [attr.aria-invalid]="rangeInvalid"
                 />
                 <span aria-hidden="true">–</span>
-                <input type="time" formControlName="to" [attr.aria-label]="moment.label + ' to'" />
+                <input
+                  type="time"
+                  formControlName="to"
+                  [attr.aria-label]="moment.label + ' to'"
+                  [attr.aria-invalid]="rangeInvalid"
+                />
               </div>
             }
           }
@@ -171,6 +178,9 @@
       }
       Enter 3-letter airport codes, places as airports, cities or countries (or anywhere), both
       dates and nights from the minimum up to the maximum.
+      @if (form.controls.filters.invalid) {
+        In Filters, give each time range both ends, or leave both empty.
+      }
     </p>
   }
 </section>

@@ -121,17 +121,20 @@ export class Search {
         },
         error: () => {},
       });
-    // The stay length applies to round trips only; a disabled group does not affect the form's validity.
+    // These apply to round trips only; a disabled control does not affect the form's validity.
+    const { stayLength, leave, filters } = this.form.controls;
+    const roundTripOnly = [
+      stayLength,
+      leave,
+      filters.controls.inboundDeparture,
+      filters.controls.inboundArrival,
+      filters.controls.inboundDepartureWeekdays,
+    ];
     this.form.controls.kind.valueChanges.pipe(takeUntilDestroyed()).subscribe((kind) => {
-      const stayLength = this.form.controls.stayLength;
-      if (kind === 'roundTrip') stayLength.enable();
-      else stayLength.disable();
-    });
-    // So do work hours, the maximum of leave days and the sort, which has only price for one-way offers.
-    this.form.controls.kind.valueChanges.pipe(takeUntilDestroyed()).subscribe((kind) => {
-      const leave = this.form.controls.leave;
-      if (kind === 'roundTrip') leave.enable();
-      else leave.disable();
+      for (const control of roundTripOnly) {
+        if (kind === 'roundTrip') control.enable();
+        else control.disable();
+      }
     });
     const settings = loadSearchSettings();
     if (settings) this.form.patchValue(settings);
@@ -189,7 +192,9 @@ export class Search {
 
   /** The supported airports, like "KRK (Kraków), KTW (Katowice)". */
   protected supportedAirportList(): string {
-    return (this.catalogue()?.supportedAirports ?? []).map((a) => `${a.code} (${a.name})`).join(', ');
+    return (this.catalogue()?.supportedAirports ?? [])
+      .map((a) => `${a.code} (${a.name})`)
+      .join(', ');
   }
 
   /**
@@ -205,14 +210,9 @@ export class Search {
     };
   }
 
-  /** Whether a field should be marked invalid: it is, and the user has tried to search. */
-  protected invalid(name: keyof typeof this.form.controls): boolean {
-    return this.submitted() && this.form.controls[name].invalid;
-  }
-
-  /** Whether a work-hours or leave-days field should be marked invalid, like `invalid`. */
-  protected invalidLeave(name: keyof typeof this.form.controls.leave.controls): boolean {
-    return this.submitted() && this.form.controls.leave.controls[name].invalid;
+  /** Whether a field, named by its path like "leave.workStart", should be marked invalid: it is, and the user has tried to search. */
+  protected invalid(path: string): boolean {
+    return this.submitted() && !!this.form.get(path)?.invalid;
   }
 
   /** Leave days like "no leave days", "1 leave day" or "2 leave days". */
