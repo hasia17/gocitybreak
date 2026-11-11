@@ -52,20 +52,14 @@ func TestWorkerStoresCatalogueWithCityAndCountry(t *testing.T) {
 	assertEqual(t, "airports", got, want)
 }
 
-func TestWorkerStoresEveryFlightOfTheDayWithItsOriginalPrice(t *testing.T) {
+func TestWorkerStoresPricedAndUnpricedFlights(t *testing.T) {
 	env := start(t)
 	env.ryanair.setFlights(
-		// Three flights on one day: the cheapest comes from cheapestPerDay, the others from time-window queries.
 		fakeFlight{from: "KRK", to: "BGY", departure: "2026-12-04T05:50", arrival: "2026-12-04T07:40", price: 70.27, currency: "PLN"},
-		fakeFlight{from: "KRK", to: "BGY", departure: "2026-12-04T18:15", arrival: "2026-12-04T20:05", price: 120.00, currency: "PLN"},
-		fakeFlight{from: "KRK", to: "BGY", departure: "2026-12-04T22:05", arrival: "2026-12-04T23:55", price: 98.77, currency: "PLN"},
 		// Priced in the departure airport's currency.
 		fakeFlight{from: "BGY", to: "KRK", departure: "2026-12-06T19:55", arrival: "2026-12-06T21:45", price: 19.99, currency: "EUR"},
 		// Sold out: in the timetable, but with no fare.
 		fakeFlight{from: "BGY", to: "KRK", departure: "2026-12-07T09:00", arrival: "2026-12-07T10:50", price: 15.00, currency: "EUR", soldOut: true},
-		// Before today and beyond the 6-month horizon: not fetched.
-		fakeFlight{from: "KRK", to: "BGY", departure: "2026-11-09T06:00", arrival: "2026-11-09T07:50", price: 50.00, currency: "PLN"},
-		fakeFlight{from: "KRK", to: "BGY", departure: "2027-06-01T06:00", arrival: "2027-06-01T07:50", price: 50.00, currency: "PLN"},
 	)
 
 	env.refresh(t)
@@ -74,25 +68,6 @@ func TestWorkerStoresEveryFlightOfTheDayWithItsOriginalPrice(t *testing.T) {
 		"BGY→KRK 2026-12-06 19:55 → 2026-12-06 21:45 1999 EUR @2026-11-10T08:00",
 		"BGY→KRK 2026-12-07 09:00 → 2026-12-07 10:50 no price @2026-11-10T08:00",
 		"KRK→BGY 2026-12-04 05:50 → 2026-12-04 07:40 7027 PLN @2026-11-10T08:00",
-		"KRK→BGY 2026-12-04 18:15 → 2026-12-04 20:05 12000 PLN @2026-11-10T08:00",
-		"KRK→BGY 2026-12-04 22:05 → 2026-12-04 23:55 9877 PLN @2026-11-10T08:00",
-	})
-}
-
-func TestWorkerStoresExtraFlightsWithoutPriceWhenTimeWindowPricingFails(t *testing.T) {
-	env := start(t)
-	env.ryanair.setFlights(
-		fakeFlight{from: "KRK", to: "BGY", departure: "2026-12-04T05:50", arrival: "2026-12-04T07:40", price: 70.27, currency: "PLN"},
-		// Lands after midnight: the timetable gives only times of day.
-		fakeFlight{from: "KRK", to: "BGY", departure: "2026-12-04T23:30", arrival: "2026-12-05T01:20", price: 98.77, currency: "PLN"},
-	)
-	env.ryanair.fail("oneWayFares", "", http.StatusInternalServerError, -1)
-
-	env.refresh(t)
-
-	assertEqual(t, "flights", storedFlights(t, env.pool), []string{
-		"KRK→BGY 2026-12-04 05:50 → 2026-12-04 07:40 7027 PLN @2026-11-10T08:00",
-		"KRK→BGY 2026-12-04 23:30 → 2026-12-05 01:20 no price @2026-11-10T08:00",
 	})
 }
 
@@ -115,18 +90,23 @@ func TestWorkerUpdatesStoredPricesAndDropsCancelledFlightsOnRefetch(t *testing.T
 	})
 }
 
-func TestWorkerRetriesRyanairErrorsWithBackoff(t *testing.T) {
+func TestWorkerPreservesExistingFlightsWhenTimetableFails(t *testing.T) {
 	env := start(t)
 	env.ryanair.setFlights(
 		fakeFlight{from: "KRK", to: "BGY", departure: "2026-12-04T05:50", arrival: "2026-12-04T07:40", price: 70.27, currency: "PLN"},
+		fakeFlight{from: "KRK", to: "BGY", departure: "2026-12-04T22:05", arrival: "2026-12-04T23:55", price: 98.77, currency: "PLN"},
 	)
-	env.ryanair.fail("cheapestPerDay", "KRK-BGY", http.StatusTooManyRequests, 1)
-	env.ryanair.fail("timetable", "KRK-BGY", http.StatusBadGateway, 2)
+	env.refresh(t)
 
+	// The second flight is no longer returned, but an incomplete timetable cannot confirm cancellation.
+	env.ryanair.setFlights(fakeFlight{from: "KRK", to: "BGY", departure: "2026-12-04T05:50", arrival: "2026-12-04T07:40", price: 89.00, currency: "PLN"})
+	env.ryanair.fail("timetable", "KRK-BGY", true)
+	env.clock = now.Add(13 * time.Hour)
 	env.refresh(t)
 
 	assertEqual(t, "flights", storedFlights(t, env.pool), []string{
-		"KRK→BGY 2026-12-04 05:50 → 2026-12-04 07:40 7027 PLN @2026-11-10T08:00",
+		"KRK→BGY 2026-12-04 05:50 → 2026-12-04 07:40 8900 PLN @2026-11-10T21:00",
+		"KRK→BGY 2026-12-04 22:05 → 2026-12-04 23:55 9877 PLN @2026-11-10T08:00",
 	})
 }
 
@@ -142,7 +122,7 @@ func TestWorkerKeepsStoredPricesOfARouteThatFailsAndRefreshesTheOthers(t *testin
 		fakeFlight{from: "KRK", to: "BGY", departure: "2026-12-04T05:50", arrival: "2026-12-04T07:40", price: 99.00, currency: "PLN"},
 		fakeFlight{from: "BGY", to: "KRK", departure: "2026-12-06T19:55", arrival: "2026-12-06T21:45", price: 24.99, currency: "EUR"},
 	)
-	env.ryanair.fail("cheapestPerDay", "KRK-BGY", http.StatusInternalServerError, -1)
+	env.ryanair.fail("cheapestPerDay", "KRK-BGY", true)
 	env.clock = now.Add(13 * time.Hour) // the December prices are due again
 	err := env.worker.RefreshPrices(t.Context())
 
@@ -216,7 +196,7 @@ func TestWorkerRefreshesNearMonthsMoreOftenThanFarOnes(t *testing.T) {
 
 func TestWorkerRetriesAFailedRouteMonthOnTheNextRefresh(t *testing.T) {
 	env := start(t)
-	env.ryanair.fail("cheapestPerDay", "KRK-BGY", http.StatusInternalServerError, -1)
+	env.ryanair.fail("cheapestPerDay", "KRK-BGY", true)
 	if err := env.worker.RefreshCatalogue(t.Context()); err != nil {
 		t.Fatalf("RefreshCatalogue: %v", err)
 	}
@@ -225,7 +205,7 @@ func TestWorkerRetriesAFailedRouteMonthOnTheNextRefresh(t *testing.T) {
 	}
 	env.ryanair.takeCheapestPerDayRequests()
 
-	env.ryanair.fail("cheapestPerDay", "KRK-BGY", 0, 0)
+	env.ryanair.fail("cheapestPerDay", "KRK-BGY", false)
 	env.clock = now.Add(time.Hour)
 	env.refresh(t)
 
@@ -301,11 +281,11 @@ func start(t *testing.T) *env {
 	}
 	t.Cleanup(db.Close)
 
-	fake, ryanairURL := newFakeRyanair(t)
-	fake.airports = []fakeAirport{
-		{"KRK", "Krakow", "Europe/Warsaw", "KRAKOW", "Krakow", "pl", "Poland"},
-		{"BGY", "Milan Bergamo", "Europe/Rome", "BERGAMO", "Bergamo", "it", "Italy"},
-		{"MXP", "Milan Malpensa", "Europe/Rome", "MILAN", "Milan", "it", "Italy"},
+	fake := newFakeRyanair()
+	fake.airports = []ryanair.Airport{
+		{Code: "KRK", Name: "Krakow", TimeZone: "Europe/Warsaw", CityCode: "KRAKOW", CityName: "Krakow", CountryCode: "pl", CountryName: "Poland"},
+		{Code: "BGY", Name: "Milan Bergamo", TimeZone: "Europe/Rome", CityCode: "BERGAMO", CityName: "Bergamo", CountryCode: "it", CountryName: "Italy"},
+		{Code: "MXP", Name: "Milan Malpensa", TimeZone: "Europe/Rome", CityCode: "MILAN", CityName: "Milan", CountryCode: "it", CountryName: "Italy"},
 	}
 	fake.routes["KRK"] = []string{"BGY"}
 	nbpFake, nbpURL := newFakeNBP(t)
@@ -316,7 +296,7 @@ func start(t *testing.T) *env {
 	e := &env{url: url, pool: db.Pool, ryanair: fake, nbp: nbpFake, clock: now}
 	e.worker = worker.New(worker.Config{
 		Pool:    db.Pool,
-		Ryanair: ryanair.NewHTTPClient(ryanairURL, client),
+		Ryanair: fake,
 		NBP:     nbp.NewClient(nbpURL, client),
 		Now:     func() time.Time { return e.clock },
 	})

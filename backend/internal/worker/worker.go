@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/hasia17/gocitybreak/backend/internal/nbp"
+	"github.com/hasia17/gocitybreak/backend/internal/pricing"
 	"github.com/hasia17/gocitybreak/backend/internal/ryanair"
 )
 
@@ -323,70 +324,18 @@ func (w *Worker) routes(ctx context.Context) ([]route, error) {
 	return routes, nil
 }
 
-// flight is a flight about to be stored; Price is nil when it couldn't be priced (ADR-0005 fallback).
-type flight struct {
-	departure, arrival time.Time // local wall-clock times
-	price              *ryanair.Money
-}
-
-// refreshRouteMonth prices every flight of rm and stores them, per ADR-0005: the cheapest flight of each day
-// from cheapestPerDay, the others from a time-window fare query.
+// refreshRouteMonth prices and stores a route-month.
 func (w *Worker) refreshRouteMonth(ctx context.Context, rm routeMonth) error {
-	r, month, from, to := rm.route, rm.month, rm.first, rm.last
-	cheapest, err := w.ryanair.CheapestPerDay(ctx, r.from, r.to, month)
+	flights, complete, err := pricing.RouteMonth(ctx, w.ryanair, rm.route.from, rm.route.to, rm.month, rm.first, rm.last)
 	if err != nil {
 		return err
-	}
-	cheapestByDay := map[time.Time]*ryanair.Fare{}
-	for _, d := range cheapest {
-		cheapestByDay[d.Day] = d.Fare
-	}
-
-	// Without the timetable we know only the cheapest flight of each day; store those and keep the rest as they are.
-	complete := true
-	timetable, err := w.ryanair.Timetable(ctx, r.from, r.to, month)
-	if err != nil {
-		slog.WarnContext(ctx, "timetable unavailable, storing the cheapest flights only",
-			"from", r.from, "to", r.to, "month", month.Format("2006-01"), "err", err)
-		complete = false
-	}
-
-	var flights []flight
-	for _, s := range timetable {
-		if s.Date.Before(from) || s.Date.After(to) {
-			continue
-		}
-		departure, arrival := s.Departure, s.Arrival
-		f := flight{departure: departure, arrival: arrival}
-		switch c, ok := cheapestByDay[s.Date]; {
-		case ok && c == nil:
-			// Nothing on sale that day: no point asking about the other flights.
-		case ok && c.Departure.Equal(departure):
-			f.arrival, f.price = c.Arrival, &c.Price
-		default:
-			fare, err := w.ryanair.FareAt(ctx, r.from, r.to, departure)
-			if err != nil {
-				slog.WarnContext(ctx, "time-window pricing failed, storing the flight without a price",
-					"from", r.from, "to", r.to, "departure", departure.Format(time.DateTime), "err", err)
-			} else if fare != nil {
-				f.arrival, f.price = fare.Arrival, &fare.Price
-			}
-		}
-		flights = append(flights, f)
-	}
-	// A cheapest flight missing from the timetable is still a flight.
-	for _, c := range cheapest {
-		if c.Fare != nil && !c.Day.Before(from) && !c.Day.After(to) &&
-			!slices.ContainsFunc(flights, func(f flight) bool { return f.departure.Equal(c.Fare.Departure) }) {
-			flights = append(flights, flight{departure: c.Fare.Departure, arrival: c.Fare.Arrival, price: &c.Fare.Price})
-		}
 	}
 	return w.store(ctx, rm, flights, complete)
 }
 
 // store upserts the flights of rm with the current fetch time and records the refresh. When the timetable was
 // complete, flights of rm stored by an earlier fetch but gone from it now (cancelled) are deleted.
-func (w *Worker) store(ctx context.Context, rm routeMonth, flights []flight, complete bool) error {
+func (w *Worker) store(ctx context.Context, rm routeMonth, flights []pricing.Flight, complete bool) error {
 	r, from, to := rm.route, rm.first, rm.last
 	fetchedAt := w.now()
 	return pgx.BeginFunc(ctx, w.pool, func(tx pgx.Tx) error {
@@ -395,8 +344,8 @@ func (w *Worker) store(ctx context.Context, rm routeMonth, flights []flight, com
 		for _, f := range flights {
 			var amount *int64
 			var currency *string
-			if f.price != nil {
-				amount, currency = &f.price.Amount, &f.price.Currency
+			if f.Price != nil {
+				amount, currency = &f.Price.Amount, &f.Price.Currency
 			}
 			batch.Queue(`
 				INSERT INTO flights (departure_airport, arrival_airport,
@@ -407,10 +356,10 @@ func (w *Worker) store(ctx context.Context, rm routeMonth, flights []flight, com
 					arrival_date = EXCLUDED.arrival_date, arrival_time = EXCLUDED.arrival_time,
 					price_amount = EXCLUDED.price_amount, price_currency = EXCLUDED.price_currency,
 					fetched_at = EXCLUDED.fetched_at`,
-				r.from, r.to, dateOf(f.departure), f.departure.Format("15:04"),
-				dateOf(f.arrival), f.arrival.Format("15:04"), amount, currency, fetchedAt)
-			dates = append(dates, f.departure.Format(time.DateOnly))
-			times = append(times, f.departure.Format("15:04"))
+				r.from, r.to, dateOf(f.Departure), f.Departure.Format("15:04"),
+				dateOf(f.Arrival), f.Arrival.Format("15:04"), amount, currency, fetchedAt)
+			dates = append(dates, f.Departure.Format(time.DateOnly))
+			times = append(times, f.Departure.Format("15:04"))
 		}
 		if complete {
 			batch.Queue(`
