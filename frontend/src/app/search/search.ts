@@ -6,9 +6,13 @@ import {
   NonNullableFormBuilder,
   ReactiveFormsModule,
   ValidationErrors,
+  ValidatorFn,
   Validators,
 } from '@angular/forms';
+import { readPlaces } from './places';
+import { ryanairTickets } from './ryanair-booking';
 import {
+  Catalogue,
   Flight,
   Leg,
   Money,
@@ -19,8 +23,8 @@ import {
   SortOrder,
 } from './search-api';
 import { filtersForm, moments, toSearchFilters, weekdays } from './search-filters';
+import { loadSearchSettings, saveSearchSettings } from './search-settings';
 
-const airportCode = [Validators.required, Validators.pattern(/^[A-Za-z]{3}$/)];
 /** One or more airport codes separated by commas or spaces, e.g. "KRK, KTW". */
 const airportCodes = [
   Validators.required,
@@ -53,18 +57,27 @@ export class Search {
   private readonly http = inject(HttpClient);
   private readonly fb = inject(NonNullableFormBuilder);
 
+  /** Airports, cities and countries to resolve typed places against; undefined until loaded. */
+  private readonly catalogue = signal<Catalogue | undefined>(undefined);
+
   protected readonly form = this.fb.group({
     kind: this.fb.control<OfferKind>('roundTrip'),
     homeAirports: ['', airportCodes],
-    destinationAirport: ['', airportCode],
+    destination: ['', this.knownPlaces('destination')],
+    exclusions: ['', this.knownPlaces('exclusions')],
     from: ['', Validators.required],
     to: ['', Validators.required],
     stayLength: this.fb.group(
       { min: [2, nightCount], max: [3, nightCount] },
       { validators: maxBelowMin },
     ),
+    leave: this.fb.group({
+      workStart: ['09:00', Validators.required],
+      workEnd: ['17:00', Validators.required],
+      maxLeaveDays: this.fb.control<number | null>(null, Validators.pattern(/^\d+$/)),
+      sort: this.fb.control<SortOrder>('price'),
+    }),
     filters: filtersForm(this.fb),
-    sort: this.fb.control<SortOrder>('price'),
   });
   protected readonly moments = moments;
   protected readonly weekdays = weekdays;
@@ -79,24 +92,42 @@ export class Search {
   protected readonly error = signal<string | undefined>(undefined);
   /** Whether the user has tried to search; invalid fields are marked only after that. */
   protected readonly submitted = signal(false);
+  protected readonly ryanairTickets = ryanairTickets;
 
   constructor() {
+    // Typed places are checked again once the catalogue arrives. Without it, airport codes still work.
+    this.http
+      .get<Catalogue>('/api/catalogue')
+      .pipe(takeUntilDestroyed())
+      .subscribe({
+        next: (catalogue) => {
+          this.catalogue.set(catalogue);
+          this.form.controls.destination.updateValueAndValidity();
+          this.form.controls.exclusions.updateValueAndValidity();
+        },
+        error: () => {},
+      });
     // The stay length applies to round trips only; a disabled group does not affect the form's validity.
     this.form.controls.kind.valueChanges.pipe(takeUntilDestroyed()).subscribe((kind) => {
       const stayLength = this.form.controls.stayLength;
       if (kind === 'roundTrip') stayLength.enable();
       else stayLength.disable();
-      // A one-way offer has no nights to divide its price by.
-      if (kind === 'oneWay' && this.form.controls.sort.value === 'pricePerNight') {
-        this.form.controls.sort.setValue('price');
-      }
     });
+    // So do work hours, the maximum of leave days and the sort, which has only price for one-way offers.
+    this.form.controls.kind.valueChanges.pipe(takeUntilDestroyed()).subscribe((kind) => {
+      const leave = this.form.controls.leave;
+      if (kind === 'roundTrip') leave.enable();
+      else leave.disable();
+    });
+    const settings = loadSearchSettings();
+    if (settings) this.form.patchValue(settings);
   }
 
   protected submit() {
     this.submitted.set(true);
     if (this.form.invalid) return;
     const v = this.form.getRawValue();
+    saveSearchSettings(v);
     const query: SearchQuery = {
       kind: v.kind,
       homeAirports: [
@@ -107,15 +138,22 @@ export class Search {
             .map((code) => code.toUpperCase()),
         ),
       ],
-      destination: { airports: [v.destinationAirport.toUpperCase()] },
+      destination: {},
       travelWindow: { from: v.from, to: v.to },
     };
+    const destination = readPlaces(v.destination, this.catalogue());
+    query.destination = destination.anywhere ? { anywhere: true } : destination.places;
+    const exclusions = readPlaces(v.exclusions, this.catalogue()).places;
+    if (Object.keys(exclusions).length > 0) query.exclusions = exclusions;
     if (v.kind === 'roundTrip') {
       query.stayLength = { min: Number(v.stayLength.min), max: Number(v.stayLength.max) };
+      query.workStart = v.leave.workStart;
+      query.workEnd = v.leave.workEnd;
+      if (v.leave.maxLeaveDays != null) query.maxLeaveDays = Number(v.leave.maxLeaveDays);
+      query.sort = v.leave.sort;
     }
     const filters = toSearchFilters(v.filters, v.kind);
     if (filters) query.filters = filters;
-    if (v.sort !== 'price') query.sort = v.sort;
     this.loading.set(true);
     this.error.set(undefined);
     this.http.post<SearchResponse>('/api/search', query).subscribe({
@@ -130,9 +168,33 @@ export class Search {
     });
   }
 
+  /**
+   * A validator of places typed as text: each must name a known place; only a destination may be anywhere,
+   * and a destination needs at least one place.
+   */
+  private knownPlaces(field: 'destination' | 'exclusions'): ValidatorFn {
+    return (control) => {
+      const typed = readPlaces(control.value as string, this.catalogue());
+      if (typed.unknown.length > 0) return { unknownPlace: typed.unknown };
+      if (field === 'exclusions') return typed.anywhere ? { anywhereExcluded: true } : null;
+      return typed.anywhere || Object.keys(typed.places).length > 0 ? null : { required: true };
+    };
+  }
+
   /** Whether a field should be marked invalid: it is, and the user has tried to search. */
   protected invalid(name: keyof typeof this.form.controls): boolean {
     return this.submitted() && this.form.controls[name].invalid;
+  }
+
+  /** Whether a work-hours or leave-days field should be marked invalid, like `invalid`. */
+  protected invalidLeave(name: keyof typeof this.form.controls.leave.controls): boolean {
+    return this.submitted() && this.form.controls.leave.controls[name].invalid;
+  }
+
+  /** Leave days like "no leave days", "1 leave day" or "2 leave days". */
+  protected leaveDays(days: number): string {
+    if (days === 0) return 'no leave days';
+    return `${days} ${days === 1 ? 'leave day' : 'leave days'}`;
   }
 
   /** The offer's legs in travel order: outbound, then inbound for a round trip. */
@@ -145,6 +207,12 @@ export class Search {
     const year = Number(date.slice(0, 4));
     const label = dayFormat.format(Date.parse(date));
     return year === thisYear ? label : `${label} ${year}`;
+  }
+
+  /** A small count in words, e.g. "two"; numerals from 10 on. */
+  protected count(n: number): string {
+    const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+    return words[n] ?? `${n}`;
   }
 
   protected money(m: Money): string {

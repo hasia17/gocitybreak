@@ -19,14 +19,22 @@
           />
         </label>
         <span class="arrow" aria-hidden="true">→</span>
-        <label class="field code" [class.invalid]="invalid('destinationAirport')">
+        <label class="field places" [class.invalid]="invalid('destination')">
           To
           <input
-            formControlName="destinationAirport"
-            placeholder="BGY"
-            maxlength="3"
+            formControlName="destination"
+            placeholder="Milan, Spain, anywhere"
             autocomplete="off"
-            [attr.aria-invalid]="invalid('destinationAirport')"
+            [attr.aria-invalid]="invalid('destination')"
+          />
+        </label>
+        <label class="field places" [class.invalid]="invalid('exclusions')">
+          Except
+          <input
+            formControlName="exclusions"
+            placeholder="Norway, BGY"
+            autocomplete="off"
+            [attr.aria-invalid]="invalid('exclusions')"
           />
         </label>
         <span class="divider" aria-hidden="true"></span>
@@ -77,21 +85,50 @@
         </svg>
       </button>
     </div>
+    @if (kind() === 'roundTrip') {
+      <div class="options" formGroupName="leave">
+        <label class="field time" [class.invalid]="invalidLeave('workStart')">
+          Work start
+          <input
+            type="time"
+            formControlName="workStart"
+            [attr.aria-invalid]="invalidLeave('workStart')"
+          />
+        </label>
+        <label class="field time" [class.invalid]="invalidLeave('workEnd')">
+          Work end
+          <input
+            type="time"
+            formControlName="workEnd"
+            [attr.aria-invalid]="invalidLeave('workEnd')"
+          />
+        </label>
+        <label class="field leave" [class.invalid]="invalidLeave('maxLeaveDays')">
+          Max leave days
+          <input
+            type="number"
+            min="0"
+            formControlName="maxLeaveDays"
+            placeholder="any"
+            [attr.aria-invalid]="invalidLeave('maxLeaveDays')"
+          />
+        </label>
+        <label class="field">
+          Sort
+          <select formControlName="sort" aria-label="Sort by">
+            <option value="price">Price</option>
+            <option value="leaveDays">Leave days</option>
+            <option value="pricePerNight">Price per night</option>
+          </select>
+        </label>
+      </div>
+    }
     <details class="filters" formGroupName="filters">
-      <summary>Filters and sorting</summary>
+      <summary>Filters</summary>
       <div class="filters-body">
         <label class="check"
           ><input type="checkbox" formControlName="directOnly" />Direct flights only</label
         >
-        <label class="sort">
-          Sort by
-          <select [formControl]="form.controls.sort" aria-label="Sort by">
-            <option value="price">Price</option>
-            @if (kind() === 'roundTrip') {
-              <option value="pricePerNight">Price per night</option>
-            }
-          </select>
-        </label>
         <div class="time-ranges">
           <p class="note">Hours in local time at each airport.</p>
           @for (moment of moments; track moment.name) {
@@ -129,7 +166,8 @@
 
   @if (form.invalid && submitted()) {
     <p class="hint" role="alert">
-      Enter 3-letter airport codes, both dates and nights from the minimum up to the maximum.
+      Enter 3-letter airport codes, places as airports, cities or countries (or anywhere), both
+      dates and nights from the minimum up to the maximum.
     </p>
   }
 </section>
@@ -141,7 +179,10 @@
 @if (offers(); as offers) {
   <section class="results" data-testid="results" aria-live="polite">
     @if (offers.length === 0) {
-      <p class="empty">No offers match your search. Try a wider travel window or other airports.</p>
+      <p class="empty">
+        No offers match your search. Try loosening it: a wider travel window, more nights to choose
+        from or more airports.
+      </p>
     } @else {
       <header class="results-head">
         <h2>{{ offers.length }} {{ offers.length === 1 ? 'offer' : 'offers' }}</h2>
@@ -180,6 +221,11 @@
                   >{{ offer.nights }} {{ offer.nights === 1 ? 'night' : 'nights' }}</span
                 >
               }
+              @if (offer.leaveDays !== undefined) {
+                <span class="badge" [class.free]="offer.leaveDays === 0">{{
+                  leaveDays(offer.leaveDays)
+                }}</span>
+              }
             </div>
             <div class="price">
               <strong>{{ offer.price.approximate ? '≈ ' : '' }}{{ money(offer.price) }}</strong>
@@ -194,6 +240,15 @@
                 }
                 checked {{ priceAge(offer) }}
               </small>
+              @let tickets = ryanairTickets(offer);
+              @if (tickets.length > 1) {
+                <small>Booked as {{ count(tickets.length) }} separate one-way tickets</small>
+              }
+              @for (ticket of tickets; track ticket.url) {
+                <a [href]="ticket.url" target="_blank" rel="noopener">
+                  {{ tickets.length > 1 ? ticket.route : 'Book' }} on Ryanair ↗
+                </a>
+              }
             </div>
           </li>
         }

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/hasia17/gocitybreak/backend/internal/catalogue"
 	"github.com/hasia17/gocitybreak/backend/internal/search"
 )
 
@@ -19,8 +20,10 @@ type searchRequest struct {
 	Kind         string   `json:"kind"`
 	HomeAirports []string `json:"homeAirports"`
 	Destination  struct {
-		Airports []string `json:"airports"`
+		placesJSON
+		Anywhere bool `json:"anywhere"`
 	} `json:"destination"`
+	Exclusions   placesJSON `json:"exclusions"`
 	TravelWindow struct {
 		From string `json:"from"`
 		To   string `json:"to"`
@@ -29,8 +32,23 @@ type searchRequest struct {
 		Min int `json:"min"`
 		Max int `json:"max"`
 	} `json:"stayLength"`
-	Filters filtersJSON `json:"filters"`
-	Sort    string      `json:"sort"`
+	WorkStart string `json:"workStart"`
+	WorkEnd   string `json:"workEnd"`
+	// MaxLeaveDays is optional; 0 is a valid maximum.
+	MaxLeaveDays *int        `json:"maxLeaveDays"`
+	Filters      filtersJSON `json:"filters"`
+	Sort         string      `json:"sort"`
+}
+
+// placesJSON names airports, cities and countries by the codes the catalogue gives them.
+type placesJSON struct {
+	Airports  []string `json:"airports"`
+	Cities    []string `json:"cities"`
+	Countries []string `json:"countries"`
+}
+
+func (p placesJSON) places() catalogue.Places {
+	return catalogue.Places{Airports: p.Airports, Cities: p.Cities, Countries: p.Countries}
 }
 
 type searchResponse struct {
@@ -47,6 +65,8 @@ type offerJSON struct {
 	// PricePerNight is set for round-trip offers of at least one night.
 	PricePerNight  *priceJSON `json:"pricePerNight,omitempty"`
 	PriceFetchedAt time.Time  `json:"priceFetchedAt"`
+	// LeaveDays is set for round-trip offers only, where 0 is a valid number of leave days.
+	LeaveDays *int `json:"leaveDays,omitempty"`
 }
 
 type legJSON struct {
@@ -114,8 +134,13 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 	if len(req.HomeAirports) == 0 {
 		return search.Query{}, errors.New("homeAirports must not be empty")
 	}
-	if len(req.Destination.Airports) == 0 {
-		return search.Query{}, errors.New("destination.airports must not be empty")
+	destination := search.Destination{
+		Places:     req.Destination.places(),
+		Anywhere:   req.Destination.Anywhere,
+		Exclusions: req.Exclusions.places(),
+	}
+	if !destination.Anywhere && destination.IsEmpty() {
+		return search.Query{}, errors.New("destination must name airports, cities or countries, or be anywhere")
 	}
 	from, err := time.Parse(time.DateOnly, req.TravelWindow.From)
 	if err != nil {
@@ -131,7 +156,7 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 	q := search.Query{
 		Kind:         kind,
 		HomeAirports: req.HomeAirports,
-		Destination:  search.Destination{Airports: req.Destination.Airports},
+		Destination:  destination,
 		TravelWindow: search.TravelWindow{From: from, To: to},
 	}
 	if kind == search.RoundTrip {
@@ -145,6 +170,16 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 			return search.Query{}, errors.New("stayLength.max must not be less than stayLength.min")
 		}
 		q.StayLength = search.StayLength{Min: req.StayLength.Min, Max: req.StayLength.Max}
+		if q.WorkHours.Start, err = timeOfDay(cmp.Or(req.WorkStart, defaultWorkStart)); err != nil {
+			return search.Query{}, errors.New("workStart must be a time in HH:MM format")
+		}
+		if q.WorkHours.End, err = timeOfDay(cmp.Or(req.WorkEnd, defaultWorkEnd)); err != nil {
+			return search.Query{}, errors.New("workEnd must be a time in HH:MM format")
+		}
+		if req.MaxLeaveDays != nil && *req.MaxLeaveDays < 0 {
+			return search.Query{}, errors.New("maxLeaveDays must not be negative")
+		}
+		q.MaxLeaveDays = req.MaxLeaveDays
 	}
 	if q.Filters, err = req.Filters.parse(); err != nil {
 		return search.Query{}, err
@@ -153,6 +188,21 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 		return search.Query{}, err
 	}
 	return q, nil
+}
+
+// Work hours assumed when the query sets none.
+const (
+	defaultWorkStart = "09:00"
+	defaultWorkEnd   = "17:00"
+)
+
+// timeOfDay parses an HH:MM time into an offset from midnight.
+func timeOfDay(s string) (time.Duration, error) {
+	t, err := time.Parse(timeLayout, s)
+	if err != nil {
+		return 0, err
+	}
+	return time.Duration(t.Hour())*time.Hour + time.Duration(t.Minute())*time.Minute, nil
 }
 
 func toOfferJSON(o search.Offer) offerJSON {
@@ -165,6 +215,7 @@ func toOfferJSON(o search.Offer) offerJSON {
 	if o.Inbound != nil {
 		offer.Inbound = new(toLegJSON(*o.Inbound))
 		offer.Nights = new(o.Nights)
+		offer.LeaveDays = new(o.LeaveDays)
 	}
 	if p, ok := o.PricePerNight(); ok {
 		offer.PricePerNight = new(toPriceJSON(p))

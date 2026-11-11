@@ -2,11 +2,35 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Search } from './search';
+import { Catalogue } from './search-api';
+
+const catalogue: Catalogue = {
+  supportedAirports: [{ code: 'KRK', name: 'Kraków' }],
+  airports: [
+    { code: 'BGY', name: 'Milan Bergamo', cities: ['BERGAMO', 'MILAN'], country: 'it' },
+    { code: 'KRK', name: 'Kraków', cities: ['KRAKOW'], country: 'pl' },
+    { code: 'MXP', name: 'Milan Malpensa', cities: ['MILAN'], country: 'it' },
+    { code: 'OSL', name: 'Oslo', cities: ['OSLO'], country: 'no' },
+  ],
+  cities: [
+    { code: 'BERGAMO', name: 'Bergamo', country: 'it', airports: ['BGY'] },
+    { code: 'KRAKOW', name: 'Kraków', country: 'pl', airports: ['KRK'] },
+    { code: 'MILAN', name: 'Milan', country: 'it', airports: ['BGY', 'MXP'] },
+    { code: 'OSLO', name: 'Oslo', country: 'no', airports: ['OSL'] },
+  ],
+  countries: [
+    { code: 'it', name: 'Italy' },
+    { code: 'no', name: 'Norway' },
+    { code: 'pl', name: 'Poland' },
+    { code: 'es', name: 'Spain' },
+  ],
+};
 
 describe('Search', () => {
   let httpTesting: HttpTestingController;
 
   beforeEach(async () => {
+    localStorage.clear(); // search remembers its settings; each test starts from the defaults
     await TestBed.configureTestingModule({
       imports: [Search],
       providers: [provideHttpClient(), provideHttpClientTesting()],
@@ -14,7 +38,11 @@ describe('Search', () => {
     httpTesting = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => httpTesting.verify());
+  afterEach(() => {
+    // Tests that type only airport codes leave the catalogue request unanswered.
+    httpTesting.match('/api/catalogue');
+    httpTesting.verify();
+  });
 
   function fill(root: HTMLElement, label: string, value: string) {
     const input = Array.from(root.querySelectorAll('label'))
@@ -71,13 +99,15 @@ describe('Search', () => {
     root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
 
     const req = httpTesting.expectOne({ method: 'POST', url: '/api/search' });
-    expect(req.request.body).toEqual({
-      kind: 'roundTrip',
-      homeAirports: ['KRK', 'KTW'],
-      destination: { airports: ['BGY'] },
-      travelWindow: { from: '2026-12-01', to: '2026-12-10' },
-      stayLength: { min: 2, max: 4 },
-    });
+    expect(req.request.body).toEqual(
+      expect.objectContaining({
+        kind: 'roundTrip',
+        homeAirports: ['KRK', 'KTW'],
+        destination: { airports: ['BGY'] },
+        travelWindow: { from: '2026-12-01', to: '2026-12-10' },
+        stayLength: { min: 2, max: 4 },
+      }),
+    );
     const fetchedAt = new Date().toISOString();
     req.flush({
       offers: [
@@ -125,6 +155,119 @@ describe('Search', () => {
     expect(offer).not.toContain('89.00 PLN ·');
   });
 
+  it('searches with work hours, a maximum of leave days and the leave-days sort, and shows leave days', async () => {
+    const fixture = TestBed.createComponent(Search);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+
+    fill(root, 'From', 'KRK');
+    fill(root, 'To', 'BGY');
+    fill(root, 'Earliest', '2026-12-01');
+    fill(root, 'Latest', '2026-12-10');
+    fill(root, 'Work start', '08:00');
+    fill(root, 'Work end', '16:00');
+    fill(root, 'Max leave days', '0');
+    const sort = root.querySelector<HTMLSelectElement>('select[aria-label="Sort by"]')!;
+    sort.value = 'leaveDays';
+    sort.dispatchEvent(new Event('change'));
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+
+    const req = httpTesting.expectOne({ method: 'POST', url: '/api/search' });
+    expect(req.request.body).toEqual({
+      kind: 'roundTrip',
+      homeAirports: ['KRK'],
+      destination: { airports: ['BGY'] },
+      travelWindow: { from: '2026-12-01', to: '2026-12-10' },
+      stayLength: { min: 2, max: 3 },
+      workStart: '08:00',
+      workEnd: '16:00',
+      maxLeaveDays: 0,
+      sort: 'leaveDays',
+    });
+    const fetchedAt = new Date().toISOString();
+    const flight = (from: string, to: string, date: string, time: string) => ({
+      departureAirport: from,
+      arrivalAirport: to,
+      departure: { date, time, timeZone: 'Europe/Warsaw' },
+      arrival: { date, time, timeZone: 'Europe/Warsaw' },
+      originalPrice: { amount: 50, currency: 'PLN' },
+      fetchedAt,
+    });
+    const offer = (leaveDays: number) => ({
+      kind: 'roundTrip',
+      outbound: { isDirect: true, flights: [flight('KRK', 'BGY', '2026-12-04', '18:00')] },
+      inbound: { isDirect: true, flights: [flight('BGY', 'KRK', '2026-12-06', '20:00')] },
+      nights: 2,
+      leaveDays,
+      price: { amount: 100, currency: 'PLN', approximate: false },
+      priceFetchedAt: fetchedAt,
+    });
+    req.flush({ offers: [offer(0), offer(1), offer(2)] });
+    await fixture.whenStable();
+
+    const offers = Array.from(root.querySelectorAll('[data-testid="offer"]')).map((o) =>
+      o.textContent?.replace(/\s+/g, ' '),
+    );
+    expect(offers[0]).toContain('no leave');
+    expect(offers[1]).toContain('1 leave day');
+    expect(offers[1]).not.toContain('1 leave days');
+    expect(offers[2]).toContain('2 leave days');
+  });
+
+  it('leaves out the maximum of leave days when it is empty, and sorts by price by default', async () => {
+    const fixture = TestBed.createComponent(Search);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+
+    fill(root, 'From', 'KRK');
+    fill(root, 'To', 'BGY');
+    fill(root, 'Earliest', '2026-12-01');
+    fill(root, 'Latest', '2026-12-10');
+    fill(root, 'Max leave days', '');
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+
+    const req = httpTesting.expectOne({ method: 'POST', url: '/api/search' });
+    expect(req.request.body).toEqual(
+      expect.objectContaining({ workStart: '09:00', workEnd: '17:00', sort: 'price' }),
+    );
+    expect(req.request.body).not.toHaveProperty('maxLeaveDays');
+    req.flush({ offers: [] });
+  });
+
+  it('remembers work hours, the maximum of leave days and the sort for the next visit', async () => {
+    const first = TestBed.createComponent(Search);
+    await first.whenStable();
+    let root = first.nativeElement as HTMLElement;
+    fill(root, 'From', 'KRK');
+    fill(root, 'To', 'BGY');
+    fill(root, 'Earliest', '2026-12-01');
+    fill(root, 'Latest', '2026-12-10');
+    fill(root, 'Work start', '07:30');
+    fill(root, 'Work end', '15:30');
+    fill(root, 'Max leave days', '1');
+    const sort = root.querySelector<HTMLSelectElement>('select[aria-label="Sort by"]')!;
+    sort.value = 'leaveDays';
+    sort.dispatchEvent(new Event('change'));
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+    httpTesting.expectOne('/api/search').flush({ offers: [] });
+    first.destroy();
+
+    const fixture = TestBed.createComponent(Search);
+    await fixture.whenStable();
+    root = fixture.nativeElement as HTMLElement;
+
+    const value = (label: string) =>
+      Array.from(root.querySelectorAll('label'))
+        .find((l) => l.textContent?.trim().startsWith(label))
+        ?.querySelector('input')?.value;
+    expect(value('Work start')).toBe('07:30');
+    expect(value('Work end')).toBe('15:30');
+    expect(value('Max leave days')).toBe('1');
+    expect(root.querySelector<HTMLSelectElement>('select[aria-label="Sort by"]')!.value).toBe(
+      'leaveDays',
+    );
+  });
+
   it('sends the chosen time ranges, weekdays, direct only and price-per-night sort', async () => {
     const fixture = TestBed.createComponent(Search);
     await fixture.whenStable();
@@ -155,6 +298,8 @@ describe('Search', () => {
       destination: { airports: ['BGY'] },
       travelWindow: { from: '2026-12-01', to: '2026-12-10' },
       stayLength: { min: 2, max: 3 },
+      workStart: '09:00',
+      workEnd: '17:00',
       filters: {
         directOnly: true,
         outboundDeparture: { from: '06:00', to: '12:00' },
@@ -202,6 +347,31 @@ describe('Search', () => {
     req.flush({ offers: [] });
   });
 
+  it('remembers the filters for the next visit', async () => {
+    const first = TestBed.createComponent(Search);
+    await first.whenStable();
+    let root = first.nativeElement as HTMLElement;
+    fill(root, 'From', 'KRK');
+    fill(root, 'To', 'BGY');
+    fill(root, 'Earliest', '2026-12-01');
+    fill(root, 'Latest', '2026-12-10');
+    time(root, 'Outbound departure from', '06:00');
+    day(root, 'Departure days', 'Fri');
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+    httpTesting.expectOne('/api/search').flush({ offers: [] });
+    first.destroy();
+
+    const fixture = TestBed.createComponent(Search);
+    await fixture.whenStable();
+    root = fixture.nativeElement as HTMLElement;
+
+    expect(labelled<HTMLInputElement>(root, 'Outbound departure from').value).toBe('06:00');
+    const friday = Array.from(root.querySelectorAll('fieldset'))
+      .find((f) => f.querySelector('legend')?.textContent?.trim() === 'Departure days')
+      ?.querySelectorAll('input')[4];
+    expect(friday?.checked).toBe(true);
+  });
+
   it('shows the price per night of a round-trip offer', async () => {
     const fixture = TestBed.createComponent(Search);
     await fixture.whenStable();
@@ -228,6 +398,7 @@ describe('Search', () => {
           outbound: { isDirect: true, flights: [flight('KRK', 'BGY', '2026-12-04')] },
           inbound: { isDirect: true, flights: [flight('BGY', 'KRK', '2026-12-07')] },
           nights: 3,
+          leaveDays: 1,
           price: { amount: 90.99, currency: 'PLN', approximate: true },
           pricePerNight: { amount: 30.33, currency: 'PLN', approximate: true },
           priceFetchedAt: fetchedAt,
@@ -437,5 +608,54 @@ describe('Search', () => {
     await fixture.whenStable();
 
     expect(root.textContent).toContain('No offers');
+  });
+
+  describe('destination', () => {
+    async function searchFrom(destination: string, exclusions = '') {
+      const fixture = TestBed.createComponent(Search);
+      httpTesting.expectOne({ method: 'GET', url: '/api/catalogue' }).flush(catalogue);
+      await fixture.whenStable();
+      const root = fixture.nativeElement as HTMLElement;
+      root.querySelector<HTMLInputElement>('input[type="radio"][value="oneWay"]')!.click();
+      fill(root, 'From', 'KRK');
+      fill(root, 'To', destination);
+      fill(root, 'Except', exclusions);
+      fill(root, 'Earliest', '2026-12-01');
+      fill(root, 'Latest', '2026-12-10');
+      root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+      await fixture.whenStable();
+      return root;
+    }
+
+    it('takes cities, countries and airports by name or code, minus exclusions', async () => {
+      await searchFrom('milan, Spain, osl', 'Bergamo');
+
+      const req = httpTesting.expectOne({ method: 'POST', url: '/api/search' });
+      expect(req.request.body.destination).toEqual({
+        airports: ['OSL'],
+        cities: ['MILAN'],
+        countries: ['es'],
+      });
+      expect(req.request.body.exclusions).toEqual({ cities: ['BERGAMO'] });
+    });
+
+    it('takes anywhere, minus countries and airports', async () => {
+      await searchFrom('Anywhere', 'Norway, italy, Milan Malpensa');
+
+      const req = httpTesting.expectOne({ method: 'POST', url: '/api/search' });
+      expect(req.request.body.destination).toEqual({ anywhere: true });
+      expect(req.request.body.exclusions).toEqual({ airports: ['MXP'], countries: ['no', 'it'] });
+    });
+
+    it('marks a place it does not know', async () => {
+      const root = await searchFrom('Milan, Atlantis', 'anywhere');
+
+      httpTesting.expectNone('/api/search');
+      const invalid = Array.from(root.querySelectorAll('input[aria-invalid="true"]')).map(
+        (i) => i.closest('label')?.textContent?.trim().split(/\s/)[0],
+      );
+      expect(invalid).toEqual(['To', 'Except']);
+      expect(root.querySelector('[role="alert"]')?.textContent).toContain('cities or countries');
+    });
   });
 });

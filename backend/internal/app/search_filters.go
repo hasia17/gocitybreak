@@ -58,24 +58,15 @@ func (r *timeRangeJSON) parse(name string) (*search.TimeRange, error) {
 	if r == nil {
 		return nil, nil
 	}
-	from, err := parseTimeOfDay(r.From)
+	from, err := timeOfDay(r.From)
 	if err != nil {
 		return nil, fmt.Errorf("%s.from must be a time in HH:MM format", name)
 	}
-	to, err := parseTimeOfDay(r.To)
+	to, err := timeOfDay(r.To)
 	if err != nil {
 		return nil, fmt.Errorf("%s.to must be a time in HH:MM format", name)
 	}
 	return &search.TimeRange{From: from, To: to}, nil
-}
-
-// parseTimeOfDay turns "HH:MM" into the time elapsed since midnight.
-func parseTimeOfDay(s string) (time.Duration, error) {
-	t, err := time.Parse(timeLayout, s)
-	if err != nil {
-		return 0, err
-	}
-	return time.Duration(t.Hour())*time.Hour + time.Duration(t.Minute())*time.Minute, nil
 }
 
 // weekdays maps the weekday names of the API to time.Weekday.
@@ -102,12 +93,14 @@ func parseSort(sort string, kind search.OfferKind) (search.SortOrder, error) {
 	switch order := search.SortOrder(sort); order {
 	case "", search.ByPrice:
 		return search.ByPrice, nil
+	case search.ByLeaveDays:
+		return order, nil
 	case search.ByPricePerNight:
 		if kind != search.RoundTrip {
 			return "", fmt.Errorf("sort %q applies to round trips only", order)
 		}
 		return order, nil
 	default:
-		return "", fmt.Errorf("sort must be %q or %q", search.ByPrice, search.ByPricePerNight)
+		return "", fmt.Errorf("sort must be %q, %q or %q", search.ByPrice, search.ByLeaveDays, search.ByPricePerNight)
 	}
 }

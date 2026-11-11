@@ -59,6 +59,8 @@ func TestSearchPairsOutboundAndInboundFlightsIntoRoundTripOffer(t *testing.T) {
 			}},
 		},
 		Nights: new(2),
+		// Friday after the default work end of 17:00, back on Sunday.
+		LeaveDays: new(0),
 		// 89.00 PLN + 19.99 EUR × 4.2512 PLN/EUR (84.98 PLN) = 173.98 PLN, approximate.
 		Price: priceBody{Amount: 173.98, Currency: "PLN", Approximate: true},
 		// 173.98 PLN / 2 nights.

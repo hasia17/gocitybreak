@@ -1,21 +1,40 @@
-/** Types of the backend's POST /api/search; names follow GLOSSARY.md. */
+/** Types of the backend's POST /api/search and GET /api/catalogue; names follow GLOSSARY.md. */
 
 export type OfferKind = 'roundTrip' | 'oneWay';
+
+/** Airports, cities and countries, each named by its code from the catalogue. */
+export interface Places {
+  airports?: string[];
+  cities?: string[];
+  countries?: string[];
+}
+
+/** Where to fly: any number of places, or anywhere (all airports reachable from the home airports). */
+export interface Destination extends Places {
+  anywhere?: boolean;
+}
 
 export interface SearchQuery {
   kind: OfferKind;
   homeAirports: string[];
-  destination: { airports: string[] };
+  destination: Destination;
+  /** Places removed from the destination. */
+  exclusions?: Places;
   travelWindow: { from: string; to: string };
   /** Range of hotel nights, both ends inclusive; round trips only. */
   stayLength?: { min: number; max: number };
+  /** Work start and work end as HH:MM in the home airport's local time; round trips only. */
+  workStart?: string;
+  workEnd?: string;
+  /** Leaves out round-trip offers that cost more leave days; 0 is a valid maximum. */
+  maxLeaveDays?: number;
   /** Absent filters restrict nothing; inbound ones and returnWeekdays apply to round trips only. */
   filters?: SearchFilters;
   /** Price by default; price per night for round trips only. */
   sort?: SortOrder;
 }
 
-export type SortOrder = 'price' | 'pricePerNight';
+export type SortOrder = 'price' | 'leaveDays' | 'pricePerNight';
 
 export type Weekday = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
 
@@ -57,6 +76,8 @@ export interface Offer {
   pricePerNight?: Price;
   /** When the oldest stored price of the offer's flights was fetched (ISO 8601). */
   priceFetchedAt: string;
+  /** Working days a round trip costs (GLOSSARY: Leave days). */
+  leaveDays?: number;
 }
 
 /** An amount in PLN; approximate when converted from another currency. */
@@ -90,4 +111,34 @@ export interface LocalTime {
 export interface Money {
   amount: number;
   currency: string;
+}
+
+/** What the search form chooses from. */
+export interface Catalogue {
+  supportedAirports: { code: string; name: string }[];
+  airports: CatalogueAirport[];
+  /** A city covers several airports, e.g. Milan covers MXP and BGY. */
+  cities: City[];
+  countries: Country[];
+}
+
+export interface CatalogueAirport {
+  code: string;
+  name: string;
+  /** Codes of the cities the airport belongs to; an airport may belong to several. */
+  cities: string[];
+  country?: string;
+}
+
+export interface City {
+  code: string;
+  name: string;
+  country?: string;
+  airports: string[];
+}
+
+export interface Country {
+  /** Lower-case ISO 3166-1 alpha-2 code, e.g. "it". */
+  code: string;
+  name: string;
 }
