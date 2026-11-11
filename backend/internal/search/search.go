@@ -29,15 +29,18 @@ const (
 
 // Query is what the traveller searches for.
 type Query struct {
+	// Kind is the kind of offer searched for; an empty Kind is a round trip, the default kind of offer.
 	Kind         OfferKind
 	HomeAirports []string
 	Destination  Destination
 	TravelWindow TravelWindow
-	// StayLength applies to round-trip offers only.
-	StayLength StayLength
+	// StayLength applies to round-trip offers only. Nil means the query names none,
+	// which a round trip may not: it requires a stay length.
+	StayLength *StayLength
 	// WorkStart and WorkEnd are offsets from midnight in the home airport's local time,
-	// from which the leave days of round-trip offers are counted.
-	WorkStart, WorkEnd time.Duration
+	// from which the leave days of round-trip offers are counted. Nil means the default work
+	// hours, 09:00–17:00; an explicit 00:00 is a set work start, not an unset one.
+	WorkStart, WorkEnd *time.Duration
 	Filters            Filters
 	// Sort is the order of the offers; by price when unset.
 	Sort SortOrder
@@ -158,9 +161,11 @@ type QueryError struct {
 func (e *QueryError) Error() string { return e.Reason }
 
 // Search returns offers of q's kind made of direct flights that pass q's filters, in q's sort order.
-// Flights in a currency with no exchange rate yet are left out. A query that breaks a rule of the search
-// returns a *QueryError.
+// Flights in a currency with no exchange rate yet are left out. Every rule of q and every default
+// of the search live here: a query that breaks a rule returns a *QueryError before any stored data
+// is read, an empty kind is a round trip, and work hours left unset become the default work hours.
 func (s *Searcher) Search(ctx context.Context, q Query) ([]Offer, error) {
+	q = q.withDefaults()
 	if err := q.validate(); err != nil {
 		return nil, err
 	}
@@ -189,7 +194,29 @@ func (s *Searcher) Search(ctx context.Context, q Query) ([]Offer, error) {
 	return offers, nil
 }
 
-// validate checks the rules of a query that need no stored data.
+// withDefaults returns q with its defaults applied: an empty kind is a round trip, the default
+// kind of offer, and work hours left unset become the default work hours.
+func (q Query) withDefaults() Query {
+	if q.Kind == "" {
+		q.Kind = RoundTrip
+	}
+	if q.WorkStart == nil {
+		q.WorkStart = new(defaultWorkStart)
+	}
+	if q.WorkEnd == nil {
+		q.WorkEnd = new(defaultWorkEnd)
+	}
+	return q
+}
+
+// The work hours a query's leave days are counted from when it sets none.
+const (
+	defaultWorkStart = 9 * time.Hour
+	defaultWorkEnd   = 17 * time.Hour
+)
+
+// validate checks the rules of a query that need no stored data, on a query with its defaults
+// applied; each rule it breaks is reported as a *QueryError.
 func (q Query) validate() error {
 	switch q.Kind {
 	case RoundTrip, OneWay:
@@ -328,7 +355,7 @@ func (s *Searcher) roundTrip(ctx context.Context, q Query, destination []string)
 		price, fetchedAt := offerPrice(out, in)
 		// The outbound flight departs from a home airport and the inbound flight lands at one,
 		// so both times are in a home airport's local time.
-		leaveDays := leave.Days(out.Departure.DateTime, in.Arrival.DateTime, q.WorkStart, q.WorkEnd)
+		leaveDays := leave.Days(out.Departure.DateTime, in.Arrival.DateTime, *q.WorkStart, *q.WorkEnd)
 		return Offer{
 			Kind:           RoundTrip,
 			Outbound:       Leg{Flights: []Flight{out.Flight}},
