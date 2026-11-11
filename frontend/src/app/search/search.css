@@ -20,6 +20,44 @@ h1 {
   color: var(--muted);
 }
 
+.kind {
+  display: inline-flex;
+  gap: 0.25rem;
+  margin: 0 0 0.75rem;
+  padding: 0.2rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 9999px;
+}
+.kind label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  border-radius: 9999px;
+  color: var(--muted);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.kind label:hover {
+  background: var(--subtle);
+}
+.kind input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.kind label:has(input:checked) {
+  background: var(--text);
+  color: var(--page);
+}
+.kind label:has(input:focus-visible) {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
 .composer {
   display: flex;
   align-items: center;
@@ -75,11 +113,31 @@ h1 {
   color: var(--faint);
   font-weight: 400;
 }
-.code input {
+.code input,
+.codes input {
   width: 3.25rem;
   font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+.codes input {
+  width: 7.5rem;
+}
+.range {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--muted);
+}
+.nights input {
+  width: 2.5rem;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.nights input::-webkit-inner-spin-button,
+.nights input::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
 }
 .arrow {
   color: var(--muted);

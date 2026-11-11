@@ -1,9 +1,28 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
-import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Flight, Money, Offer, SearchQuery, SearchResponse } from './search-api';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import {
+  AbstractControl,
+  NonNullableFormBuilder,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
+import { Flight, Leg, Money, Offer, OfferKind, SearchQuery, SearchResponse } from './search-api';
 
 const airportCode = [Validators.required, Validators.pattern(/^[A-Za-z]{3}$/)];
+/** One or more airport codes separated by commas or spaces, e.g. "KRK, KTW". */
+const airportCodes = [
+  Validators.required,
+  Validators.pattern(/^[\s,]*[A-Za-z]{3}(?:[\s,]+[A-Za-z]{3})*[\s,]*$/),
+];
+const nightCount = [Validators.required, Validators.pattern(/^\d+$/)];
+
+/** A stay length whose maximum is below its minimum. */
+function maxBelowMin(group: AbstractControl): ValidationErrors | null {
+  const { min, max } = group.value as { min: number | null; max: number | null };
+  return min != null && max != null && max < min ? { maxBelowMin: true } : null;
+}
 
 const thisYear = new Date().getFullYear();
 const dayFormat = new Intl.DateTimeFormat('en-GB', {
@@ -13,7 +32,7 @@ const dayFormat = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'UTC',
 });
 
-/** Search form for one-way offers and the list of offers it finds. */
+/** Search form for round-trip (default) or one-way offers, and the list of offers it finds. */
 @Component({
   selector: 'app-search',
   imports: [ReactiveFormsModule],
@@ -22,12 +41,22 @@ const dayFormat = new Intl.DateTimeFormat('en-GB', {
 })
 export class Search {
   private readonly http = inject(HttpClient);
+  private readonly fb = inject(NonNullableFormBuilder);
 
-  protected readonly form = inject(NonNullableFormBuilder).group({
-    homeAirport: ['', airportCode],
+  protected readonly form = this.fb.group({
+    kind: this.fb.control<OfferKind>('roundTrip'),
+    homeAirports: ['', airportCodes],
     destinationAirport: ['', airportCode],
     from: ['', Validators.required],
     to: ['', Validators.required],
+    stayLength: this.fb.group(
+      { min: [2, nightCount], max: [3, nightCount] },
+      { validators: maxBelowMin },
+    ),
+  });
+
+  protected readonly kind = toSignal(this.form.controls.kind.valueChanges, {
+    initialValue: this.form.controls.kind.value,
   });
 
   /** Offers of the last search; undefined before the first search. */
@@ -37,16 +66,35 @@ export class Search {
   /** Whether the user has tried to search; invalid fields are marked only after that. */
   protected readonly submitted = signal(false);
 
+  constructor() {
+    // The stay length applies to round trips only; a disabled group does not affect the form's validity.
+    this.form.controls.kind.valueChanges.pipe(takeUntilDestroyed()).subscribe((kind) => {
+      const stayLength = this.form.controls.stayLength;
+      if (kind === 'roundTrip') stayLength.enable();
+      else stayLength.disable();
+    });
+  }
+
   protected submit() {
     this.submitted.set(true);
     if (this.form.invalid) return;
     const v = this.form.getRawValue();
     const query: SearchQuery = {
-      kind: 'oneWay',
-      homeAirports: [v.homeAirport.toUpperCase()],
+      kind: v.kind,
+      homeAirports: [
+        ...new Set(
+          v.homeAirports
+            .split(/[\s,]+/)
+            .filter(Boolean)
+            .map((code) => code.toUpperCase()),
+        ),
+      ],
       destination: { airports: [v.destinationAirport.toUpperCase()] },
       travelWindow: { from: v.from, to: v.to },
     };
+    if (v.kind === 'roundTrip') {
+      query.stayLength = { min: Number(v.stayLength.min), max: Number(v.stayLength.max) };
+    }
     this.loading.set(true);
     this.error.set(undefined);
     this.http.post<SearchResponse>('/api/search', query).subscribe({
@@ -66,6 +114,11 @@ export class Search {
     return this.submitted() && this.form.controls[name].invalid;
   }
 
+  /** The offer's legs in travel order: outbound, then inbound for a round trip. */
+  protected legs(offer: Offer): Leg[] {
+    return offer.inbound ? [offer.outbound, offer.inbound] : [offer.outbound];
+  }
+
   /** A local date like "Sat 5 Dec", with the year added outside the current year. */
   protected day(date: string): string {
     const year = Number(date.slice(0, 4));
@@ -79,12 +132,17 @@ export class Search {
 
   /** How many days after its departure date the flight lands, in local dates; 0 for the same day. */
   protected daysLater(flight: Flight): number {
-    return Math.round((Date.parse(flight.arrival.date) - Date.parse(flight.departure.date)) / 86_400_000);
+    return Math.round(
+      (Date.parse(flight.arrival.date) - Date.parse(flight.departure.date)) / 86_400_000,
+    );
   }
 
   /** Flights of the offer priced in a currency other than PLN, whose original amount is shown. */
   protected foreignPrices(offer: Offer): Money[] {
-    return offer.outbound.flights.map((f) => f.originalPrice).filter((p) => p.currency !== 'PLN');
+    return this.legs(offer)
+      .flatMap((leg) => leg.flights)
+      .map((f) => f.originalPrice)
+      .filter((p) => p.currency !== 'PLN');
   }
 
   /** How long ago the offer's stored price was fetched, e.g. "3 h ago". */
