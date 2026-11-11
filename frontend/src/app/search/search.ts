@@ -18,12 +18,21 @@ import {
   Money,
   Offer,
   OfferKind,
-  SearchQuery,
   SearchResponse,
   SortOrder,
 } from './search-api';
-import { filtersForm, moments, toSearchFilters, weekdays } from './search-filters';
+import { filtersForm } from './search-filters';
 import { loadSearchSettings, saveSearchSettings } from './search-settings';
+import {
+  buildSearchQuery,
+  defaultWorkEnd,
+  defaultWorkStart,
+  fieldApplies,
+  moments,
+  roundTripOnlyFields,
+  typedCodes,
+  weekdays,
+} from './search-query';
 
 /** One or more airport codes separated by commas or spaces, e.g. "KRK, KTW". */
 const airportCodes = [
@@ -31,22 +40,7 @@ const airportCodes = [
   Validators.pattern(/^[\s,]*[A-Za-z]{3}(?:[\s,]+[A-Za-z]{3})*[\s,]*$/),
 ];
 
-/** The distinct airport codes typed as "krk, KTW", upper-cased. */
-function typedCodes(text: string): string[] {
-  return [
-    ...new Set(
-      text
-        .split(/[\s,]+/)
-        .filter(Boolean)
-        .map((code) => code.toUpperCase()),
-    ),
-  ];
-}
 const nightCount = [Validators.required, Validators.pattern(/^\d+$/)];
-
-/** Office hours the form starts from; the backend assumes the same when a query sets none. */
-const defaultWorkStart = '09:00';
-const defaultWorkEnd = '17:00';
 
 /** A stay length whose maximum is below its minimum. */
 function maxBelowMin(group: AbstractControl): ValidationErrors | null {
@@ -125,21 +119,12 @@ export class Search {
         },
         error: () => {},
       });
-    // These apply to round trips only; a disabled control does not affect the form's validity.
-    // One-way offers sort by price only.
-    const { stayLength, leave, sort, filters } = this.form.controls;
-    const roundTripOnly = [
-      stayLength,
-      leave,
-      sort,
-      filters.controls.inboundDeparture,
-      filters.controls.inboundArrival,
-      filters.controls.inboundDepartureWeekdays,
-    ];
+    // Fields that do not apply to the kind of offer are disabled: a disabled control does not
+    // affect the form's validity, and the raw value keeps it so remembered settings lose nothing.
     this.form.controls.kind.valueChanges.pipe(takeUntilDestroyed()).subscribe((kind) => {
-      for (const control of roundTripOnly) {
-        if (kind === 'roundTrip') control.enable();
-        else control.disable();
+      for (const path of roundTripOnlyFields) {
+        if (fieldApplies(path, kind)) this.form.get(path)?.enable();
+        else this.form.get(path)?.disable();
       }
     });
     const settings = loadSearchSettings();
@@ -151,28 +136,9 @@ export class Search {
     if (this.form.invalid) return;
     const v = this.form.getRawValue();
     saveSearchSettings(v);
-    const query: SearchQuery = {
-      kind: v.kind,
-      homeAirports: typedCodes(v.homeAirports),
-      destination: {},
-      travelWindow: { from: v.from, to: v.to },
-    };
-    const destination = readTypedNames(v.destination, this.catalogue());
-    query.destination = destination.anywhere ? { anywhere: true } : destination.codes;
-    const exclusions = readTypedNames(v.exclusions, this.catalogue()).codes;
-    if (Object.keys(exclusions).length > 0) query.exclusions = exclusions;
-    if (v.kind === 'roundTrip') {
-      query.stayLength = { min: Number(v.stayLength.min), max: Number(v.stayLength.max) };
-      query.workStart = v.leave.workStart;
-      query.workEnd = v.leave.workEnd;
-      if (v.leave.maxLeaveDays != null) query.maxLeaveDays = Number(v.leave.maxLeaveDays);
-      query.sort = v.sort;
-    }
-    const filters = toSearchFilters(v.filters, v.kind);
-    if (filters) query.filters = filters;
     this.loading.set(true);
     this.error.set(undefined);
-    this.http.post<SearchResponse>('/api/search', query).subscribe({
+    this.http.post<SearchResponse>('/api/search', buildSearchQuery(v, this.catalogue())).subscribe({
       next: (resp) => {
         this.offers.set(resp.offers);
         this.loading.set(false);
@@ -182,6 +148,11 @@ export class Search {
         this.loading.set(false);
       },
     });
+  }
+
+  /** Whether the form field named by its control path applies to the chosen kind of offer. */
+  protected applies(path: string): boolean {
+    return fieldApplies(path, this.kind());
   }
 
   /** A validator of home airports: each must be a supported airport of the catalogue, once it is loaded. */
