@@ -72,6 +72,10 @@ type ScheduledFlight struct {
 	Arrival   time.Time
 }
 
+// ErrMalformedTimetable is returned by Timetable when a flight's time is not in the shape Ryanair sends.
+// Unlike a timetable that can't be fetched, it is not a reason to store a partial month.
+var ErrMalformedTimetable = errors.New("malformed timetable")
+
 // HTTPClient is the Client backed by Ryanair's web API.
 type HTTPClient struct {
 	baseURL string
@@ -225,11 +229,11 @@ func (c *HTTPClient) Timetable(ctx context.Context, from, to string, month time.
 func scheduledTimes(date time.Time, departureTime, arrivalTime string) (departure, arrival time.Time, err error) {
 	dep, err := time.Parse(clockLayout, departureTime)
 	if err != nil {
-		return time.Time{}, time.Time{}, fmt.Errorf("bad departure time %q", departureTime)
+		return time.Time{}, time.Time{}, fmt.Errorf("%w: bad departure time %q", ErrMalformedTimetable, departureTime)
 	}
 	arr, err := time.Parse(clockLayout, arrivalTime)
 	if err != nil {
-		return time.Time{}, time.Time{}, fmt.Errorf("bad arrival time %q", arrivalTime)
+		return time.Time{}, time.Time{}, fmt.Errorf("%w: bad arrival time %q", ErrMalformedTimetable, arrivalTime)
 	}
 	departure = date.Add(time.Duration(dep.Hour())*time.Hour + time.Duration(dep.Minute())*time.Minute)
 	arrival = date.Add(time.Duration(arr.Hour())*time.Hour + time.Duration(arr.Minute())*time.Minute)

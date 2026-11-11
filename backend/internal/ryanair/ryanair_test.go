@@ -1,6 +1,7 @@
 package ryanair_test
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -257,7 +258,7 @@ func TestTimetableFailsOnAMalformedTime(t *testing.T) {
 
 	flights, err := rec.client().Timetable(t.Context(), "KRK", "BGY", day("2026-12-01"))
 
-	if err == nil || !strings.Contains(err.Error(), `bad arrival time "0740"`) {
+	if !errors.Is(err, ryanair.ErrMalformedTimetable) || !strings.Contains(err.Error(), `bad arrival time "0740"`) {
 		t.Fatalf("Timetable error = %v, want a bad arrival time", err)
 	}
 	if flights != nil {

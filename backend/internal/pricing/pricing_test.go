@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"testing"
 	"time"
@@ -68,6 +69,7 @@ func TestRouteMonth(t *testing.T) {
 		{name: "timetable failure", client: memoryClient{cheapest: []ryanair.DayFare{{Day: day, Fare: fare}}, timetable: []ryanair.ScheduledFlight{extra}, timetableErr: failure}, want: []pricing.Flight{priced}, wantLog: `level=WARN msg="timetable unavailable, storing the cheapest flights only" from=KRK to=BGY month=2026-12 err=unavailable`},
 		{name: "outside range skipped", client: memoryClient{cheapest: []ryanair.DayFare{{Day: day, Fare: fare}}, timetable: []ryanair.ScheduledFlight{scheduled, extra}}, first: day.AddDate(0, 0, 1), last: day.AddDate(0, 0, 2), complete: true},
 		{name: "daily fares failure", client: memoryClient{cheapestErr: failure}, wantErr: failure},
+		{name: "malformed timetable", client: memoryClient{cheapest: []ryanair.DayFare{{Day: day, Fare: fare}}, timetableErr: fmt.Errorf("timetable KRK→BGY 2026-12: %w", ryanair.ErrMalformedTimetable)}, wantErr: ryanair.ErrMalformedTimetable},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

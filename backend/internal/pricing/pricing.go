@@ -1,11 +1,12 @@
 // Package pricing merges Ryanair's daily cheapest fares, timetable and time-window fares
 // into flights for a route-month without accessing storage. RouteMonth returns whether
-// the timetable was complete; a daily-fares failure aborts, while timetable and
-// time-window failures produce partial or unpriced results respectively.
+// the timetable was complete; a daily-fares failure or a malformed timetable aborts, while
+// timetable and time-window failures produce partial or unpriced results respectively.
 package pricing
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"slices"
 	"time"
@@ -31,6 +32,10 @@ func RouteMonth(ctx context.Context, logger *slog.Logger, client ryanair.Client,
 		cheapestByDay[d.Day] = d.Fare
 	}
 	timetable, err := client.Timetable(ctx, fromAirport, toAirport, month)
+	if errors.Is(err, ryanair.ErrMalformedTimetable) {
+		// Store nothing, so the route-month stays due and the next refresh tries again.
+		return nil, false, err
+	}
 	complete := err == nil
 	if err != nil {
 		logger.WarnContext(ctx, "timetable unavailable, storing the cheapest flights only", "from", fromAirport, "to", toAirport, "month", month.Format("2006-01"), "err", err)
