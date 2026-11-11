@@ -231,6 +231,7 @@ func TestWorkerRetriesAFailedRouteMonthOnTheNextRefresh(t *testing.T) {
 func TestSearchFindsFlightsStoredByTheWorker(t *testing.T) {
 	env := start(t)
 	env.ryanair.setFlights(
+		fakeFlight{from: "KRK", to: "BGY", departure: "2026-12-04T18:15", arrival: "2026-12-04T20:05", price: 50.00, currency: "PLN"},
 		fakeFlight{from: "BGY", to: "KRK", departure: "2026-12-06T19:55", arrival: "2026-12-06T21:45", price: 19.99, currency: "EUR"},
 	)
 	env.refresh(t)
@@ -246,10 +247,11 @@ func TestSearchFindsFlightsStoredByTheWorker(t *testing.T) {
 	srv := httptest.NewServer(a.Handler())
 	t.Cleanup(srv.Close)
 	resp, err := http.Post(srv.URL+"/api/search", "application/json", strings.NewReader(`{
-		"kind": "oneWay",
-		"homeAirports": ["BGY"],
-		"destination": {"airports": ["KRK"]},
-		"travelWindow": {"from": "2026-12-01", "to": "2026-12-31"}
+		"kind": "roundTrip",
+		"homeAirports": ["KRK"],
+		"destination": {"airports": ["BGY"]},
+		"travelWindow": {"from": "2026-12-01", "to": "2026-12-31"},
+		"stayLength": {"min": 2, "max": 2}
 	}`))
 	if err != nil {
 		t.Fatalf("POST /api/search: %v", err)
@@ -267,9 +269,9 @@ func TestSearchFindsFlightsStoredByTheWorker(t *testing.T) {
 		t.Fatalf("decode search response: %v", err)
 	}
 
-	// 19.99 EUR × 4.2512 PLN/EUR ≈ 84.98 PLN.
-	if len(body.Offers) != 1 || body.Offers[0].Price.Amount != 84.98 || !body.Offers[0].Price.Approximate {
-		t.Errorf("offers = %+v, want one at ≈84.98 PLN", body.Offers)
+	// 50.00 PLN + 19.99 EUR × 4.2512 PLN/EUR (≈ 84.98 PLN).
+	if len(body.Offers) != 1 || body.Offers[0].Price.Amount != 134.98 || !body.Offers[0].Price.Approximate {
+		t.Errorf("offers = %+v, want one at ≈134.98 PLN", body.Offers)
 	}
 }
 
