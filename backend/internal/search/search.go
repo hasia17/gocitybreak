@@ -141,11 +141,19 @@ func NewSearcher(pool *pgxpool.Pool) *Searcher {
 	return &Searcher{pool: pool}
 }
 
+// QueryError reports a query that breaks a rule of the search; its message is meant for the traveller.
+type QueryError struct {
+	Reason string
+}
+
+func (e *QueryError) Error() string { return e.Reason }
+
 // Search returns offers of q's kind made of direct flights that pass q's filters, in q's sort order.
-// Flights in a currency with no exchange rate yet are left out.
+// Flights in a currency with no exchange rate yet are left out. A query that breaks a rule of the search
+// returns a *QueryError.
 func (s *Searcher) Search(ctx context.Context, q Query) ([]Offer, error) {
-	if q.Kind != RoundTrip && q.Kind != OneWay {
-		return nil, fmt.Errorf("unknown kind of offer %q", q.Kind)
+	if err := q.validate(); err != nil {
+		return nil, err
 	}
 	destination, err := s.destinationAirports(ctx, q.Destination)
 	if err != nil {
@@ -163,6 +171,26 @@ func (s *Searcher) Search(ctx context.Context, q Query) ([]Offer, error) {
 	offers = q.Filters.apply(offers)
 	q.Sort.apply(offers)
 	return offers, nil
+}
+
+// validate checks the rules of a query that need no stored data.
+func (q Query) validate() error {
+	switch q.Kind {
+	case RoundTrip, OneWay:
+	default:
+		return &QueryError{fmt.Sprintf("kind must be %q or %q", RoundTrip, OneWay)}
+	}
+	switch q.Sort {
+	case "", ByPrice:
+	case ByLeaveDays, ByPricePerNight:
+		// One-way offers have neither leave days nor nights.
+		if q.Kind != RoundTrip {
+			return &QueryError{fmt.Sprintf("sort %q applies to round trips only", q.Sort)}
+		}
+	default:
+		return &QueryError{fmt.Sprintf("sort must be %q, %q or %q", ByPrice, ByLeaveDays, ByPricePerNight)}
+	}
+	return nil
 }
 
 // destinationAirports expands d into the codes of its airports: a city into every airport of the city,

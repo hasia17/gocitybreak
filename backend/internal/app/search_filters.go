@@ -87,20 +87,3 @@ func parseWeekdays(name string, names []string) ([]time.Weekday, error) {
 	}
 	return days, nil
 }
-
-// parseSort validates the sort order of a search for offers of kind; empty means by price.
-func parseSort(sort string, kind search.OfferKind) (search.SortOrder, error) {
-	switch order := search.SortOrder(sort); order {
-	case "", search.ByPrice:
-		return search.ByPrice, nil
-	case search.ByLeaveDays:
-		return order, nil
-	case search.ByPricePerNight:
-		if kind != search.RoundTrip {
-			return "", fmt.Errorf("sort %q applies to round trips only", order)
-		}
-		return order, nil
-	default:
-		return "", fmt.Errorf("sort must be %q, %q or %q", search.ByPrice, search.ByLeaveDays, search.ByPricePerNight)
-	}
-}

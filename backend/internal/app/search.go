@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -108,6 +107,10 @@ func (a *App) search(w http.ResponseWriter, r *http.Request) {
 	}
 
 	offers, err := a.searcher.Search(r.Context(), q)
+	if invalid, ok := errors.AsType[*search.QueryError](err); ok {
+		http.Error(w, invalid.Error(), http.StatusBadRequest)
+		return
+	}
 	if err != nil {
 		slog.ErrorContext(r.Context(), "search failed", "err", err)
 		http.Error(w, "search failed", http.StatusInternalServerError)
@@ -120,7 +123,8 @@ func (a *App) search(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
-// parseSearchRequest decodes and validates a search query; its errors are meant for the API client.
+// parseSearchRequest decodes a search query and checks its format; its errors are meant for the API client.
+// The search itself checks the query against its rules.
 func parseSearchRequest(r *http.Request) (search.Query, error) {
 	var req searchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -128,9 +132,6 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 	}
 	// Round trip is the default kind of offer.
 	kind := cmp.Or(search.OfferKind(req.Kind), search.RoundTrip)
-	if kind != search.RoundTrip && kind != search.OneWay {
-		return search.Query{}, fmt.Errorf("kind must be %q or %q", search.RoundTrip, search.OneWay)
-	}
 	if len(req.HomeAirports) == 0 {
 		return search.Query{}, errors.New("homeAirports must not be empty")
 	}
@@ -158,6 +159,7 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 		HomeAirports: req.HomeAirports,
 		Destination:  destination,
 		TravelWindow: search.TravelWindow{From: from, To: to},
+		Sort:         search.SortOrder(req.Sort),
 	}
 	if kind == search.RoundTrip {
 		if req.StayLength == nil {
@@ -182,9 +184,6 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 		q.MaxLeaveDays = req.MaxLeaveDays
 	}
 	if q.Filters, err = req.Filters.parse(); err != nil {
-		return search.Query{}, err
-	}
-	if q.Sort, err = parseSort(req.Sort, kind); err != nil {
 		return search.Query{}, err
 	}
 	return q, nil

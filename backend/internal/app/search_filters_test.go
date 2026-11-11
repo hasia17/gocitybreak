@@ -283,6 +283,7 @@ func TestSearchRejectsInvalidFiltersAndSort(t *testing.T) {
 		"unknown weekday":               `{` + roundTrip + `, "filters": {"departureWeekdays": ["friday"]}}`,
 		"unknown sort":                  `{` + roundTrip + `, "sort": "duration"}`,
 		"price per night for a one way": `{"kind": "oneWay", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "sort": "pricePerNight"}`,
+		"leave days for a one way":      `{"kind": "oneWay", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "sort": "leaveDays"}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			if code, _ := search(t, srv, query); code != http.StatusBadRequest {
