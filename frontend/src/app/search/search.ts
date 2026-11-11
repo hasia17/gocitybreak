@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Money, Offer, SearchQuery, SearchResponse } from './search-api';
+import { Flight, Money, Offer, SearchQuery, SearchResponse } from './search-api';
 
 const airportCode = [Validators.required, Validators.pattern(/^[A-Za-z]{3}$/)];
 
@@ -55,6 +55,11 @@ export class Search {
 
   protected money(m: Money): string {
     return `${m.amount.toFixed(2)} ${m.currency}`;
+  }
+
+  /** How many days after its departure date the flight lands, in local dates; 0 for the same day. */
+  protected daysLater(flight: Flight): number {
+    return Math.round((Date.parse(flight.arrival.date) - Date.parse(flight.departure.date)) / 86_400_000);
   }
 
   /** Flights of the offer priced in a currency other than PLN, whose original amount is shown. */

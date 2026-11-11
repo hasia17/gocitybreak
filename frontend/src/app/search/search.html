@@ -47,7 +47,12 @@
             <div class="flight">
               <strong>{{ flight.departureAirport }} → {{ flight.arrivalAirport }}</strong>
               <span>{{ flight.departure.date }}</span>
-              <span>{{ flight.departure.time }} – {{ flight.arrival.time }}</span>
+              <span>
+                {{ flight.departure.time }} – {{ flight.arrival.time }}
+                @if (daysLater(flight); as days) {
+                  <abbr title="arrives {{ flight.arrival.date }}">+{{ days }}</abbr>
+                }
+              </span>
             </div>
           }
           <div class="price">

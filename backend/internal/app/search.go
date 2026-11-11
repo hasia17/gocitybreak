@@ -11,10 +11,8 @@ import (
 	"github.com/hasia17/gocitybreak/backend/internal/search"
 )
 
-const (
-	dateLayout = "2006-01-02"
-	timeLayout = "15:04"
-)
+// timeLayout formats local times without seconds; dates use time.DateOnly.
+const timeLayout = "15:04"
 
 type searchRequest struct {
 	Kind         string   `json:"kind"`
@@ -105,11 +103,11 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 	if len(req.Destination.Airports) == 0 {
 		return search.Query{}, errors.New("destination.airports must not be empty")
 	}
-	from, err := time.Parse(dateLayout, req.TravelWindow.From)
+	from, err := time.Parse(time.DateOnly, req.TravelWindow.From)
 	if err != nil {
 		return search.Query{}, errors.New("travelWindow.from must be a date in YYYY-MM-DD format")
 	}
-	to, err := time.Parse(dateLayout, req.TravelWindow.To)
+	to, err := time.Parse(time.DateOnly, req.TravelWindow.To)
 	if err != nil {
 		return search.Query{}, errors.New("travelWindow.to must be a date in YYYY-MM-DD format")
 	}
@@ -149,7 +147,7 @@ func toOfferJSON(o search.Offer) offerJSON {
 
 func toLocalTimeJSON(t search.LocalTime) localTimeJSON {
 	return localTimeJSON{
-		Date:     t.DateTime.Format(dateLayout),
+		Date:     t.DateTime.Format(time.DateOnly),
 		Time:     t.DateTime.Format(timeLayout),
 		TimeZone: t.TimeZone,
 	}

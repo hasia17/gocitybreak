@@ -94,7 +94,8 @@ func NewSearcher(pool *pgxpool.Pool) *Searcher {
 }
 
 // OneWay returns one-way offers of direct flights from the home airports to the destination
-// within the travel window, cheapest first. Flights in a currency with no exchange rate yet are left out.
+// within the travel window, cheapest first; equally priced offers go by departure, then by airports.
+// Flights in a currency with no exchange rate yet are left out.
 func (s *Searcher) OneWay(ctx context.Context, q Query) ([]Offer, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT f.departure_airport, f.arrival_airport,
@@ -118,7 +119,7 @@ func (s *Searcher) OneWay(ctx context.Context, q Query) ([]Offer, error) {
 			AND f.arrival_date <= $4
 			AND f.price_amount IS NOT NULL
 			AND (f.price_currency = 'PLN' OR rate.rate IS NOT NULL)
-		ORDER BY price_pln, f.departure_date, f.departure_time`,
+		ORDER BY price_pln, f.departure_date, f.departure_time, f.departure_airport, f.arrival_airport`,
 		q.HomeAirports, q.Destination.Airports, q.TravelWindow.From, q.TravelWindow.To)
 	if err != nil {
 		return nil, fmt.Errorf("query flights: %w", err)

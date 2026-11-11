@@ -72,10 +72,51 @@ describe('Search', () => {
     expect(offer).toContain('BGY → KRK');
     expect(offer).toContain('2026-12-05');
     expect(offer).toContain('09:00 – 10:50');
+    expect(root.querySelector('[data-testid="offer"] abbr')).toBeNull();
     expect(offer).toContain('≈ 84.98 PLN');
     expect(offer).toContain('19.99 EUR');
     expect(offer).toContain('per person, no cabin bag');
     expect(offer).toContain('price checked 3 h ago');
+  });
+
+  it('marks a flight that lands on a later day than it departs', async () => {
+    const fixture = TestBed.createComponent(Search);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+
+    fill(root, 'From', 'KRK');
+    fill(root, 'To', 'BGY');
+    fill(root, 'Earliest', '2026-12-01');
+    fill(root, 'Latest', '2026-12-31');
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+    const fetchedAt = new Date().toISOString();
+    httpTesting.expectOne('/api/search').flush({
+      offers: [
+        {
+          kind: 'oneWay',
+          outbound: {
+            isDirect: true,
+            flights: [
+              {
+                departureAirport: 'KRK',
+                arrivalAirport: 'BGY',
+                departure: { date: '2026-12-10', time: '23:30', timeZone: 'Europe/Warsaw' },
+                arrival: { date: '2026-12-11', time: '01:20', timeZone: 'Europe/Rome' },
+                originalPrice: { amount: 50, currency: 'PLN' },
+                fetchedAt,
+              },
+            ],
+          },
+          price: { amount: 50, currency: 'PLN', approximate: false },
+          priceFetchedAt: fetchedAt,
+        },
+      ],
+    });
+    await fixture.whenStable();
+
+    const offer = root.querySelector('[data-testid="offer"]')!;
+    expect(offer.textContent?.replace(/\s+/g, ' ')).toContain('23:30 – 01:20 +1');
+    expect(offer.querySelector('abbr')?.getAttribute('title')).toBe('arrives 2026-12-11');
   });
 
   it('says so when no offer matches', async () => {

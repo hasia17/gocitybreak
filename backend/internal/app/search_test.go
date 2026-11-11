@@ -2,7 +2,6 @@ package app_test
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -162,6 +161,40 @@ func TestSearchSortsOffersByAscendingPriceInPLN(t *testing.T) {
 	}
 }
 
+func TestSearchOrdersEquallyPricedOffersByDepartureThenAirports(t *testing.T) {
+	srv, pg := startAPI(t, "test")
+	seed(t, pg, polishAndItalianAirports+`
+		INSERT INTO flights (departure_airport, arrival_airport,
+			departure_date, departure_time, arrival_date, arrival_time,
+			price_amount, price_currency, fetched_at)
+		VALUES
+			('KTW', 'CIA', '2026-12-05', '06:15', '2026-12-05', '08:30', 8900, 'PLN', '2026-11-10T08:00:00Z'),
+			('KTW', 'BGY', '2026-12-05', '06:15', '2026-12-05', '08:10', 8900, 'PLN', '2026-11-10T08:00:00Z'),
+			('KRK', 'BGY', '2026-12-05', '06:15', '2026-12-05', '08:10', 8900, 'PLN', '2026-11-10T08:00:00Z'),
+			('KTW', 'BGY', '2026-12-04', '20:00', '2026-12-04', '21:55', 8900, 'PLN', '2026-11-10T08:00:00Z');
+	`)
+
+	code, body := search(t, srv, `{
+		"kind": "oneWay",
+		"homeAirports": ["KRK", "KTW"],
+		"destination": {"airports": ["BGY", "CIA"]},
+		"travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}
+	}`)
+
+	if code != http.StatusOK {
+		t.Fatalf("status code = %d, want %d", code, http.StatusOK)
+	}
+	var got []string
+	for _, o := range body.Offers {
+		f := o.Outbound.Flights[0]
+		got = append(got, f.Departure.Date+" "+f.DepartureAirport+"→"+f.ArrivalAirport)
+	}
+	want := []string{"2026-12-04 KTW→BGY", "2026-12-05 KRK→BGY", "2026-12-05 KTW→BGY", "2026-12-05 KTW→CIA"}
+	if !slices.Equal(got, want) {
+		t.Errorf("offers = %v, want %v", got, want)
+	}
+}
+
 func TestSearchRejectsInvalidQuery(t *testing.T) {
 	srv, _ := startAPI(t, "test")
 
@@ -235,7 +268,7 @@ type priceBody struct {
 // seed runs SQL against the test database, standing in for the price worker that fills it in production.
 func seed(t *testing.T, pg *postgres.PostgresContainer, sql string) {
 	t.Helper()
-	ctx := context.Background()
+	ctx := t.Context()
 	url, err := pg.ConnectionString(ctx, "sslmode=disable")
 	if err != nil {
 		t.Fatalf("postgres connection string: %v", err)
