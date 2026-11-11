@@ -31,6 +31,9 @@ type Query struct {
 	TravelWindow TravelWindow
 	// StayLength applies to round-trip offers only.
 	StayLength StayLength
+	Filters    Filters
+	// Sort is ByPrice when empty.
+	Sort SortOrder
 }
 
 // Destination is where the traveller wants to fly; for now a set of airports.
@@ -109,17 +112,25 @@ func NewSearcher(pool *pgxpool.Pool) *Searcher {
 	return &Searcher{pool: pool}
 }
 
-// Search returns offers of q's kind made of direct flights, cheapest first.
+// Search returns offers of q's kind made of direct flights that pass q's filters, in q's sort order.
 // Flights in a currency with no exchange rate yet are left out.
 func (s *Searcher) Search(ctx context.Context, q Query) ([]Offer, error) {
+	var offers []Offer
+	var err error
 	switch q.Kind {
 	case RoundTrip:
-		return s.roundTrip(ctx, q)
+		offers, err = s.roundTrip(ctx, q)
 	case OneWay:
-		return s.oneWay(ctx, q)
+		offers, err = s.oneWay(ctx, q)
 	default:
 		return nil, fmt.Errorf("unknown kind of offer %q", q.Kind)
 	}
+	if err != nil {
+		return nil, err
+	}
+	offers = q.Filters.apply(offers)
+	q.Sort.apply(offers)
+	return offers, nil
 }
 
 // pricedFlights is a common table expression of the flights that have a price in PLN:

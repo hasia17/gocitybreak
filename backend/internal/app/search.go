@@ -29,6 +29,8 @@ type searchRequest struct {
 		Min int `json:"min"`
 		Max int `json:"max"`
 	} `json:"stayLength"`
+	Filters filtersJSON `json:"filters"`
+	Sort    string      `json:"sort"`
 }
 
 type searchResponse struct {
@@ -40,9 +42,11 @@ type offerJSON struct {
 	Outbound legJSON  `json:"outbound"`
 	Inbound  *legJSON `json:"inbound,omitempty"`
 	// Nights is set for round-trip offers only, where 0 is a valid number of nights.
-	Nights         *int      `json:"nights,omitempty"`
-	Price          priceJSON `json:"price"`
-	PriceFetchedAt time.Time `json:"priceFetchedAt"`
+	Nights *int      `json:"nights,omitempty"`
+	Price  priceJSON `json:"price"`
+	// PricePerNight is set for round-trip offers of at least one night.
+	PricePerNight  *priceJSON `json:"pricePerNight,omitempty"`
+	PriceFetchedAt time.Time  `json:"priceFetchedAt"`
 }
 
 type legJSON struct {
@@ -142,25 +146,34 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 		}
 		q.StayLength = search.StayLength{Min: req.StayLength.Min, Max: req.StayLength.Max}
 	}
+	if q.Filters, err = req.Filters.parse(); err != nil {
+		return search.Query{}, err
+	}
+	if q.Sort, err = parseSort(req.Sort, kind); err != nil {
+		return search.Query{}, err
+	}
 	return q, nil
 }
 
 func toOfferJSON(o search.Offer) offerJSON {
 	offer := offerJSON{
-		Kind:     string(o.Kind),
-		Outbound: toLegJSON(o.Outbound),
-		Price: priceJSON{
-			Amount:      majorUnits(o.Price.Amount),
-			Currency:    o.Price.Currency,
-			Approximate: o.Price.Approximate,
-		},
+		Kind:           string(o.Kind),
+		Outbound:       toLegJSON(o.Outbound),
+		Price:          toPriceJSON(o.Price),
 		PriceFetchedAt: o.PriceFetchedAt.UTC(),
 	}
 	if o.Inbound != nil {
 		offer.Inbound = new(toLegJSON(*o.Inbound))
 		offer.Nights = new(o.Nights)
 	}
+	if p, ok := o.PricePerNight(); ok {
+		offer.PricePerNight = new(toPriceJSON(p))
+	}
 	return offer
+}
+
+func toPriceJSON(p search.Price) priceJSON {
+	return priceJSON{Amount: majorUnits(p.Amount), Currency: p.Currency, Approximate: p.Approximate}
 }
 
 func toLegJSON(l search.Leg) legJSON {

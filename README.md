@@ -32,6 +32,8 @@ Without Task: `docker compose up -d --build`, and for sample flights, once the A
 
 Search is `POST /api/search`, e.g. `{"kind": "roundTrip", "homeAirports": ["KRK", "KTW"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": 2, "max": 3}}`. `kind` defaults to `roundTrip`; `"kind": "oneWay"` takes no `stayLength`.
 
+Optional `filters`: `directOnly`, time ranges `outboundDeparture`, `outboundArrival`, `inboundDeparture`, `inboundArrival` (each `{"from": "06:00", "to": "12:00"}` in the local time of the airport concerned; `to` before `from` wraps past midnight), and `departureWeekdays`, `returnWeekdays` (`["thu", "fri"]`; return is the inbound departure date). Optional `sort`: `price` (default) or `pricePerNight` (round trips; 0-night offers last).
+
 ## Develop without Docker for the app
 
 Requires Go 1.26+ and Node.js 26 (`nvm use` in `frontend/`).
