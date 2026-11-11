@@ -1,6 +1,7 @@
 package app
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,6 +25,10 @@ type searchRequest struct {
 		From string `json:"from"`
 		To   string `json:"to"`
 	} `json:"travelWindow"`
+	StayLength *struct {
+		Min int `json:"min"`
+		Max int `json:"max"`
+	} `json:"stayLength"`
 }
 
 type searchResponse struct {
@@ -31,8 +36,11 @@ type searchResponse struct {
 }
 
 type offerJSON struct {
-	Kind           string    `json:"kind"`
-	Outbound       legJSON   `json:"outbound"`
+	Kind     string   `json:"kind"`
+	Outbound legJSON  `json:"outbound"`
+	Inbound  *legJSON `json:"inbound,omitempty"`
+	// Nights is set for round-trip offers only, where 0 is a valid number of nights.
+	Nights         *int      `json:"nights,omitempty"`
 	Price          priceJSON `json:"price"`
 	PriceFetchedAt time.Time `json:"priceFetchedAt"`
 }
@@ -75,7 +83,7 @@ func (a *App) search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	offers, err := a.searcher.OneWay(r.Context(), q)
+	offers, err := a.searcher.Search(r.Context(), q)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "search failed", "err", err)
 		http.Error(w, "search failed", http.StatusInternalServerError)
@@ -94,8 +102,10 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return search.Query{}, errors.New("search query is not valid JSON")
 	}
-	if req.Kind != string(search.OneWay) {
-		return search.Query{}, fmt.Errorf("unsupported kind %q: only %q is supported", req.Kind, search.OneWay)
+	// Round trip is the default kind of offer.
+	kind := cmp.Or(search.OfferKind(req.Kind), search.RoundTrip)
+	if kind != search.RoundTrip && kind != search.OneWay {
+		return search.Query{}, fmt.Errorf("kind must be %q or %q", search.RoundTrip, search.OneWay)
 	}
 	if len(req.HomeAirports) == 0 {
 		return search.Query{}, errors.New("homeAirports must not be empty")
@@ -114,16 +124,48 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 	if to.Before(from) {
 		return search.Query{}, errors.New("travelWindow.to must not be before travelWindow.from")
 	}
-	return search.Query{
+	q := search.Query{
+		Kind:         kind,
 		HomeAirports: req.HomeAirports,
 		Destination:  search.Destination{Airports: req.Destination.Airports},
 		TravelWindow: search.TravelWindow{From: from, To: to},
-	}, nil
+	}
+	if kind == search.RoundTrip {
+		if req.StayLength == nil {
+			return search.Query{}, errors.New("stayLength is required for a round trip")
+		}
+		if req.StayLength.Min < 0 {
+			return search.Query{}, errors.New("stayLength.min must not be negative")
+		}
+		if req.StayLength.Max < req.StayLength.Min {
+			return search.Query{}, errors.New("stayLength.max must not be less than stayLength.min")
+		}
+		q.StayLength = search.StayLength{Min: req.StayLength.Min, Max: req.StayLength.Max}
+	}
+	return q, nil
 }
 
 func toOfferJSON(o search.Offer) offerJSON {
-	leg := legJSON{IsDirect: o.Outbound.IsDirect(), Flights: make([]flightJSON, 0, len(o.Outbound.Flights))}
-	for _, f := range o.Outbound.Flights {
+	offer := offerJSON{
+		Kind:     string(o.Kind),
+		Outbound: toLegJSON(o.Outbound),
+		Price: priceJSON{
+			Amount:      majorUnits(o.Price.Amount),
+			Currency:    o.Price.Currency,
+			Approximate: o.Price.Approximate,
+		},
+		PriceFetchedAt: o.PriceFetchedAt.UTC(),
+	}
+	if o.Inbound != nil {
+		offer.Inbound = new(toLegJSON(*o.Inbound))
+		offer.Nights = new(o.Nights)
+	}
+	return offer
+}
+
+func toLegJSON(l search.Leg) legJSON {
+	leg := legJSON{IsDirect: l.IsDirect(), Flights: make([]flightJSON, 0, len(l.Flights))}
+	for _, f := range l.Flights {
 		leg.Flights = append(leg.Flights, flightJSON{
 			DepartureAirport: f.DepartureAirport,
 			ArrivalAirport:   f.ArrivalAirport,
@@ -133,16 +175,7 @@ func toOfferJSON(o search.Offer) offerJSON {
 			FetchedAt:        f.FetchedAt.UTC(),
 		})
 	}
-	return offerJSON{
-		Kind:     string(o.Kind),
-		Outbound: leg,
-		Price: priceJSON{
-			Amount:      majorUnits(o.Price.Amount),
-			Currency:    o.Price.Currency,
-			Approximate: o.Price.Approximate,
-		},
-		PriceFetchedAt: o.PriceFetchedAt.UTC(),
-	}
+	return leg
 }
 
 func toLocalTimeJSON(t search.LocalTime) localTimeJSON {

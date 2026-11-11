@@ -16,14 +16,21 @@ import (
 // OfferKind tells a one-way offer from a round-trip offer.
 type OfferKind string
 
-// OneWay is the kind of a one-way offer: a single leg.
-const OneWay OfferKind = "oneWay"
+const (
+	// RoundTrip is the kind of a round-trip offer: an outbound and an inbound leg.
+	RoundTrip OfferKind = "roundTrip"
+	// OneWay is the kind of a one-way offer: a single leg.
+	OneWay OfferKind = "oneWay"
+)
 
 // Query is what the traveller searches for.
 type Query struct {
+	Kind         OfferKind
 	HomeAirports []string
 	Destination  Destination
 	TravelWindow TravelWindow
+	// StayLength applies to round-trip offers only.
+	StayLength StayLength
 }
 
 // Destination is where the traveller wants to fly; for now a set of airports.
@@ -36,11 +43,20 @@ type TravelWindow struct {
 	From, To time.Time
 }
 
+// StayLength is the range of nights of a round-trip offer, both ends inclusive.
+type StayLength struct {
+	Min, Max int
+}
+
 // Offer is a single search result with a total price.
 type Offer struct {
 	Kind     OfferKind
 	Outbound Leg
-	Price    Price
+	// Inbound is nil for a one-way offer.
+	Inbound *Leg
+	// Nights is the number of hotel nights of a round-trip offer (GLOSSARY: Night); 0 for a one-way offer.
+	Nights int
+	Price  Price
 	// PriceFetchedAt is when the oldest stored price of the offer's flights was fetched.
 	PriceFetchedAt time.Time
 }
@@ -93,14 +109,27 @@ func NewSearcher(pool *pgxpool.Pool) *Searcher {
 	return &Searcher{pool: pool}
 }
 
-// OneWay returns one-way offers of direct flights from the home airports to the destination
-// within the travel window, cheapest first; equally priced offers go by departure, then by airports.
+// Search returns offers of q's kind made of direct flights, cheapest first.
 // Flights in a currency with no exchange rate yet are left out.
-func (s *Searcher) OneWay(ctx context.Context, q Query) ([]Offer, error) {
-	rows, err := s.pool.Query(ctx, `
+func (s *Searcher) Search(ctx context.Context, q Query) ([]Offer, error) {
+	switch q.Kind {
+	case RoundTrip:
+		return s.roundTrip(ctx, q)
+	case OneWay:
+		return s.oneWay(ctx, q)
+	default:
+		return nil, fmt.Errorf("unknown kind of offer %q", q.Kind)
+	}
+}
+
+// pricedFlights is a common table expression of the flights that have a price in PLN:
+// each flight's original price converted at the latest exchange rate (ADR-0006),
+// rounded to minor units.
+const pricedFlights = `
+	priced AS NOT MATERIALIZED (
 		SELECT f.departure_airport, f.arrival_airport,
-			f.departure_date + f.departure_time, dep.time_zone,
-			f.arrival_date + f.arrival_time, arr.time_zone,
+			f.departure_date, f.departure_time, dep.time_zone AS departure_time_zone,
+			f.arrival_date, f.arrival_time, arr.time_zone AS arrival_time_zone,
 			f.price_amount, f.price_currency, f.fetched_at,
 			CASE WHEN f.price_currency = 'PLN' THEN f.price_amount
 				ELSE round(f.price_amount * rate.rate)::bigint END AS price_pln
@@ -113,41 +142,101 @@ func (s *Searcher) OneWay(ctx context.Context, q Query) ([]Offer, error) {
 			ORDER BY r.rate_date DESC
 			LIMIT 1
 		) rate ON true
-		WHERE f.departure_airport = ANY($1)
-			AND f.arrival_airport = ANY($2)
-			AND f.departure_date >= $3
-			AND f.arrival_date <= $4
-			AND f.price_amount IS NOT NULL
+		WHERE f.price_amount IS NOT NULL
 			AND (f.price_currency = 'PLN' OR rate.rate IS NOT NULL)
-		ORDER BY price_pln, f.departure_date, f.departure_time, f.departure_airport, f.arrival_airport`,
+	)`
+
+// flightColumns selects a row of pricedFlights under alias in the order pricedFlight.scanTargets expects.
+func flightColumns(alias string) string {
+	return fmt.Sprintf(`%[1]s.departure_airport, %[1]s.arrival_airport,
+		%[1]s.departure_date + %[1]s.departure_time, %[1]s.departure_time_zone,
+		%[1]s.arrival_date + %[1]s.arrival_time, %[1]s.arrival_time_zone,
+		%[1]s.price_amount, %[1]s.price_currency, %[1]s.fetched_at, %[1]s.price_pln`, alias)
+}
+
+// oneWay returns one-way offers from the home airports to the destination within the travel window;
+// equally priced offers go by departure, then by airports.
+func (s *Searcher) oneWay(ctx context.Context, q Query) ([]Offer, error) {
+	rows, err := s.pool.Query(ctx, `WITH`+pricedFlights+`
+		SELECT `+flightColumns("o")+`
+		FROM priced o
+		WHERE o.departure_airport = ANY($1)
+			AND o.arrival_airport = ANY($2)
+			AND o.departure_date >= $3
+			AND o.arrival_date <= $4
+		ORDER BY o.price_pln, o.departure_date, o.departure_time, o.departure_airport, o.arrival_airport`,
 		q.HomeAirports, q.Destination.Airports, q.TravelWindow.From, q.TravelWindow.To)
 	if err != nil {
 		return nil, fmt.Errorf("query flights: %w", err)
 	}
-	flights, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (pricedFlight, error) {
-		var f pricedFlight
-		err := row.Scan(&f.DepartureAirport, &f.ArrivalAirport,
-			&f.Departure.DateTime, &f.Departure.TimeZone,
-			&f.Arrival.DateTime, &f.Arrival.TimeZone,
-			&f.OriginalPrice.Amount, &f.OriginalPrice.Currency, &f.FetchedAt,
-			&f.pricePLN)
-		return f, err
+	offers, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (Offer, error) {
+		var out pricedFlight
+		if err := row.Scan(out.scanTargets()...); err != nil {
+			return Offer{}, err
+		}
+		price, fetchedAt := offerPrice(out)
+		return Offer{
+			Kind:           OneWay,
+			Outbound:       Leg{Flights: []Flight{out.Flight}},
+			Price:          price,
+			PriceFetchedAt: fetchedAt,
+		}, nil
 	})
 	if err != nil {
 		return nil, fmt.Errorf("read flights: %w", err)
 	}
+	return offers, nil
+}
 
-	offers := make([]Offer, 0, len(flights))
-	for _, f := range flights {
-		offers = append(offers, Offer{
-			Kind:     OneWay,
-			Outbound: Leg{Flights: []Flight{f.Flight}},
-			Price: Price{
-				Money:       Money{Amount: f.pricePLN, Currency: "PLN"},
-				Approximate: f.OriginalPrice.Currency != "PLN",
-			},
-			PriceFetchedAt: f.FetchedAt,
-		})
+// roundTrip pairs an outbound flight from a home airport to the destination with an inbound flight
+// from the same destination airport back to any home airport. The pair fits within the travel window
+// (outbound departure on its first day at the earliest, inbound arrival on its last day at the latest)
+// and its nights within the stay length. Equally priced offers go by outbound departure,
+// then inbound departure, then airports.
+func (s *Searcher) roundTrip(ctx context.Context, q Query) ([]Offer, error) {
+	rows, err := s.pool.Query(ctx, `WITH`+pricedFlights+`
+		SELECT `+flightColumns("o")+`, `+flightColumns("i")+`, n.nights
+		FROM priced o
+		JOIN priced i ON i.departure_airport = o.arrival_airport
+		-- A hotel night is counted from the outbound arrival date, or the day before
+		-- when the outbound flight lands before 06:00 local time, up to the inbound departure date.
+		CROSS JOIN LATERAL (
+			SELECT i.departure_date - (o.arrival_date - (o.arrival_time < '06:00')::int) AS nights
+		) n
+		WHERE o.departure_airport = ANY($1)
+			AND o.arrival_airport = ANY($2)
+			AND i.arrival_airport = ANY($1)
+			AND o.departure_date >= $3
+			AND i.arrival_date <= $4
+			-- Both times are local at the destination airport.
+			AND i.departure_date + i.departure_time > o.arrival_date + o.arrival_time
+			AND n.nights BETWEEN $5 AND $6
+		ORDER BY o.price_pln + i.price_pln,
+			o.departure_date, o.departure_time, i.departure_date, i.departure_time,
+			o.departure_airport, o.arrival_airport, i.arrival_airport`,
+		q.HomeAirports, q.Destination.Airports, q.TravelWindow.From, q.TravelWindow.To,
+		q.StayLength.Min, q.StayLength.Max)
+	if err != nil {
+		return nil, fmt.Errorf("query flight pairs: %w", err)
+	}
+	offers, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (Offer, error) {
+		var out, in pricedFlight
+		var nights int
+		if err := row.Scan(append(append(out.scanTargets(), in.scanTargets()...), &nights)...); err != nil {
+			return Offer{}, err
+		}
+		price, fetchedAt := offerPrice(out, in)
+		return Offer{
+			Kind:           RoundTrip,
+			Outbound:       Leg{Flights: []Flight{out.Flight}},
+			Inbound:        &Leg{Flights: []Flight{in.Flight}},
+			Nights:         nights,
+			Price:          price,
+			PriceFetchedAt: fetchedAt,
+		}, nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("read flight pairs: %w", err)
 	}
 	return offers, nil
 }
@@ -156,4 +245,30 @@ func (s *Searcher) OneWay(ctx context.Context, q Query) ([]Offer, error) {
 type pricedFlight struct {
 	Flight
 	pricePLN int64
+}
+
+// scanTargets returns pointers for a row selected by flightColumns.
+func (f *pricedFlight) scanTargets() []any {
+	return []any{&f.DepartureAirport, &f.ArrivalAirport,
+		&f.Departure.DateTime, &f.Departure.TimeZone,
+		&f.Arrival.DateTime, &f.Arrival.TimeZone,
+		&f.OriginalPrice.Amount, &f.OriginalPrice.Currency, &f.FetchedAt,
+		&f.pricePLN}
+}
+
+// offerPrice sums the flights' prices in PLN, approximate when any flight is priced in another currency,
+// and returns it with the fetch time of the oldest stored price.
+func offerPrice(flights ...pricedFlight) (Price, time.Time) {
+	price := Price{Money: Money{Currency: "PLN"}}
+	var oldest time.Time
+	for _, f := range flights {
+		price.Amount += f.pricePLN
+		if f.OriginalPrice.Currency != "PLN" {
+			price.Approximate = true
+		}
+		if oldest.IsZero() || f.FetchedAt.Before(oldest) {
+			oldest = f.FetchedAt
+		}
+	}
+	return price, oldest
 }
