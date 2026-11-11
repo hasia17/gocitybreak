@@ -5,7 +5,6 @@
 package search
 
 import (
-	"cmp"
 	"context"
 	"fmt"
 	"slices"
@@ -41,6 +40,7 @@ type Query struct {
 	WorkHours leave.WorkHours
 	// MaxLeaveDays, when set, leaves out round-trip offers that cost more leave days.
 	MaxLeaveDays *int
+	Filters      Filters
 	// Sort is the order of the offers; by price when unset.
 	Sort SortOrder
 }
@@ -53,6 +53,9 @@ const (
 	ByPrice SortOrder = "price"
 	// ByLeaveDays sorts round-trip offers by ascending leave days, then by price.
 	ByLeaveDays SortOrder = "leaveDays"
+	// ByPricePerNight sorts round-trip offers by ascending price per night, then by price;
+	// offers of 0 nights, which have no price per night, go last.
+	ByPricePerNight SortOrder = "pricePerNight"
 )
 
 // Destination is where the traveller wants to fly: any number of airports, cities and countries,
@@ -138,7 +141,7 @@ func NewSearcher(pool *pgxpool.Pool) *Searcher {
 	return &Searcher{pool: pool}
 }
 
-// Search returns offers of q's kind made of direct flights, cheapest first.
+// Search returns offers of q's kind made of direct flights that pass q's filters, in q's sort order.
 // Flights in a currency with no exchange rate yet are left out.
 func (s *Searcher) Search(ctx context.Context, q Query) ([]Offer, error) {
 	if q.Kind != RoundTrip && q.Kind != OneWay {
@@ -148,10 +151,18 @@ func (s *Searcher) Search(ctx context.Context, q Query) ([]Offer, error) {
 	if err != nil {
 		return nil, err
 	}
+	var offers []Offer
 	if q.Kind == RoundTrip {
-		return s.roundTrip(ctx, q, destination)
+		offers, err = s.roundTrip(ctx, q, destination)
+	} else {
+		offers, err = s.oneWay(ctx, q, destination)
 	}
-	return s.oneWay(ctx, q, destination)
+	if err != nil {
+		return nil, err
+	}
+	offers = q.Filters.apply(offers)
+	q.Sort.apply(offers)
+	return offers, nil
 }
 
 // destinationAirports expands d into the codes of its airports: a city into every airport of the city,
@@ -293,10 +304,6 @@ func (s *Searcher) roundTrip(ctx context.Context, q Query, destination []string)
 	}
 	if q.MaxLeaveDays != nil {
 		offers = slices.DeleteFunc(offers, func(o Offer) bool { return o.LeaveDays > *q.MaxLeaveDays })
-	}
-	if q.Sort == ByLeaveDays {
-		// Stable, so offers with equal leave days stay in price order.
-		slices.SortStableFunc(offers, func(a, b Offer) int { return cmp.Compare(a.LeaveDays, b.LeaveDays) })
 	}
 	return offers, nil
 }

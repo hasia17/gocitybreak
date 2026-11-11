@@ -63,6 +63,8 @@ func TestSearchPairsOutboundAndInboundFlightsIntoRoundTripOffer(t *testing.T) {
 		LeaveDays: new(0),
 		// 89.00 PLN + 19.99 EUR × 4.2512 PLN/EUR (84.98 PLN) = 173.98 PLN, approximate.
 		Price: priceBody{Amount: 173.98, Currency: "PLN", Approximate: true},
+		// 173.98 PLN / 2 nights.
+		PricePerNight: &priceBody{Amount: 86.99, Currency: "PLN", Approximate: true},
 		// The older of the two stored prices.
 		PriceFetchedAt: "2026-11-09T07:00:00Z",
 	}}

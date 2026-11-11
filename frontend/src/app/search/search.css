@@ -307,6 +307,10 @@ abbr {
   color: inherit;
 }
 
+.price .per-night {
+  color: var(--text);
+}
+
 @media (max-width: 640px) {
   .hero {
     padding-top: 8vh;

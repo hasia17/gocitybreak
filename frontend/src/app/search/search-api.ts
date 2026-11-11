@@ -28,10 +28,36 @@ export interface SearchQuery {
   workEnd?: string;
   /** Leaves out round-trip offers that cost more leave days; 0 is a valid maximum. */
   maxLeaveDays?: number;
+  /** Absent filters restrict nothing; inbound ones and returnWeekdays apply to round trips only. */
+  filters?: SearchFilters;
+  /** Price by default; price per night for round trips only. */
   sort?: SortOrder;
 }
 
-export type SortOrder = 'price' | 'leaveDays';
+export type SortOrder = 'price' | 'leaveDays' | 'pricePerNight';
+
+export type Weekday = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
+
+export interface SearchFilters {
+  directOnly?: boolean;
+  outboundDeparture?: TimeRange;
+  outboundArrival?: TimeRange;
+  inboundDeparture?: TimeRange;
+  inboundArrival?: TimeRange;
+  /** Days of the outbound departure, by local date. */
+  departureWeekdays?: Weekday[];
+  /** Days of the inbound departure, by local date. */
+  returnWeekdays?: Weekday[];
+}
+
+/**
+ * Times "HH:MM", both ends inclusive, in the local time of the airport concerned;
+ * wraps past midnight when `to` is before `from`.
+ */
+export interface TimeRange {
+  from: string;
+  to: string;
+}
 
 export interface SearchResponse {
   offers: Offer[];
@@ -45,11 +71,20 @@ export interface Offer {
   /** Hotel nights of a round trip (GLOSSARY: Night). */
   nights?: number;
   /** Offer price in PLN for one adult, cheapest fare, no cabin bag. */
-  price: { amount: number; currency: string; approximate: boolean };
+  price: Price;
+  /** Offer price divided by the nights; round trips of at least one night only. */
+  pricePerNight?: Price;
   /** When the oldest stored price of the offer's flights was fetched (ISO 8601). */
   priceFetchedAt: string;
   /** Working days a round trip costs (GLOSSARY: Leave days). */
   leaveDays?: number;
+}
+
+/** An amount in PLN; approximate when converted from another currency. */
+export interface Price {
+  amount: number;
+  currency: string;
+  approximate: boolean;
 }
 
 export interface Leg {

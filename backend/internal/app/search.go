@@ -35,8 +35,9 @@ type searchRequest struct {
 	WorkStart string `json:"workStart"`
 	WorkEnd   string `json:"workEnd"`
 	// MaxLeaveDays is optional; 0 is a valid maximum.
-	MaxLeaveDays *int   `json:"maxLeaveDays"`
-	Sort         string `json:"sort"`
+	MaxLeaveDays *int        `json:"maxLeaveDays"`
+	Filters      filtersJSON `json:"filters"`
+	Sort         string      `json:"sort"`
 }
 
 // placesJSON names airports, cities and countries by the codes the catalogue gives them.
@@ -59,9 +60,11 @@ type offerJSON struct {
 	Outbound legJSON  `json:"outbound"`
 	Inbound  *legJSON `json:"inbound,omitempty"`
 	// Nights is set for round-trip offers only, where 0 is a valid number of nights.
-	Nights         *int      `json:"nights,omitempty"`
-	Price          priceJSON `json:"price"`
-	PriceFetchedAt time.Time `json:"priceFetchedAt"`
+	Nights *int      `json:"nights,omitempty"`
+	Price  priceJSON `json:"price"`
+	// PricePerNight is set for round-trip offers of at least one night.
+	PricePerNight  *priceJSON `json:"pricePerNight,omitempty"`
+	PriceFetchedAt time.Time  `json:"priceFetchedAt"`
 	// LeaveDays is set for round-trip offers only, where 0 is a valid number of leave days.
 	LeaveDays *int `json:"leaveDays,omitempty"`
 }
@@ -150,17 +153,11 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 	if to.Before(from) {
 		return search.Query{}, errors.New("travelWindow.to must not be before travelWindow.from")
 	}
-	// Price is the default sort order.
-	sort := cmp.Or(search.SortOrder(req.Sort), search.ByPrice)
-	if sort != search.ByPrice && sort != search.ByLeaveDays {
-		return search.Query{}, fmt.Errorf("sort must be %q or %q", search.ByPrice, search.ByLeaveDays)
-	}
 	q := search.Query{
 		Kind:         kind,
 		HomeAirports: req.HomeAirports,
 		Destination:  destination,
 		TravelWindow: search.TravelWindow{From: from, To: to},
-		Sort:         sort,
 	}
 	if kind == search.RoundTrip {
 		if req.StayLength == nil {
@@ -184,6 +181,12 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 		}
 		q.MaxLeaveDays = req.MaxLeaveDays
 	}
+	if q.Filters, err = req.Filters.parse(); err != nil {
+		return search.Query{}, err
+	}
+	if q.Sort, err = parseSort(req.Sort, kind); err != nil {
+		return search.Query{}, err
+	}
 	return q, nil
 }
 
@@ -204,13 +207,9 @@ func timeOfDay(s string) (time.Duration, error) {
 
 func toOfferJSON(o search.Offer) offerJSON {
 	offer := offerJSON{
-		Kind:     string(o.Kind),
-		Outbound: toLegJSON(o.Outbound),
-		Price: priceJSON{
-			Amount:      majorUnits(o.Price.Amount),
-			Currency:    o.Price.Currency,
-			Approximate: o.Price.Approximate,
-		},
+		Kind:           string(o.Kind),
+		Outbound:       toLegJSON(o.Outbound),
+		Price:          toPriceJSON(o.Price),
 		PriceFetchedAt: o.PriceFetchedAt.UTC(),
 	}
 	if o.Inbound != nil {
@@ -218,7 +217,14 @@ func toOfferJSON(o search.Offer) offerJSON {
 		offer.Nights = new(o.Nights)
 		offer.LeaveDays = new(o.LeaveDays)
 	}
+	if p, ok := o.PricePerNight(); ok {
+		offer.PricePerNight = new(toPriceJSON(p))
+	}
 	return offer
+}
+
+func toPriceJSON(p search.Price) priceJSON {
+	return priceJSON{Amount: majorUnits(p.Amount), Currency: p.Currency, Approximate: p.Approximate}
 }
 
 func toLegJSON(l search.Leg) legJSON {

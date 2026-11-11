@@ -22,6 +22,7 @@ import {
   SearchResponse,
   SortOrder,
 } from './search-api';
+import { filtersForm, moments, toSearchFilters, weekdays } from './search-filters';
 import { loadSearchSettings, saveSearchSettings } from './search-settings';
 
 /** One or more airport codes separated by commas or spaces, e.g. "KRK, KTW". */
@@ -49,7 +50,7 @@ const dayFormat = new Intl.DateTimeFormat('en-GB', {
 @Component({
   selector: 'app-search',
   imports: [ReactiveFormsModule],
-  styleUrl: './search.css',
+  styleUrls: ['./search.css', './search-filters.css'],
   templateUrl: './search.html',
 })
 export class Search {
@@ -76,7 +77,10 @@ export class Search {
       maxLeaveDays: this.fb.control<number | null>(null, Validators.pattern(/^\d+$/)),
       sort: this.fb.control<SortOrder>('price'),
     }),
+    filters: filtersForm(this.fb),
   });
+  protected readonly moments = moments;
+  protected readonly weekdays = weekdays;
 
   protected readonly kind = toSignal(this.form.controls.kind.valueChanges, {
     initialValue: this.form.controls.kind.value,
@@ -148,6 +152,8 @@ export class Search {
       if (v.leave.maxLeaveDays != null) query.maxLeaveDays = Number(v.leave.maxLeaveDays);
       query.sort = v.leave.sort;
     }
+    const filters = toSearchFilters(v.filters, v.kind);
+    if (filters) query.filters = filters;
     this.loading.set(true);
     this.error.set(undefined);
     this.http.post<SearchResponse>('/api/search', query).subscribe({

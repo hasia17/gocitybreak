@@ -235,13 +235,14 @@ type searchResponseBody struct {
 }
 
 type offerBody struct {
-	Kind           string    `json:"kind"`
-	Outbound       legBody   `json:"outbound"`
-	Inbound        *legBody  `json:"inbound,omitempty"`
-	Nights         *int      `json:"nights,omitempty"`
-	LeaveDays      *int      `json:"leaveDays,omitempty"`
-	Price          priceBody `json:"price"`
-	PriceFetchedAt string    `json:"priceFetchedAt"`
+	Kind           string     `json:"kind"`
+	Outbound       legBody    `json:"outbound"`
+	Inbound        *legBody   `json:"inbound,omitempty"`
+	Nights         *int       `json:"nights,omitempty"`
+	LeaveDays      *int       `json:"leaveDays,omitempty"`
+	Price          priceBody  `json:"price"`
+	PricePerNight  *priceBody `json:"pricePerNight,omitempty"`
+	PriceFetchedAt string     `json:"priceFetchedAt"`
 }
 
 type legBody struct {
