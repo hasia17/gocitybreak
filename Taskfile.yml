@@ -1,0 +1,35 @@
+# Local development shortcuts (https://taskfile.dev). Works on macOS, Linux and Windows:
+# Task runs these commands with its own built-in shell, so only Task and Docker are needed.
+version: '3'
+
+tasks:
+  default:
+    cmds:
+      - task: run
+
+  run:
+    desc: Build and start everything, load sample flights, open on http://localhost:8080
+    cmds:
+      - docker compose up -d --build
+      - task: seed
+      - echo "Ready at http://localhost:8080 (logs - task logs, stop - task stop)"
+
+  seed:
+    desc: Load sample flights (safe to re-run); waits until the API has migrated the database
+    cmds:
+      # The API creates the tables on startup, so wait for it from inside the stack (the loop runs in a Linux container).
+      - >-
+        docker compose exec -T frontend sh -c
+        'i=0; until wget -q -O /dev/null http://backend:8080/api/status; do
+        i=$((i+1)); if [ $i -ge 60 ]; then echo "API did not start, check: task logs" >&2; exit 1; fi; sleep 1; done'
+      - docker compose exec -T postgres psql -q -v ON_ERROR_STOP=1 -U gocitybreak -d gocitybreak < backend/seed/dev.sql
+
+  logs:
+    desc: Follow logs of all services
+    cmds:
+      - docker compose logs -f
+
+  stop:
+    desc: Stop everything (data is kept; add -- -v to also delete the database)
+    cmds:
+      - docker compose down {{.CLI_ARGS}}

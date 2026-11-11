@@ -13,18 +13,23 @@ A search engine for cheap Ryanair flights for short city breaks. Domain vocabula
 
 ## Run locally
 
-Requires Docker.
+Requires Docker and [Task](https://taskfile.dev/) (macOS: `brew install go-task`; Windows: `winget install Task.Task`; other options at https://taskfile.dev/installation/).
 
 ```bash
-docker compose up --build
+task run    # build and start everything, load sample flights
+task logs   # follow logs
+task stop   # stop (data is kept; `task stop -- -v` also deletes the database)
 ```
 
 Open http://localhost:8080. The API is under http://localhost:8080/api (e.g. `/api/status`).
 
-Until the price worker (#5) fills the database, load hand-made sample flights (KRK⇄BGY, KTW⇄CIA, WRO⇄STN for the next 60 days; safe to re-run):
+Until the price worker (#5) fills the database, `task run` loads hand-made sample flights (KRK⇄BGY, KTW⇄CIA, WRO⇄STN for the next 60 days; safe to re-run, also on its own with `task seed`).
+
+Without Task, the same by hand:
 
 ```bash
-docker compose exec -T postgres psql -U gocitybreak -d gocitybreak < backend/seed/dev.sql
+docker compose up -d --build
+docker compose exec -T postgres psql -U gocitybreak -d gocitybreak < backend/seed/dev.sql   # once the API has started
 ```
 
 Search is `POST /api/search`, e.g. `{"kind": "oneWay", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}}`.
