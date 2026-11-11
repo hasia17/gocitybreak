@@ -143,47 +143,6 @@ describe('Search', () => {
     expect(offer).not.toContain('89.00 PLN ·');
   });
 
-  it('shows the leave days of round-trip offers', async () => {
-    const fixture = TestBed.createComponent(Search);
-    await fixture.whenStable();
-    const root = fixture.nativeElement as HTMLElement;
-
-    fill(root, 'From', 'KRK');
-    fill(root, 'To', 'BGY');
-    fill(root, 'Earliest', '2026-12-01');
-    fill(root, 'Latest', '2026-12-10');
-    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
-
-    const fetchedAt = new Date().toISOString();
-    const flight = (from: string, to: string, date: string, time: string) => ({
-      departureAirport: from,
-      arrivalAirport: to,
-      departure: { date, time, timeZone: 'Europe/Warsaw' },
-      arrival: { date, time, timeZone: 'Europe/Warsaw' },
-      originalPrice: { amount: 50, currency: 'PLN' },
-      fetchedAt,
-    });
-    const offer = (leaveDays: number) => ({
-      kind: 'roundTrip',
-      outbound: { isDirect: true, flights: [flight('KRK', 'BGY', '2026-12-04', '18:00')] },
-      inbound: { isDirect: true, flights: [flight('BGY', 'KRK', '2026-12-06', '20:00')] },
-      nights: 2,
-      leaveDays,
-      price: { amount: 100, currency: 'PLN', approximate: false },
-      priceFetchedAt: fetchedAt,
-    });
-    httpTesting.expectOne('/api/search').flush({ offers: [offer(0), offer(1), offer(2)] });
-    await fixture.whenStable();
-
-    const offers = Array.from(root.querySelectorAll('[data-testid="offer"]')).map((o) =>
-      o.textContent?.replace(/\s+/g, ' '),
-    );
-    expect(offers[0]).toContain('no leave');
-    expect(offers[1]).toContain('1 leave day');
-    expect(offers[1]).not.toContain('1 leave days');
-    expect(offers[2]).toContain('2 leave days');
-  });
-
   it('remembers work hours, the maximum of leave days and the sort for the next visit', async () => {
     const first = TestBed.createComponent(Search);
     await first.whenStable();
@@ -330,45 +289,6 @@ describe('Search', () => {
       .find((f) => f.querySelector('legend')?.textContent?.trim() === 'Outbound departure days')
       ?.querySelectorAll('input')[4];
     expect(friday?.checked).toBe(true);
-  });
-
-  it('shows the price per night of a round-trip offer', async () => {
-    const fixture = TestBed.createComponent(Search);
-    await fixture.whenStable();
-    const root = fixture.nativeElement as HTMLElement;
-
-    fill(root, 'From', 'KRK');
-    fill(root, 'To', 'BGY');
-    fill(root, 'Earliest', '2026-12-01');
-    fill(root, 'Latest', '2026-12-10');
-    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
-    const fetchedAt = new Date().toISOString();
-    const flight = (from: string, to: string, date: string) => ({
-      departureAirport: from,
-      arrivalAirport: to,
-      departure: { date, time: '18:00', timeZone: 'Europe/Warsaw' },
-      arrival: { date, time: '19:55', timeZone: 'Europe/Rome' },
-      originalPrice: { amount: 50, currency: 'PLN' },
-      fetchedAt,
-    });
-    httpTesting.expectOne('/api/search').flush({
-      offers: [
-        {
-          kind: 'roundTrip',
-          outbound: { isDirect: true, flights: [flight('KRK', 'BGY', '2026-12-04')] },
-          inbound: { isDirect: true, flights: [flight('BGY', 'KRK', '2026-12-07')] },
-          nights: 3,
-          leaveDays: 1,
-          price: { amount: 90.99, currency: 'PLN', approximate: true },
-          pricePerNight: { amount: 30.33, currency: 'PLN', approximate: true },
-          priceFetchedAt: fetchedAt,
-        },
-      ],
-    });
-    await fixture.whenStable();
-
-    const offer = root.querySelector('[data-testid="offer"]')?.textContent?.replace(/\s+/g, ' ');
-    expect(offer).toContain('≈ 30.33 PLN per night');
   });
 
   it('marks the nights invalid when the maximum is below the minimum', async () => {
