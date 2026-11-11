@@ -151,9 +151,9 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 	if q.Filters, err = req.Filters.parse(); err != nil {
 		return search.Query{}, err
 	}
-	// These fields apply only to round trips, including the default kind. Ignore them for
-	// one-way requests as before, even when their values would be invalid for a round trip.
-	if q.Kind == "" || q.Kind == search.RoundTrip {
+	// These fields apply only to round trips; a one-way request's values are ignored, even
+	// when they would be invalid for a round trip.
+	if q.Kind.IsRoundTrip() {
 		if req.StayLength != nil {
 			q.StayLength = &search.StayLength{Min: req.StayLength.Min, Max: req.StayLength.Max}
 		}

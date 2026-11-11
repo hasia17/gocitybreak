@@ -27,6 +27,12 @@ const (
 	OneWay OfferKind = "oneWay"
 )
 
+// IsRoundTrip reports whether a query of kind k searches for round-trip offers;
+// an empty kind does, round trip being the default kind of offer.
+func (k OfferKind) IsRoundTrip() bool {
+	return k == "" || k == RoundTrip
+}
+
 // Query is what the traveller searches for.
 type Query struct {
 	// Kind is the kind of offer searched for; an empty Kind is a round trip, the default kind of offer.
@@ -200,10 +206,10 @@ const (
 	defaultWorkEnd   = 17 * time.Hour
 )
 
-// withDefaults returns q with its defaults applied: an empty kind is a round trip, the default
-// kind of offer, and work hours left unset become the default work hours.
+// withDefaults returns q with its defaults applied: an empty kind is a round trip (see IsRoundTrip),
+// and work hours left unset become the default work hours.
 func (q Query) withDefaults() Query {
-	if q.Kind == "" {
+	if q.Kind.IsRoundTrip() {
 		q.Kind = RoundTrip
 	}
 	if q.WorkStart == nil {
