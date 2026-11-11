@@ -233,6 +233,30 @@ func (q Query) validate() error {
 	default:
 		return &QueryError{fmt.Sprintf("sort must be %q, %q or %q", ByPrice, ByLeaveDays, ByPricePerNight)}
 	}
+	if len(q.HomeAirports) == 0 {
+		return &QueryError{"homeAirports must not be empty"}
+	}
+	if !q.Destination.Anywhere && q.Destination.IsEmpty() {
+		return &QueryError{"destination must name airports, cities or countries, or be anywhere"}
+	}
+	if q.TravelWindow.To.Before(q.TravelWindow.From) {
+		return &QueryError{"travelWindow.to must not be before travelWindow.from"}
+	}
+	// A stay length and a sound maximum of leave days are round-trip matters only.
+	if q.Kind == RoundTrip {
+		if q.StayLength == nil {
+			return &QueryError{"stayLength is required for a round trip"}
+		}
+		if q.StayLength.Min < 0 {
+			return &QueryError{"stayLength.min must not be negative"}
+		}
+		if q.StayLength.Max < q.StayLength.Min {
+			return &QueryError{"stayLength.max must not be less than stayLength.min"}
+		}
+	}
+	if q.Filters.MaxLeaveDays != nil && *q.Filters.MaxLeaveDays < 0 {
+		return &QueryError{"maxLeaveDays must not be negative"}
+	}
 	return nil
 }
 
