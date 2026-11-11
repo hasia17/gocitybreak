@@ -146,15 +146,15 @@
             }
           }
         </div>
-        <fieldset class="days" formGroupName="departureWeekdays">
-          <legend>Departure days</legend>
+        <fieldset class="days" formGroupName="outboundDepartureWeekdays">
+          <legend>Outbound departure days</legend>
           @for (day of weekdays; track day.value) {
             <label><input type="checkbox" [formControlName]="day.value" />{{ day.label }}</label>
           }
         </fieldset>
         @if (kind() === 'roundTrip') {
-          <fieldset class="days" formGroupName="returnWeekdays">
-            <legend>Return days</legend>
+          <fieldset class="days" formGroupName="inboundDepartureWeekdays">
+            <legend>Inbound departure days</legend>
             @for (day of weekdays; track day.value) {
               <label><input type="checkbox" [formControlName]="day.value" />{{ day.label }}</label>
             }

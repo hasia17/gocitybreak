@@ -13,9 +13,10 @@ type Filters struct {
 	// nil leaves the moment unrestricted. Inbound ranges apply to round-trip offers only.
 	OutboundDeparture, OutboundArrival *TimeRange
 	InboundDeparture, InboundArrival   *TimeRange
-	// DepartureWeekdays are the days of the outbound departure, ReturnWeekdays those of the inbound departure
-	// (round-trip offers only), both by local date; an empty list allows every day.
-	DepartureWeekdays, ReturnWeekdays []time.Weekday
+	// Weekdays of the outbound and of the inbound departure (round-trip offers only), both by local date
+	// at the departure airport; an empty list allows every day. They go by departure, unlike leave days,
+	// which go by the inbound arrival.
+	OutboundDepartureWeekdays, InboundDepartureWeekdays []time.Weekday
 }
 
 // TimeRange is a range of times of day, both ends inclusive, each measured from midnight.
@@ -44,13 +45,13 @@ func (f Filters) keep(o Offer) bool {
 	out := o.Outbound
 	if f.DirectOnly && !out.IsDirect() ||
 		!within(f.OutboundDeparture, out.departure()) || !within(f.OutboundArrival, out.arrival()) ||
-		!onDay(f.DepartureWeekdays, out.departure()) {
+		!onDay(f.OutboundDepartureWeekdays, out.departure()) {
 		return false
 	}
 	if in := o.Inbound; in != nil {
 		return (!f.DirectOnly || in.IsDirect()) &&
 			within(f.InboundDeparture, in.departure()) && within(f.InboundArrival, in.arrival()) &&
-			onDay(f.ReturnWeekdays, in.departure())
+			onDay(f.InboundDepartureWeekdays, in.departure())
 	}
 	return true
 }

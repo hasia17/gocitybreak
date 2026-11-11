@@ -34,7 +34,7 @@ Search is `POST /api/search`, e.g. `{"kind": "roundTrip", "homeAirports": ["KRK"
 
 Round-trip offers carry `leaveDays` (leave-days calculator in `internal/leave`). The query may set `"workStart"` and `"workEnd"` (HH:MM in the home airport's local time, default `09:00` and `17:00`), `"maxLeaveDays"` (0 or more) and `"sort"` (`price`, the default; for round trips only also `leaveDays` or `pricePerNight`, with 0-night offers last; round-trip offers of at least one night carry `pricePerNight`).
 
-Optional `filters`: `directOnly`, time ranges `outboundDeparture`, `outboundArrival`, `inboundDeparture`, `inboundArrival` (each `{"from": "06:00", "to": "12:00"}` in the local time of the airport concerned; `to` before `from` wraps past midnight), and `departureWeekdays`, `returnWeekdays` (`["thu", "fri"]`; return is the inbound departure date).
+Optional `filters`: `directOnly`, time ranges `outboundDeparture`, `outboundArrival`, `inboundDeparture`, `inboundArrival` (each `{"from": "06:00", "to": "12:00"}` in the local time of the airport concerned; `to` before `from` wraps past midnight), and `outboundDepartureWeekdays`, `inboundDepartureWeekdays` (`["thu", "fri"]`, by the local departure date of each leg).
 
 ## Develop without Docker for the app
 

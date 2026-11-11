@@ -68,7 +68,7 @@ describe('Search', () => {
     input.dispatchEvent(new Event('input'));
   }
 
-  /** Ticks a weekday checkbox, e.g. "Fri" among the "Departure days". */
+  /** Ticks a weekday checkbox, e.g. "Fri" among the "Outbound departure days". */
   function day(root: HTMLElement, days: string, weekday: string) {
     const fieldset = Array.from(root.querySelectorAll('fieldset')).find(
       (f) => f.querySelector('legend')?.textContent?.trim() === days,
@@ -283,9 +283,9 @@ describe('Search', () => {
     // An open-ended range runs to the end of the day, or from its start.
     time(root, 'Inbound arrival to', '22:00');
     time(root, 'Outbound arrival from', '09:00');
-    day(root, 'Departure days', 'Thu');
-    day(root, 'Departure days', 'Fri');
-    day(root, 'Return days', 'Sun');
+    day(root, 'Outbound departure days', 'Thu');
+    day(root, 'Outbound departure days', 'Fri');
+    day(root, 'Inbound departure days', 'Sun');
     const sort = labelled<HTMLSelectElement>(root, 'Sort by');
     sort.value = 'pricePerNight';
     sort.dispatchEvent(new Event('change'));
@@ -305,8 +305,8 @@ describe('Search', () => {
         outboundDeparture: { from: '06:00', to: '12:00' },
         outboundArrival: { from: '09:00', to: '23:59' },
         inboundArrival: { from: '00:00', to: '22:00' },
-        departureWeekdays: ['thu', 'fri'],
-        returnWeekdays: ['sun'],
+        outboundDepartureWeekdays: ['thu', 'fri'],
+        inboundDepartureWeekdays: ['sun'],
       },
       sort: 'pricePerNight',
     });
@@ -323,7 +323,7 @@ describe('Search', () => {
     fill(root, 'Earliest', '2026-12-01');
     fill(root, 'Latest', '2026-12-10');
     time(root, 'Inbound departure from', '14:00');
-    day(root, 'Return days', 'Sun');
+    day(root, 'Inbound departure days', 'Sun');
     const sort = labelled<HTMLSelectElement>(root, 'Sort by');
     sort.value = 'pricePerNight';
     sort.dispatchEvent(new Event('change'));
@@ -331,7 +331,7 @@ describe('Search', () => {
     await fixture.whenStable();
 
     expect(root.querySelector('input[aria-label="Inbound departure from"]')).toBeNull();
-    expect(root.textContent).not.toContain('Return days');
+    expect(root.textContent).not.toContain('Inbound departure days');
     expect(root.querySelector('option[value="pricePerNight"]')).toBeNull();
     time(root, 'Outbound arrival to', '10:00');
     root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
@@ -356,7 +356,7 @@ describe('Search', () => {
     fill(root, 'Earliest', '2026-12-01');
     fill(root, 'Latest', '2026-12-10');
     time(root, 'Outbound departure from', '06:00');
-    day(root, 'Departure days', 'Fri');
+    day(root, 'Outbound departure days', 'Fri');
     root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
     httpTesting.expectOne('/api/search').flush({ offers: [] });
     first.destroy();
@@ -367,7 +367,7 @@ describe('Search', () => {
 
     expect(labelled<HTMLInputElement>(root, 'Outbound departure from').value).toBe('06:00');
     const friday = Array.from(root.querySelectorAll('fieldset'))
-      .find((f) => f.querySelector('legend')?.textContent?.trim() === 'Departure days')
+      .find((f) => f.querySelector('legend')?.textContent?.trim() === 'Outbound departure days')
       ?.querySelectorAll('input')[4];
     expect(friday?.checked).toBe(true);
   });

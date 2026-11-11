@@ -28,7 +28,7 @@ export interface SearchQuery {
   workEnd?: string;
   /** Leaves out round-trip offers that cost more leave days; 0 is a valid maximum. */
   maxLeaveDays?: number;
-  /** Absent filters restrict nothing; inbound ones and returnWeekdays apply to round trips only. */
+  /** Absent filters restrict nothing; inbound ones apply to round trips only. */
   filters?: SearchFilters;
   /** Price by default; price per night for round trips only. */
   sort?: SortOrder;
@@ -44,10 +44,10 @@ export interface SearchFilters {
   outboundArrival?: TimeRange;
   inboundDeparture?: TimeRange;
   inboundArrival?: TimeRange;
-  /** Days of the outbound departure, by local date. */
-  departureWeekdays?: Weekday[];
-  /** Days of the inbound departure, by local date. */
-  returnWeekdays?: Weekday[];
+  /** Days of the outbound departure, by local date at the departure airport. */
+  outboundDepartureWeekdays?: Weekday[];
+  /** Days of the inbound departure, by local date at the departure airport. */
+  inboundDepartureWeekdays?: Weekday[];
 }
 
 /**

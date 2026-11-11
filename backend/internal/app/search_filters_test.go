@@ -146,7 +146,7 @@ func TestSearchTimeRangeWrapsPastMidnightWhenItEndsBeforeItStarts(t *testing.T) 
 	}
 }
 
-func TestSearchKeepsDepartureAndReturnOnChosenWeekdays(t *testing.T) {
+func TestSearchKeepsOutboundAndInboundDeparturesOnChosenWeekdays(t *testing.T) {
 	srv, pg := startAPI(t, "test")
 	seed(t, pg, polishAndItalianAirports+`
 		INSERT INTO flights (departure_airport, arrival_airport,
@@ -158,9 +158,9 @@ func TestSearchKeepsDepartureAndReturnOnChosenWeekdays(t *testing.T) {
 			-- departs on Saturday
 			('KRK', 'BGY', '2026-12-05', '08:00', '2026-12-05', '09:55', 100, 'PLN', '2026-11-10T08:00:00Z'),
 			('BGY', 'KRK', '2026-12-06', '20:00', '2026-12-06', '21:50', 100, 'PLN', '2026-11-10T08:00:00Z'),
-			-- returns on Monday although it lands on Tuesday
+			-- the inbound flight departs on Monday although it lands on Tuesday
 			('BGY', 'KRK', '2026-12-07', '23:30', '2026-12-08', '01:20', 300, 'PLN', '2026-11-10T08:00:00Z'),
-			-- returns on Tuesday
+			-- the inbound flight departs on Tuesday
 			('BGY', 'KRK', '2026-12-08', '07:00', '2026-12-08', '08:50', 50, 'PLN', '2026-11-10T08:00:00Z');
 	`)
 
@@ -170,7 +170,7 @@ func TestSearchKeepsDepartureAndReturnOnChosenWeekdays(t *testing.T) {
 		"destination": {"airports": ["BGY"]},
 		"travelWindow": {"from": "2026-12-01", "to": "2026-12-10"},
 		"stayLength": {"min": 0, "max": 10},
-		"filters": {"departureWeekdays": ["thu", "fri"], "returnWeekdays": ["sun", "mon"]}
+		"filters": {"outboundDepartureWeekdays": ["thu", "fri"], "inboundDepartureWeekdays": ["sun", "mon"]}
 	}`)
 
 	if code != http.StatusOK {
@@ -280,7 +280,7 @@ func TestSearchRejectsInvalidFiltersAndSort(t *testing.T) {
 		"hour out of range":             `{` + roundTrip + `, "filters": {"outboundDeparture": {"from": "06:00", "to": "25:00"}}}`,
 		"time not in HH:MM":             `{` + roundTrip + `, "filters": {"inboundArrival": {"from": "noon", "to": "18:00"}}}`,
 		"time range without an end":     `{` + roundTrip + `, "filters": {"inboundDeparture": {"from": "06:00"}}}`,
-		"unknown weekday":               `{` + roundTrip + `, "filters": {"departureWeekdays": ["friday"]}}`,
+		"unknown weekday":               `{` + roundTrip + `, "filters": {"outboundDepartureWeekdays": ["friday"]}}`,
 		"unknown sort":                  `{` + roundTrip + `, "sort": "duration"}`,
 		"price per night for a one way": `{"kind": "oneWay", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "sort": "pricePerNight"}`,
 		"leave days for a one way":      `{"kind": "oneWay", "homeAirports": ["KRK"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "sort": "leaveDays"}`,

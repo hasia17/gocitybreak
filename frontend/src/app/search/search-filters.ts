@@ -38,8 +38,8 @@ export function filtersForm(fb: NonNullableFormBuilder) {
     outboundArrival: timeRange(),
     inboundDeparture: timeRange(),
     inboundArrival: timeRange(),
-    departureWeekdays: days(),
-    returnWeekdays: days(),
+    outboundDepartureWeekdays: days(),
+    inboundDepartureWeekdays: days(),
   });
 }
 
@@ -60,9 +60,9 @@ export function toSearchFilters(v: FiltersValue, kind: OfferKind): SearchFilters
   }
   const chosen = (days: Record<Weekday, boolean>) =>
     weekdays.map((d) => d.value).filter((d) => days[d]);
-  const departure = chosen(v.departureWeekdays);
-  if (departure.length) filters.departureWeekdays = departure;
-  const back = chosen(v.returnWeekdays);
-  if (back.length && kind === 'roundTrip') filters.returnWeekdays = back;
+  const outbound = chosen(v.outboundDepartureWeekdays);
+  if (outbound.length) filters.outboundDepartureWeekdays = outbound;
+  const inbound = chosen(v.inboundDepartureWeekdays);
+  if (inbound.length && kind === 'roundTrip') filters.inboundDepartureWeekdays = inbound;
   return Object.keys(filters).length ? filters : undefined;
 }
