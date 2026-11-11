@@ -93,7 +93,10 @@
 @if (offers(); as offers) {
   <section class="results" data-testid="results" aria-live="polite">
     @if (offers.length === 0) {
-      <p class="empty">No offers match your search. Try a wider travel window or other airports.</p>
+      <p class="empty">
+        No offers match your search. Try loosening it: a wider travel window, more nights to choose
+        from or more airports.
+      </p>
     } @else {
       <header class="results-head">
         <h2>{{ offers.length }} {{ offers.length === 1 ? 'offer' : 'offers' }}</h2>
@@ -141,6 +144,15 @@
                 }
                 checked {{ priceAge(offer) }}
               </small>
+              @let tickets = ryanairTickets(offer);
+              @if (tickets.length > 1) {
+                <small>Booked as {{ count(tickets.length) }} separate one-way tickets</small>
+              }
+              @for (ticket of tickets; track ticket.url) {
+                <a [href]="ticket.url" target="_blank" rel="noopener">
+                  {{ tickets.length > 1 ? ticket.route : 'Book' }} on Ryanair ↗
+                </a>
+              }
             </div>
           </li>
         }
