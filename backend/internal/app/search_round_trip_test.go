@@ -10,8 +10,8 @@ import (
 )
 
 func TestSearchPairsOutboundAndInboundFlightsIntoRoundTripOffer(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, polishAndItalianAirports+`
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports+`
 		INSERT INTO exchange_rates (currency, rate_date, rate) VALUES ('EUR', '2026-11-10', 4.2512);
 		INSERT INTO flights (departure_airport, arrival_airport,
 			departure_date, departure_time, arrival_date, arrival_time,
@@ -72,8 +72,8 @@ func TestSearchPairsOutboundAndInboundFlightsIntoRoundTripOffer(t *testing.T) {
 }
 
 func TestSearchRespectsStayLengthInHotelNights(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, polishAndItalianAirports+`
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports+`
 		INSERT INTO flights (departure_airport, arrival_airport,
 			departure_date, departure_time, arrival_date, arrival_time,
 			price_amount, price_currency, fetched_at)
@@ -112,8 +112,8 @@ func TestSearchRespectsStayLengthInHotelNights(t *testing.T) {
 }
 
 func TestSearchFitsRoundTripWithinTravelWindow(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, polishAndItalianAirports+`
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports+`
 		INSERT INTO flights (departure_airport, arrival_airport,
 			departure_date, departure_time, arrival_date, arrival_time,
 			price_amount, price_currency, fetched_at)
@@ -146,8 +146,8 @@ func TestSearchFitsRoundTripWithinTravelWindow(t *testing.T) {
 }
 
 func TestSearchReturnsToAnyHomeAirportFromTheSameDestinationAirport(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, polishAndItalianAirports+`
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports+`
 		INSERT INTO airports (code, name, time_zone, supported) VALUES ('WAW', 'Warsaw Modlin', 'Europe/Warsaw', true);
 		INSERT INTO flights (departure_airport, arrival_airport,
 			departure_date, departure_time, arrival_date, arrival_time,
@@ -188,8 +188,8 @@ func TestSearchReturnsToAnyHomeAirportFromTheSameDestinationAirport(t *testing.T
 }
 
 func TestSearchDefaultsToRoundTripOffers(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, polishAndItalianAirports+`
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports+`
 		INSERT INTO flights (departure_airport, arrival_airport,
 			departure_date, departure_time, arrival_date, arrival_time,
 			price_amount, price_currency, fetched_at)

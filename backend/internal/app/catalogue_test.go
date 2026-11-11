@@ -9,8 +9,8 @@ import (
 )
 
 func TestCatalogueListsSupportedAirportsAndDestinationAirportsCitiesAndCountries(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, europeanAirports)
+	srv, url := startAPI(t, "test")
+	seed(t, url, europeanAirports)
 
 	resp, err := http.Get(srv.URL + "/api/catalogue")
 	if err != nil {

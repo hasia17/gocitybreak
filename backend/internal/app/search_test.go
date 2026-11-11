@@ -9,12 +9,11 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
 )
 
 func TestSearchReturnsOneWayOfferForDirectFlightInTravelWindow(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, polishAndItalianAirports+`
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports+`
 		INSERT INTO flights (departure_airport, arrival_airport,
 			departure_date, departure_time, arrival_date, arrival_time,
 			price_amount, price_currency, fetched_at)
@@ -52,8 +51,8 @@ func TestSearchReturnsOneWayOfferForDirectFlightInTravelWindow(t *testing.T) {
 }
 
 func TestSearchSkipsFlightsOutsideQuery(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, polishAndItalianAirports+`
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports+`
 		INSERT INTO flights (departure_airport, arrival_airport,
 			departure_date, departure_time, arrival_date, arrival_time,
 			price_amount, price_currency, fetched_at)
@@ -93,9 +92,9 @@ func TestSearchSkipsFlightsOutsideQuery(t *testing.T) {
 }
 
 func TestSearchConvertsForeignCurrencyIntoApproximatePLNAtLatestRate(t *testing.T) {
-	srv, pg := startAPI(t, "test")
+	srv, url := startAPI(t, "test")
 	// Ryanair prices a flight in its departure airport's currency, so the inbound flight is in EUR.
-	seed(t, pg, polishAndItalianAirports+`
+	seed(t, url, polishAndItalianAirports+`
 		INSERT INTO exchange_rates (currency, rate_date, rate) VALUES
 			('EUR', '2026-11-09', 4.3000),
 			('EUR', '2026-11-10', 4.2512);
@@ -132,8 +131,8 @@ func TestSearchConvertsForeignCurrencyIntoApproximatePLNAtLatestRate(t *testing.
 }
 
 func TestSearchSortsOffersByAscendingPriceInPLN(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, polishAndItalianAirports+`
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports+`
 		INSERT INTO exchange_rates (currency, rate_date, rate) VALUES ('EUR', '2026-11-10', 4.2512);
 		INSERT INTO flights (departure_airport, arrival_airport,
 			departure_date, departure_time, arrival_date, arrival_time,
@@ -168,8 +167,8 @@ func TestSearchSortsOffersByAscendingPriceInPLN(t *testing.T) {
 }
 
 func TestSearchOrdersEquallyPricedOffersByDepartureThenAirports(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, polishAndItalianAirports+`
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports+`
 		INSERT INTO flights (departure_airport, arrival_airport,
 			departure_date, departure_time, arrival_date, arrival_time,
 			price_amount, price_currency, fetched_at)
@@ -228,8 +227,8 @@ func TestSearchRejectsInvalidQuery(t *testing.T) {
 }
 
 func TestSearchRejectsHomeAirportsThatAreNotSupported(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, polishAndItalianAirports)
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports)
 
 	for name, homeAirports := range map[string]string{
 		"airport we fetch no routes from": `["KRK", "BGY"]`,
@@ -305,13 +304,9 @@ type priceBody struct {
 }
 
 // seed runs SQL against the test database, standing in for the price worker that fills it in production.
-func seed(t *testing.T, pg *postgres.PostgresContainer, sql string) {
+func seed(t *testing.T, url, sql string) {
 	t.Helper()
 	ctx := t.Context()
-	url, err := pg.ConnectionString(ctx, "sslmode=disable")
-	if err != nil {
-		t.Fatalf("postgres connection string: %v", err)
-	}
 	conn, err := pgx.Connect(ctx, url)
 	if err != nil {
 		t.Fatalf("connect to postgres: %v", err)

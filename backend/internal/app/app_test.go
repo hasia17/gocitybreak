@@ -5,13 +5,18 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
-
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
 
 	"github.com/hasia17/gocitybreak/backend/internal/app"
 	"github.com/hasia17/gocitybreak/backend/internal/database/databasetest"
 )
+
+func TestMain(m *testing.M) {
+	code := m.Run()
+	databasetest.Shutdown()
+	os.Exit(code)
+}
 
 func TestStatusReportsVersionAndMigratedDatabase(t *testing.T) {
 	srv, _ := startAPI(t, "1.2.3-test")
@@ -36,10 +41,9 @@ func TestStatusReportsVersionAndMigratedDatabase(t *testing.T) {
 }
 
 func TestStatusReportsUnavailableDatabase(t *testing.T) {
-	srv, pg := startAPI(t, "1.2.3-test")
-	if err := pg.Terminate(context.Background()); err != nil {
-		t.Fatalf("stop postgres: %v", err)
-	}
+	srv, url := startAPI(t, "1.2.3-test")
+	// Dropping the database (not the shared container) makes it unavailable.
+	databasetest.Drop(t, url)
 
 	code, body := getStatus(t, srv)
 
@@ -66,10 +70,10 @@ type statusBody struct {
 	} `json:"database"`
 }
 
-// startAPI starts the API with the given version on a fresh PostgreSQL container.
-func startAPI(t *testing.T, version string) (*httptest.Server, *postgres.PostgresContainer) {
+// startAPI starts the API with the given version on a fresh test database.
+func startAPI(t *testing.T, version string) (*httptest.Server, string) {
 	t.Helper()
-	pg, url := databasetest.StartPostgres(t)
+	url := databasetest.Acquire(t)
 	a, err := app.New(context.Background(), app.Config{DatabaseURL: url, Version: version})
 	if err != nil {
 		t.Fatalf("app.New: %v", err)
@@ -77,7 +81,7 @@ func startAPI(t *testing.T, version string) (*httptest.Server, *postgres.Postgre
 	t.Cleanup(a.Close)
 	srv := httptest.NewServer(a.Handler())
 	t.Cleanup(srv.Close)
-	return srv, pg
+	return srv, url
 }
 
 func getStatus(t *testing.T, srv *httptest.Server) (int, statusBody) {

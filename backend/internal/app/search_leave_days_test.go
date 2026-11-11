@@ -9,8 +9,8 @@ import (
 )
 
 func TestSearchCountsLeaveDaysFromWorkHours(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, polishAndItalianAirports+`
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports+`
 		INSERT INTO flights (departure_airport, arrival_airport,
 			departure_date, departure_time, arrival_date, arrival_time,
 			price_amount, price_currency, fetched_at)
@@ -47,8 +47,8 @@ func TestSearchCountsLeaveDaysFromWorkHours(t *testing.T) {
 }
 
 func TestSearchFiltersByMaximumLeaveDays(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, polishAndItalianAirports+`
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports+`
 		INSERT INTO flights (departure_airport, arrival_airport,
 			departure_date, departure_time, arrival_date, arrival_time,
 			price_amount, price_currency, fetched_at)
@@ -96,8 +96,8 @@ func TestSearchFiltersByMaximumLeaveDays(t *testing.T) {
 }
 
 func TestSearchSortsByLeaveDaysThenPrice(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, polishAndItalianAirports+`
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports+`
 		INSERT INTO flights (departure_airport, arrival_airport,
 			departure_date, departure_time, arrival_date, arrival_time,
 			price_amount, price_currency, fetched_at)

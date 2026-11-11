@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -25,6 +26,12 @@ import (
 
 // now is when the tests' worker runs; the price horizon reaches into May 2027.
 var now = time.Date(2026, 11, 10, 8, 0, 0, 0, time.UTC)
+
+func TestMain(m *testing.M) {
+	code := m.Run()
+	databasetest.Shutdown()
+	os.Exit(code)
+}
 
 func TestWorkerStoresCatalogueWithCityAndCountry(t *testing.T) {
 	env := start(t)
@@ -284,10 +291,10 @@ type env struct {
 	clock   time.Time
 }
 
-// start migrates a fresh database and points a worker at a fake Ryanair (KRK ⇄ BGY) and a fake NBP.
+// start points a worker at a fresh migrated database, a fake Ryanair (KRK ⇄ BGY) and a fake NBP.
 func start(t *testing.T) *env {
 	t.Helper()
-	_, url := databasetest.StartPostgres(t)
+	url := databasetest.Acquire(t)
 	db, err := database.Open(t.Context(), url)
 	if err != nil {
 		t.Fatalf("open database: %v", err)
