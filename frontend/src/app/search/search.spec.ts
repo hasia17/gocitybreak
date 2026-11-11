@@ -25,11 +25,107 @@ describe('Search', () => {
     input.dispatchEvent(new Event('input'));
   }
 
+  function nights(root: HTMLElement, which: 'Minimum' | 'Maximum') {
+    return root.querySelector<HTMLInputElement>(`input[aria-label="${which} nights"]`);
+  }
+
+  it('searches round-trip offers from several home airports by default and lists both legs with nights', async () => {
+    const fixture = TestBed.createComponent(Search);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+
+    fill(root, 'From', 'krk, KTW');
+    fill(root, 'To', 'BGY');
+    fill(root, 'Earliest', '2026-12-01');
+    fill(root, 'Latest', '2026-12-10');
+    const max = nights(root, 'Maximum')!;
+    max.value = '4';
+    max.dispatchEvent(new Event('input'));
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+
+    const req = httpTesting.expectOne({ method: 'POST', url: '/api/search' });
+    expect(req.request.body).toEqual({
+      kind: 'roundTrip',
+      homeAirports: ['KRK', 'KTW'],
+      destination: { airports: ['BGY'] },
+      travelWindow: { from: '2026-12-01', to: '2026-12-10' },
+      stayLength: { min: 2, max: 4 },
+    });
+    const fetchedAt = new Date().toISOString();
+    req.flush({
+      offers: [
+        {
+          kind: 'roundTrip',
+          outbound: {
+            isDirect: true,
+            flights: [
+              {
+                departureAirport: 'KRK',
+                arrivalAirport: 'BGY',
+                departure: { date: '2026-12-04', time: '18:00', timeZone: 'Europe/Warsaw' },
+                arrival: { date: '2026-12-04', time: '19:55', timeZone: 'Europe/Rome' },
+                originalPrice: { amount: 89, currency: 'PLN' },
+                fetchedAt,
+              },
+            ],
+          },
+          inbound: {
+            isDirect: true,
+            flights: [
+              {
+                departureAirport: 'BGY',
+                arrivalAirport: 'KTW',
+                departure: { date: '2026-12-06', time: '20:00', timeZone: 'Europe/Rome' },
+                arrival: { date: '2026-12-06', time: '21:50', timeZone: 'Europe/Warsaw' },
+                originalPrice: { amount: 19.99, currency: 'EUR' },
+                fetchedAt,
+              },
+            ],
+          },
+          nights: 2,
+          price: { amount: 173.98, currency: 'PLN', approximate: true },
+          priceFetchedAt: fetchedAt,
+        },
+      ],
+    });
+    await fixture.whenStable();
+
+    const offer = root.querySelector('[data-testid="offer"]')?.textContent?.replace(/\s+/g, ' ');
+    expect(offer).toMatch(/Fri 4 Dec 18:00 – 19:55 KRK → BGY.*Sun 6 Dec 20:00 – 21:50 BGY → KTW/);
+    expect(offer).toContain('2 nights');
+    expect(offer).toContain('≈ 173.98 PLN');
+    expect(offer).toContain('19.99 EUR');
+    expect(offer).not.toContain('89.00 PLN ·');
+  });
+
+  it('marks the nights invalid when the maximum is below the minimum', async () => {
+    const fixture = TestBed.createComponent(Search);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+
+    fill(root, 'From', 'KRK');
+    fill(root, 'To', 'BGY');
+    fill(root, 'Earliest', '2026-12-01');
+    fill(root, 'Latest', '2026-12-10');
+    const max = nights(root, 'Maximum')!;
+    max.value = '1';
+    max.dispatchEvent(new Event('input'));
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+    await fixture.whenStable();
+
+    httpTesting.expectNone('/api/search');
+    expect(nights(root, 'Maximum')!.closest('.field')?.classList).toContain('invalid');
+    expect(root.querySelector('[role="alert"]')?.textContent).toContain('nights');
+  });
+
   it('searches one-way offers and lists them with price, times and price age', async () => {
     const fixture = TestBed.createComponent(Search);
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
 
+    root.querySelector<HTMLInputElement>('input[type="radio"][value="oneWay"]')!.click();
+    await fixture.whenStable();
+    expect(nights(root, 'Minimum')).toBeNull();
     fill(root, 'From', 'bgy');
     fill(root, 'To', 'KRK');
     fill(root, 'Earliest', '2026-12-01');
