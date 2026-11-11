@@ -14,7 +14,11 @@ describe('App', () => {
     httpTesting = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => httpTesting.verify());
+  afterEach(() => {
+    // The search form's catalogue request is not what these tests are about.
+    httpTesting.match('/api/catalogue');
+    httpTesting.verify();
+  });
 
   /** Renders the app; its /api/status request stays pending until the test answers it. */
   function render() {

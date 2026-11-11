@@ -123,6 +123,9 @@ h1 {
 .codes input {
   width: 7.5rem;
 }
+.places input {
+  width: 10rem;
+}
 .range {
   display: flex;
   align-items: center;
