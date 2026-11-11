@@ -17,11 +17,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/hasia17/gocitybreak/backend/internal/nbp"
+	"github.com/hasia17/gocitybreak/backend/internal/pricestore"
+	"github.com/hasia17/gocitybreak/backend/internal/pricing"
 	"github.com/hasia17/gocitybreak/backend/internal/ryanair"
 )
-
-// supportedCountry is the country whose Ryanair airports are supported airports.
-const supportedCountry = "pl"
 
 // Config is what the worker works with.
 type Config struct {
@@ -34,16 +33,20 @@ type Config struct {
 	Freshness Freshness
 	// Now tells the time (default time.Now); tests pin it.
 	Now func() time.Time
+	// Logger receives the worker's progress and failures (default slog.Default()).
+	Logger *slog.Logger
 }
 
 // Worker fetches prices and rates into the database.
 type Worker struct {
 	pool      *pgxpool.Pool
+	store     *pricestore.Store
 	ryanair   ryanair.Client
 	nbp       *nbp.Client
 	horizon   time.Duration
 	freshness Freshness
 	now       func() time.Time
+	logger    *slog.Logger
 }
 
 // Freshness is a list of tiers, nearest first: route-months whose flights start departing sooner than a tier's
@@ -78,8 +81,8 @@ func (f Freshness) maxAge(untilDeparture time.Duration) time.Duration {
 
 // New returns a Worker for cfg.
 func New(cfg Config) *Worker {
-	w := &Worker{pool: cfg.Pool, ryanair: cfg.Ryanair, nbp: cfg.NBP,
-		horizon: cfg.Horizon, freshness: cfg.Freshness, now: cfg.Now}
+	w := &Worker{pool: cfg.Pool, store: pricestore.New(cfg.Pool), ryanair: cfg.Ryanair, nbp: cfg.NBP,
+		horizon: cfg.Horizon, freshness: cfg.Freshness, now: cfg.Now, logger: cmp.Or(cfg.Logger, slog.Default())}
 	if w.horizon <= 0 {
 		w.horizon = 183 * day
 	}
@@ -108,7 +111,7 @@ func (w *Worker) Run(ctx context.Context, s Schedule) {
 		for {
 			wait := s.RatesInterval
 			if err := w.RefreshExchangeRates(ctx); err != nil {
-				slog.ErrorContext(ctx, "exchange rate refresh failed", "err", err)
+				w.logger.ErrorContext(ctx, "exchange rate refresh failed", "err", err)
 				wait = s.RatesRetry
 			}
 			if !sleep(ctx, wait) {
@@ -119,12 +122,12 @@ func (w *Worker) Run(ctx context.Context, s Schedule) {
 	for {
 		start := time.Now()
 		if err := w.RefreshCatalogue(ctx); err != nil {
-			slog.ErrorContext(ctx, "catalogue refresh failed", "err", err)
+			w.logger.ErrorContext(ctx, "catalogue refresh failed", "err", err)
 		}
 		if err := w.RefreshPrices(ctx); err != nil {
-			slog.ErrorContext(ctx, "price refresh incomplete", "err", err)
+			w.logger.ErrorContext(ctx, "price refresh incomplete", "err", err)
 		}
-		slog.InfoContext(ctx, "price refresh finished", "took", time.Since(start).Round(time.Second))
+		w.logger.InfoContext(ctx, "price refresh finished", "took", time.Since(start).Round(time.Second))
 		if !sleep(ctx, s.PricePause) {
 			return
 		}
@@ -147,22 +150,10 @@ func (w *Worker) RefreshCatalogue(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	batch := &pgx.Batch{}
-	for _, a := range airports {
-		batch.Queue(`
-			INSERT INTO airports (code, name, time_zone, supported, city_code, city_name, country_code, country_name)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-			ON CONFLICT (code) DO UPDATE SET
-				name = EXCLUDED.name, time_zone = EXCLUDED.time_zone, supported = EXCLUDED.supported,
-				city_code = EXCLUDED.city_code, city_name = EXCLUDED.city_name,
-				country_code = EXCLUDED.country_code, country_name = EXCLUDED.country_name`,
-			a.Code, a.Name, a.TimeZone, a.CountryCode == supportedCountry,
-			a.CityCode, a.CityName, a.CountryCode, a.CountryName)
+	if err := w.store.UpsertAirports(ctx, airports); err != nil {
+		return err
 	}
-	if err := w.pool.SendBatch(ctx, batch).Close(); err != nil {
-		return fmt.Errorf("store airports: %w", err)
-	}
-	slog.InfoContext(ctx, "catalogue stored", "airports", len(airports))
+	w.logger.InfoContext(ctx, "catalogue stored", "airports", len(airports))
 	return nil
 }
 
@@ -182,17 +173,10 @@ func (w *Worker) refreshExchangeRateTable(ctx context.Context, table string) err
 	if err != nil {
 		return err
 	}
-	batch := &pgx.Batch{}
-	for _, r := range rates {
-		batch.Queue(`
-			INSERT INTO exchange_rates (currency, rate_date, rate) VALUES ($1, $2, $3)
-			ON CONFLICT (currency, rate_date) DO UPDATE SET rate = EXCLUDED.rate`,
-			r.Currency, r.Date, r.PLN)
-	}
-	if err := w.pool.SendBatch(ctx, batch).Close(); err != nil {
+	if err := w.store.UpsertExchangeRates(ctx, rates); err != nil {
 		return fmt.Errorf("store NBP table %s: %w", table, err)
 	}
-	slog.InfoContext(ctx, "exchange rates stored", "table", table, "rates", len(rates))
+	w.logger.InfoContext(ctx, "exchange rates stored", "table", table, "rates", len(rates))
 	return nil
 }
 
@@ -225,12 +209,12 @@ func (w *Worker) RefreshPrices(ctx context.Context) error {
 			return err
 		}
 		if err := w.refreshRouteMonth(ctx, rm); err != nil {
-			slog.WarnContext(ctx, "route refresh failed", "from", rm.route.from, "to", rm.route.to,
+			w.logger.WarnContext(ctx, "route refresh failed", "from", rm.route.from, "to", rm.route.to,
 				"month", rm.month.Format("2006-01"), "err", err)
 			failures = append(failures, err)
 		}
 	}
-	slog.InfoContext(ctx, "prices refreshed", "routes", len(routes), "routeMonths", len(due), "failures", len(failures))
+	w.logger.InfoContext(ctx, "prices refreshed", "routes", len(routes), "routeMonths", len(due), "failures", len(failures))
 	if len(failures) > 0 {
 		return fmt.Errorf("%d route-months failed: %w", len(failures), errors.Join(failures...))
 	}
@@ -243,8 +227,8 @@ func (w *Worker) due(ctx context.Context, routes []route) ([]routeMonth, error) 
 	today, last := dateOf(now), dateOf(now.Add(w.horizon))
 
 	// Refreshes of past months only take up space.
-	if _, err := w.pool.Exec(ctx, `DELETE FROM route_month_refreshes WHERE month < $1`, firstOfMonth(today)); err != nil {
-		return nil, fmt.Errorf("forget past refreshes: %w", err)
+	if err := w.store.ForgetRefreshesBefore(ctx, firstOfMonth(today)); err != nil {
+		return nil, err
 	}
 	type key struct {
 		route route
@@ -301,12 +285,12 @@ func (w *Worker) routes(ctx context.Context) ([]route, error) {
 	for _, home := range supported {
 		destinations, err := w.ryanair.Routes(ctx, home)
 		if err != nil {
-			slog.WarnContext(ctx, "routes unavailable", "airport", home, "err", err)
+			w.logger.WarnContext(ctx, "routes unavailable", "airport", home, "err", err)
 			continue
 		}
 		for _, d := range destinations {
 			if !slices.Contains(known, d) {
-				slog.WarnContext(ctx, "route to an airport missing from the catalogue", "from", home, "to", d)
+				w.logger.WarnContext(ctx, "route to an airport missing from the catalogue", "from", home, "to", d)
 				continue
 			}
 			seen[route{home, d}] = true
@@ -323,136 +307,13 @@ func (w *Worker) routes(ctx context.Context) ([]route, error) {
 	return routes, nil
 }
 
-// flight is a flight about to be stored; Price is nil when it couldn't be priced (ADR-0005 fallback).
-type flight struct {
-	departure, arrival time.Time // local wall-clock times
-	price              *ryanair.Money
-}
-
-// refreshRouteMonth prices every flight of rm and stores them, per ADR-0005: the cheapest flight of each day
-// from cheapestPerDay, the others from a time-window fare query.
+// refreshRouteMonth prices and stores a route-month.
 func (w *Worker) refreshRouteMonth(ctx context.Context, rm routeMonth) error {
-	r, month, from, to := rm.route, rm.month, rm.first, rm.last
-	cheapest, err := w.ryanair.CheapestPerDay(ctx, r.from, r.to, month)
+	flights, complete, err := pricing.RouteMonth(ctx, w.logger, w.ryanair, rm.route.from, rm.route.to, rm.month, rm.first, rm.last)
 	if err != nil {
 		return err
 	}
-	cheapestByDay := map[time.Time]*ryanair.Fare{}
-	for _, d := range cheapest {
-		cheapestByDay[d.Day] = d.Fare
-	}
-
-	// Without the timetable we know only the cheapest flight of each day; store those and keep the rest as they are.
-	complete := true
-	timetable, err := w.ryanair.Timetable(ctx, r.from, r.to, month)
-	if err != nil {
-		slog.WarnContext(ctx, "timetable unavailable, storing the cheapest flights only",
-			"from", r.from, "to", r.to, "month", month.Format("2006-01"), "err", err)
-		complete = false
-	}
-
-	var flights []flight
-	for _, s := range timetable {
-		if s.Date.Before(from) || s.Date.After(to) {
-			continue
-		}
-		departure, arrival, err := scheduledTimes(s)
-		if err != nil {
-			return err
-		}
-		f := flight{departure: departure, arrival: arrival}
-		switch c, ok := cheapestByDay[s.Date]; {
-		case ok && c == nil:
-			// Nothing on sale that day: no point asking about the other flights.
-		case ok && c.Departure.Equal(departure):
-			f.arrival, f.price = c.Arrival, &c.Price
-		default:
-			fare, err := w.ryanair.FareAt(ctx, r.from, r.to, departure)
-			if err != nil {
-				slog.WarnContext(ctx, "time-window pricing failed, storing the flight without a price",
-					"from", r.from, "to", r.to, "departure", departure.Format(time.DateTime), "err", err)
-			} else if fare != nil {
-				f.arrival, f.price = fare.Arrival, &fare.Price
-			}
-		}
-		flights = append(flights, f)
-	}
-	// A cheapest flight missing from the timetable is still a flight.
-	for _, c := range cheapest {
-		if c.Fare != nil && !c.Day.Before(from) && !c.Day.After(to) &&
-			!slices.ContainsFunc(flights, func(f flight) bool { return f.departure.Equal(c.Fare.Departure) }) {
-			flights = append(flights, flight{departure: c.Fare.Departure, arrival: c.Fare.Arrival, price: &c.Fare.Price})
-		}
-	}
-	return w.store(ctx, rm, flights, complete)
-}
-
-// scheduledTimes turns a timetable entry into local departure and arrival times;
-// an arrival earlier in the day than the departure lands the next day.
-func scheduledTimes(s ryanair.ScheduledFlight) (departure, arrival time.Time, err error) {
-	dep, err := time.Parse("15:04", s.DepartureTime)
-	if err != nil {
-		return time.Time{}, time.Time{}, fmt.Errorf("timetable: bad departure time %q", s.DepartureTime)
-	}
-	arr, err := time.Parse("15:04", s.ArrivalTime)
-	if err != nil {
-		return time.Time{}, time.Time{}, fmt.Errorf("timetable: bad arrival time %q", s.ArrivalTime)
-	}
-	departure = s.Date.Add(time.Duration(dep.Hour())*time.Hour + time.Duration(dep.Minute())*time.Minute)
-	arrival = s.Date.Add(time.Duration(arr.Hour())*time.Hour + time.Duration(arr.Minute())*time.Minute)
-	if arrival.Before(departure) {
-		arrival = arrival.AddDate(0, 0, 1)
-	}
-	return departure, arrival, nil
-}
-
-// store upserts the flights of rm with the current fetch time and records the refresh. When the timetable was
-// complete, flights of rm stored by an earlier fetch but gone from it now (cancelled) are deleted.
-func (w *Worker) store(ctx context.Context, rm routeMonth, flights []flight, complete bool) error {
-	r, from, to := rm.route, rm.first, rm.last
-	fetchedAt := w.now()
-	return pgx.BeginFunc(ctx, w.pool, func(tx pgx.Tx) error {
-		batch := &pgx.Batch{}
-		var dates, times []string
-		for _, f := range flights {
-			var amount *int64
-			var currency *string
-			if f.price != nil {
-				amount, currency = &f.price.Amount, &f.price.Currency
-			}
-			batch.Queue(`
-				INSERT INTO flights (departure_airport, arrival_airport,
-					departure_date, departure_time, arrival_date, arrival_time,
-					price_amount, price_currency, fetched_at)
-				VALUES ($1, $2, $3, $4::text::time, $5, $6::text::time, $7, $8, $9)
-				ON CONFLICT (departure_airport, arrival_airport, departure_date, departure_time) DO UPDATE SET
-					arrival_date = EXCLUDED.arrival_date, arrival_time = EXCLUDED.arrival_time,
-					price_amount = EXCLUDED.price_amount, price_currency = EXCLUDED.price_currency,
-					fetched_at = EXCLUDED.fetched_at`,
-				r.from, r.to, dateOf(f.departure), f.departure.Format("15:04"),
-				dateOf(f.arrival), f.arrival.Format("15:04"), amount, currency, fetchedAt)
-			dates = append(dates, f.departure.Format(time.DateOnly))
-			times = append(times, f.departure.Format("15:04"))
-		}
-		if complete {
-			batch.Queue(`
-				DELETE FROM flights
-				WHERE departure_airport = $1 AND arrival_airport = $2
-					AND departure_date BETWEEN $3 AND $4
-					AND (departure_date, departure_time) NOT IN (
-						SELECT d, t FROM unnest($5::text[]::date[], $6::text[]::time[]) AS fetched (d, t))`,
-				r.from, r.to, from, to, dates, times)
-		}
-		batch.Queue(`
-			INSERT INTO route_month_refreshes (departure_airport, arrival_airport, month, refreshed_at)
-			VALUES ($1, $2, $3, $4)
-			ON CONFLICT (departure_airport, arrival_airport, month) DO UPDATE SET refreshed_at = EXCLUDED.refreshed_at`,
-			r.from, r.to, rm.month, fetchedAt)
-		if err := tx.SendBatch(ctx, batch).Close(); err != nil {
-			return fmt.Errorf("store flights %s→%s: %w", r.from, r.to, err)
-		}
-		return nil
-	})
+	return w.store.ReplaceRouteMonth(ctx, rm.route.from, rm.route.to, rm.month, rm.first, rm.last, w.now(), flights, complete)
 }
 
 func dateOf(t time.Time) time.Time {

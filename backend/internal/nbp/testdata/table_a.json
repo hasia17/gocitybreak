@@ -1,0 +1,13 @@
+[
+  {
+    "table": "A",
+    "no": "244/A/NBP/2026",
+    "tradingDate": "2026-11-09",
+    "effectiveDate": "2026-11-10",
+    "rates": [
+      {"currency": "dolar amerykański", "code": "USD", "mid": 3.7603},
+      {"currency": "euro", "code": "EUR", "mid": 4.2512},
+      {"currency": "funt szterling", "code": "GBP", "mid": 4.9873}
+    ]
+  }
+]

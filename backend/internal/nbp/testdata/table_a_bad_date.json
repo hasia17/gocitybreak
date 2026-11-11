@@ -1,0 +1,10 @@
+[
+  {
+    "table": "A",
+    "no": "244/A/NBP/2026",
+    "effectiveDate": "10.11.2026",
+    "rates": [
+      {"currency": "euro", "code": "EUR", "mid": 4.2512}
+    ]
+  }
+]

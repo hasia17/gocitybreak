@@ -1,0 +1,52 @@
+[
+  {
+    "arrivalAirport": {
+      "code": "BGY",
+      "name": "Milan Bergamo",
+      "base": true,
+      "latitude": 45.673889,
+      "longitude": 9.704167,
+      "countryCode": "it",
+      "city": {"code": "MILAN", "name": "Milan"}
+    },
+    "connectingAirport": null,
+    "operator": "FR",
+    "seasonal": false
+  },
+  {
+    "arrivalAirport": {
+      "code": "RAK",
+      "name": "Marrakesh Menara",
+      "base": true,
+      "latitude": 31.606944,
+      "longitude": -8.036389,
+      "countryCode": "ma",
+      "city": {"code": "MARRAKESH", "name": "Marrakesh"}
+    },
+    "connectingAirport": null,
+    "operator": "FR",
+    "seasonal": true
+  },
+  {
+    "arrivalAirport": {
+      "code": "JFK",
+      "name": "New York John F. Kennedy",
+      "base": false,
+      "latitude": 40.639722,
+      "longitude": -73.778889,
+      "countryCode": "us",
+      "city": {"code": "NEW-YORK", "name": "New York"}
+    },
+    "connectingAirport": {
+      "code": "DUB",
+      "name": "Dublin",
+      "base": true,
+      "latitude": 53.421333,
+      "longitude": -6.270075,
+      "countryCode": "ie",
+      "city": {"code": "DUBLIN", "name": "Dublin"}
+    },
+    "operator": "FR",
+    "seasonal": false
+  }
+]

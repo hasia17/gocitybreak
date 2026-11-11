@@ -23,7 +23,8 @@ type Client interface {
 	Routes(ctx context.Context, airport string) ([]string, error)
 	// CheapestPerDay returns the cheapest fare of each day of month on the route from → to.
 	CheapestPerDay(ctx context.Context, from, to string, month time.Time) ([]DayFare, error)
-	// Timetable returns every scheduled flight of month on the route from → to.
+	// Timetable returns every scheduled flight of month on the route from → to,
+	// with local departure and arrival times (the overnight rule applied).
 	Timetable(ctx context.Context, from, to string, month time.Time) ([]ScheduledFlight, error)
 	// FareAt returns the fare of the flight from → to departing at the given local time,
 	// or nil when Ryanair offers no fare for it (e.g. sold out).
@@ -61,12 +62,19 @@ type DayFare struct {
 	Fare *Fare
 }
 
-// ScheduledFlight is a flight from the timetable: no price, local departure and arrival times of day.
+// ScheduledFlight is a flight from the timetable, unpriced: Date is the day it departs, and
+// Departure and Arrival are local times of that day at the departure and the arrival airport.
+// Their time.Location is meaningless, and an arrival earlier in the day than the departure
+// (the flight lands after midnight) is the day after Date.
 type ScheduledFlight struct {
-	Date          time.Time
-	DepartureTime string // "15:04", departure airport's local time
-	ArrivalTime   string // "15:04", arrival airport's local time
+	Date      time.Time
+	Departure time.Time
+	Arrival   time.Time
 }
+
+// ErrMalformedTimetable is returned by Timetable when a flight's time is not in the shape Ryanair sends.
+// Unlike a timetable that can't be fetched, it is not a reason to store a partial month.
+var ErrMalformedTimetable = errors.New("malformed timetable")
 
 // HTTPClient is the Client backed by Ryanair's web API.
 type HTTPClient struct {
@@ -81,6 +89,9 @@ func NewHTTPClient(baseURL string, f *fetch.Client) *HTTPClient {
 
 // localLayout is how Ryanair writes local date-times: no offset, the airport's wall clock.
 const localLayout = "2006-01-02T15:04:05"
+
+// clockLayout is how Ryanair writes a local time of day in the timetable.
+const clockLayout = "15:04"
 
 type airportJSON struct {
 	Code     string `json:"code"`
@@ -203,10 +214,33 @@ func (c *HTTPClient) Timetable(ctx context.Context, from, to string, month time.
 	for _, d := range body.Days {
 		date := time.Date(month.Year(), month.Month(), d.Day, 0, 0, 0, 0, time.UTC)
 		for _, f := range d.Flights {
-			flights = append(flights, ScheduledFlight{Date: date, DepartureTime: f.DepartureTime, ArrivalTime: f.ArrivalTime})
+			departure, arrival, err := scheduledTimes(date, f.DepartureTime, f.ArrivalTime)
+			if err != nil {
+				return nil, fmt.Errorf("timetable %s→%s %s: %w", from, to, month.Format("2006-01"), err)
+			}
+			flights = append(flights, ScheduledFlight{Date: date, Departure: departure, Arrival: arrival})
 		}
 	}
 	return flights, nil
+}
+
+// scheduledTimes turns a timetable day's times of day (the airports' local wall clocks) into local
+// times of date; an arrival earlier in the day than the departure lands the next day.
+func scheduledTimes(date time.Time, departureTime, arrivalTime string) (departure, arrival time.Time, err error) {
+	dep, err := time.Parse(clockLayout, departureTime)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("%w: bad departure time %q", ErrMalformedTimetable, departureTime)
+	}
+	arr, err := time.Parse(clockLayout, arrivalTime)
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("%w: bad arrival time %q", ErrMalformedTimetable, arrivalTime)
+	}
+	departure = date.Add(time.Duration(dep.Hour())*time.Hour + time.Duration(dep.Minute())*time.Minute)
+	arrival = date.Add(time.Duration(arr.Hour())*time.Hour + time.Duration(arr.Minute())*time.Minute)
+	if arrival.Before(departure) {
+		arrival = arrival.AddDate(0, 0, 1)
+	}
+	return departure, arrival, nil
 }
 
 func (c *HTTPClient) FareAt(ctx context.Context, from, to string, departure time.Time) (*Fare, error) {

@@ -1,0 +1,10 @@
+{
+  "kind": "roundTrip",
+  "homeAirports": ["KRK"],
+  "destination": {"airports": ["BGY"]},
+  "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"},
+  "stayLength": {"min": 0, "max": 10},
+  "workStart": "09:00",
+  "workEnd": "17:00",
+  "sort": "price"
+}

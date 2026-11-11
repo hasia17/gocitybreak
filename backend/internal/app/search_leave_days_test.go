@@ -9,19 +9,17 @@ import (
 )
 
 func TestSearchCountsLeaveDaysFromWorkHours(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, polishAndItalianAirports+`
-		INSERT INTO flights (departure_airport, arrival_airport,
-			departure_date, departure_time, arrival_date, arrival_time,
-			price_amount, price_currency, fetched_at)
-		VALUES
-			-- three flights on the same Friday: only the one after work end saves the day
-			('KRK', 'BGY', '2026-12-04', '06:15', '2026-12-04', '08:10', 1000, 'PLN', '2026-11-10T08:00:00Z'),
-			('KRK', 'BGY', '2026-12-04', '17:30', '2026-12-04', '19:25', 2000, 'PLN', '2026-11-10T08:00:00Z'),
-			('KRK', 'BGY', '2026-12-04', '18:15', '2026-12-04', '20:10', 3000, 'PLN', '2026-11-10T08:00:00Z'),
-			-- Monday morning back, landing before work start
-			('BGY', 'KRK', '2026-12-07', '07:00', '2026-12-07', '08:50', 1000, 'PLN', '2026-11-10T08:00:00Z');
-	`)
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports, fixture{
+		flights: []fixtureFlight{
+			// three flights on the same Friday: only the one after work end saves the day
+			{"KRK", "BGY", "2026-12-04", "06:15", "2026-12-04", "08:10", 1000, "PLN", "2026-11-10T08:00:00Z"},
+			{"KRK", "BGY", "2026-12-04", "17:30", "2026-12-04", "19:25", 2000, "PLN", "2026-11-10T08:00:00Z"},
+			{"KRK", "BGY", "2026-12-04", "18:15", "2026-12-04", "20:10", 3000, "PLN", "2026-11-10T08:00:00Z"},
+			// Monday morning back, landing before work start
+			{"BGY", "KRK", "2026-12-07", "07:00", "2026-12-07", "08:50", 1000, "PLN", "2026-11-10T08:00:00Z"},
+		},
+	})
 
 	code, body := search(t, srv, `{
 		"kind": "roundTrip",
@@ -46,20 +44,46 @@ func TestSearchCountsLeaveDaysFromWorkHours(t *testing.T) {
 	}
 }
 
+func TestSearchDefaultAndMidnightWorkHours(t *testing.T) {
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports, fixture{flights: []fixtureFlight{
+		{"KRK", "BGY", "2026-12-04", "17:30", "2026-12-04", "19:25", 1000, "PLN", "2026-11-10T08:00:00Z"},
+		{"BGY", "KRK", "2026-12-07", "07:00", "2026-12-07", "08:50", 1000, "PLN", "2026-11-10T08:00:00Z"},
+	}})
+	for _, tt := range []struct {
+		name, hours, want string
+	}{
+		{"defaults", "", "Fri 17:30 → Mon 07:00, 0 leave days"},
+		{"midnight start", `, "workStart": "00:00"`, "Fri 17:30 → Mon 07:00, 1 leave days"},
+		{"later end", `, "workEnd": "18:00"`, "Fri 17:30 → Mon 07:00, 1 leave days"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			code, body := search(t, srv, `{
+				"homeAirports": ["KRK"], "destination": {"airports": ["BGY"]},
+				"travelWindow": {"from": "2026-12-01", "to": "2026-12-10"},
+				"stayLength": {"min": 0, "max": 5}`+tt.hours+`}`)
+			if code != http.StatusOK {
+				t.Fatalf("status code = %d, want %d", code, http.StatusOK)
+			}
+			if got := leaveDays(t, body.Offers); !slices.Equal(got, []string{tt.want}) {
+				t.Errorf("offers = %v, want [%s]", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestSearchFiltersByMaximumLeaveDays(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, polishAndItalianAirports+`
-		INSERT INTO flights (departure_airport, arrival_airport,
-			departure_date, departure_time, arrival_date, arrival_time,
-			price_amount, price_currency, fetched_at)
-		VALUES
-			-- Thursday morning, Friday morning and Friday evening out
-			('KRK', 'BGY', '2026-12-03', '06:15', '2026-12-03', '08:10', 1000, 'PLN', '2026-11-10T08:00:00Z'),
-			('KRK', 'BGY', '2026-12-04', '06:15', '2026-12-04', '08:10', 2000, 'PLN', '2026-11-10T08:00:00Z'),
-			('KRK', 'BGY', '2026-12-04', '18:15', '2026-12-04', '20:10', 3000, 'PLN', '2026-11-10T08:00:00Z'),
-			-- Sunday evening back
-			('BGY', 'KRK', '2026-12-06', '20:00', '2026-12-06', '21:50', 1000, 'PLN', '2026-11-10T08:00:00Z');
-	`)
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports, fixture{
+		flights: []fixtureFlight{
+			// Thursday morning, Friday morning and Friday evening out
+			{"KRK", "BGY", "2026-12-03", "06:15", "2026-12-03", "08:10", 1000, "PLN", "2026-11-10T08:00:00Z"},
+			{"KRK", "BGY", "2026-12-04", "06:15", "2026-12-04", "08:10", 2000, "PLN", "2026-11-10T08:00:00Z"},
+			{"KRK", "BGY", "2026-12-04", "18:15", "2026-12-04", "20:10", 3000, "PLN", "2026-11-10T08:00:00Z"},
+			// Sunday evening back
+			{"BGY", "KRK", "2026-12-06", "20:00", "2026-12-06", "21:50", 1000, "PLN", "2026-11-10T08:00:00Z"},
+		},
+	})
 	query := func(maxLeaveDays int) string {
 		return fmt.Sprintf(`{
 			"kind": "roundTrip",
@@ -96,18 +120,16 @@ func TestSearchFiltersByMaximumLeaveDays(t *testing.T) {
 }
 
 func TestSearchSortsByLeaveDaysThenPrice(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, polishAndItalianAirports+`
-		INSERT INTO flights (departure_airport, arrival_airport,
-			departure_date, departure_time, arrival_date, arrival_time,
-			price_amount, price_currency, fetched_at)
-		VALUES
-			('KRK', 'BGY', '2026-12-03', '06:15', '2026-12-03', '08:10', 1000, 'PLN', '2026-11-10T08:00:00Z'),
-			('KRK', 'BGY', '2026-12-04', '06:15', '2026-12-04', '08:10', 2000, 'PLN', '2026-11-10T08:00:00Z'),
-			('KRK', 'BGY', '2026-12-04', '18:15', '2026-12-04', '20:10', 3000, 'PLN', '2026-11-10T08:00:00Z'),
-			('KRK', 'BGY', '2026-12-04', '18:30', '2026-12-04', '20:25', 2500, 'PLN', '2026-11-10T08:00:00Z'),
-			('BGY', 'KRK', '2026-12-06', '20:00', '2026-12-06', '21:50', 1000, 'PLN', '2026-11-10T08:00:00Z');
-	`)
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports, fixture{
+		flights: []fixtureFlight{
+			{"KRK", "BGY", "2026-12-03", "06:15", "2026-12-03", "08:10", 1000, "PLN", "2026-11-10T08:00:00Z"},
+			{"KRK", "BGY", "2026-12-04", "06:15", "2026-12-04", "08:10", 2000, "PLN", "2026-11-10T08:00:00Z"},
+			{"KRK", "BGY", "2026-12-04", "18:15", "2026-12-04", "20:10", 3000, "PLN", "2026-11-10T08:00:00Z"},
+			{"KRK", "BGY", "2026-12-04", "18:30", "2026-12-04", "20:25", 2500, "PLN", "2026-11-10T08:00:00Z"},
+			{"BGY", "KRK", "2026-12-06", "20:00", "2026-12-06", "21:50", 1000, "PLN", "2026-11-10T08:00:00Z"},
+		},
+	})
 
 	code, body := search(t, srv, `{
 		"kind": "roundTrip",

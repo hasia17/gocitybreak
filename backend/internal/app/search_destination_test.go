@@ -8,8 +8,8 @@ import (
 )
 
 func TestSearchExpandsCityIntoItsAirportsIncludingOurAdditions(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, europeanAirports+oneFlightFromKrakowToEveryDestination)
+	srv, url := startAPI(t, "test")
+	seed(t, url, europeanAirports, oneFlightFromKrakowToEveryDestination)
 
 	for name, tc := range map[string]struct {
 		cities []string
@@ -36,8 +36,8 @@ func TestSearchExpandsCityIntoItsAirportsIncludingOurAdditions(t *testing.T) {
 }
 
 func TestSearchCombinesAirportsCitiesAndCountriesOfTheDestination(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, europeanAirports+oneFlightFromKrakowToEveryDestination)
+	srv, url := startAPI(t, "test")
+	seed(t, url, europeanAirports, oneFlightFromKrakowToEveryDestination)
 
 	code, body := search(t, srv, oneWayFromKrakowTo(t, map[string]any{
 		"airports":  []string{"OSL"},
@@ -55,14 +55,12 @@ func TestSearchCombinesAirportsCitiesAndCountriesOfTheDestination(t *testing.T) 
 }
 
 func TestSearchAnywhereCoversEveryAirportReachableFromHomeAirports(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, europeanAirports+oneFlightFromKrakowToEveryDestination+`
-		-- from Katowice, which is not a home airport of the search
-		INSERT INTO flights (departure_airport, arrival_airport,
-			departure_date, departure_time, arrival_date, arrival_time,
-			price_amount, price_currency, fetched_at)
-		VALUES ('KTW', 'BGY', '2026-12-05', '06:00', '2026-12-05', '08:00', 100, 'PLN', '2026-11-10T08:00:00Z');
-	`)
+	srv, url := startAPI(t, "test")
+	seed(t, url, europeanAirports, oneFlightFromKrakowToEveryDestination, fixture{
+		flights: []fixtureFlight{
+			{"KTW", "BGY", "2026-12-05", "06:00", "2026-12-05", "08:00", 100, "PLN", "2026-11-10T08:00:00Z"},
+		},
+	})
 
 	code, body := search(t, srv, oneWayFromKrakowTo(t, map[string]any{"anywhere": true}, nil))
 
@@ -76,8 +74,8 @@ func TestSearchAnywhereCoversEveryAirportReachableFromHomeAirports(t *testing.T)
 }
 
 func TestSearchRemovesExclusionsFromTheDestination(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, europeanAirports+oneFlightFromKrakowToEveryDestination)
+	srv, url := startAPI(t, "test")
+	seed(t, url, europeanAirports, oneFlightFromKrakowToEveryDestination)
 
 	for name, tc := range map[string]struct {
 		destination, exclusions map[string]any
@@ -119,16 +117,14 @@ func TestSearchRemovesExclusionsFromTheDestination(t *testing.T) {
 }
 
 func TestSearchPairsRoundTripThroughTheSameAirportOfTheCity(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, europeanAirports+`
-		INSERT INTO flights (departure_airport, arrival_airport,
-			departure_date, departure_time, arrival_date, arrival_time,
-			price_amount, price_currency, fetched_at)
-		VALUES
-			('KRK', 'BGY', '2026-12-04', '18:00', '2026-12-04', '20:00', 8000, 'PLN', '2026-11-10T08:00:00Z'),
-			('KRK', 'MXP', '2026-12-04', '19:00', '2026-12-04', '21:00', 9000, 'PLN', '2026-11-10T08:00:00Z'),
-			('BGY', 'KRK', '2026-12-06', '20:00', '2026-12-06', '22:00', 8000, 'PLN', '2026-11-10T08:00:00Z');
-	`)
+	srv, url := startAPI(t, "test")
+	seed(t, url, europeanAirports, fixture{
+		flights: []fixtureFlight{
+			{"KRK", "BGY", "2026-12-04", "18:00", "2026-12-04", "20:00", 8000, "PLN", "2026-11-10T08:00:00Z"},
+			{"KRK", "MXP", "2026-12-04", "19:00", "2026-12-04", "21:00", 9000, "PLN", "2026-11-10T08:00:00Z"},
+			{"BGY", "KRK", "2026-12-06", "20:00", "2026-12-06", "22:00", 8000, "PLN", "2026-11-10T08:00:00Z"},
+		},
+	})
 
 	code, body := search(t, srv, `{
 		"kind": "roundTrip",
@@ -174,32 +170,26 @@ func TestSearchRejectsDestinationWithNoPlaceAndNotAnywhere(t *testing.T) {
 
 // europeanAirports is a fixture of Ryanair's airport catalogue: two supported Polish airports
 // and destinations with the city and country Ryanair assigns them to.
-const europeanAirports = `
-	INSERT INTO airports (code, name, time_zone, supported, city_code, city_name, country_code, country_name) VALUES
-		('KRK', 'Kraków', 'Europe/Warsaw', true, 'KRAKOW', 'Kraków', 'pl', 'Poland'),
-		('KTW', 'Katowice', 'Europe/Warsaw', true, 'KATOWICE', 'Katowice', 'pl', 'Poland'),
-		('BGY', 'Milan Bergamo', 'Europe/Rome', false, 'BERGAMO', 'Bergamo', 'it', 'Italy'),
-		('MXP', 'Milan Malpensa', 'Europe/Rome', false, 'MILAN', 'Milan', 'it', 'Italy'),
-		('CIA', 'Rome Ciampino', 'Europe/Rome', false, 'ROME', 'Rome', 'it', 'Italy'),
-		('FCO', 'Rome Fiumicino', 'Europe/Rome', false, 'ROME', 'Rome', 'it', 'Italy'),
-		('BCN', 'Barcelona', 'Europe/Madrid', false, 'BARCELONA', 'Barcelona', 'es', 'Spain'),
-		('GRO', 'Barcelona Girona', 'Europe/Madrid', false, 'GIRONA', 'Girona', 'es', 'Spain'),
-		('REU', 'Barcelona Reus', 'Europe/Madrid', false, 'REUS', 'Reus', 'es', 'Spain'),
-		('BRU', 'Brussels', 'Europe/Brussels', false, 'BRUSSELS', 'Brussels', 'be', 'Belgium'),
-		('CRL', 'Brussels Charleroi', 'Europe/Brussels', false, 'CHARLEROI', 'Charleroi', 'be', 'Belgium'),
-		('OSL', 'Oslo', 'Europe/Oslo', false, 'OSLO', 'Oslo', 'no', 'Norway');
-`
+var europeanAirports = fixture{
+	airports: []fixtureAirport{
+		{"KRK", "Kraków", "Europe/Warsaw", true, "KRAKOW", "Kraków", "pl", "Poland"},
+		{"KTW", "Katowice", "Europe/Warsaw", true, "KATOWICE", "Katowice", "pl", "Poland"},
+		{"BGY", "Milan Bergamo", "Europe/Rome", false, "BERGAMO", "Bergamo", "it", "Italy"},
+		{"MXP", "Milan Malpensa", "Europe/Rome", false, "MILAN", "Milan", "it", "Italy"},
+		{"CIA", "Rome Ciampino", "Europe/Rome", false, "ROME", "Rome", "it", "Italy"},
+		{"FCO", "Rome Fiumicino", "Europe/Rome", false, "ROME", "Rome", "it", "Italy"},
+		{"BCN", "Barcelona", "Europe/Madrid", false, "BARCELONA", "Barcelona", "es", "Spain"},
+		{"GRO", "Barcelona Girona", "Europe/Madrid", false, "GIRONA", "Girona", "es", "Spain"},
+		{"REU", "Barcelona Reus", "Europe/Madrid", false, "REUS", "Reus", "es", "Spain"},
+		{"BRU", "Brussels", "Europe/Brussels", false, "BRUSSELS", "Brussels", "be", "Belgium"},
+		{"CRL", "Brussels Charleroi", "Europe/Brussels", false, "CHARLEROI", "Charleroi", "be", "Belgium"},
+		{"OSL", "Oslo", "Europe/Oslo", false, "OSLO", "Oslo", "no", "Norway"},
+	},
+}
 
 // oneFlightFromKrakowToEveryDestination gives every airport of europeanAirports but the Polish ones
 // one flight from Kraków; the price follows the airports' alphabetical order, so offers come sorted by airport.
-const oneFlightFromKrakowToEveryDestination = `
-	INSERT INTO flights (departure_airport, arrival_airport,
-		departure_date, departure_time, arrival_date, arrival_time,
-		price_amount, price_currency, fetched_at)
-	SELECT 'KRK', code, '2026-12-05', '06:00', '2026-12-05', '09:00',
-		10000 + row_number() OVER (ORDER BY code), 'PLN', '2026-11-10T08:00:00Z'
-	FROM airports WHERE country_code <> 'pl';
-`
+var oneFlightFromKrakowToEveryDestination = destinationFlights()
 
 // oneWayFromKrakowTo is a one-way search from Kraków in December 2026 to the given destination and exclusions.
 func oneWayFromKrakowTo(t *testing.T, destination, exclusions map[string]any) string {
