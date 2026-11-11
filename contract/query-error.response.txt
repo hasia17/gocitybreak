@@ -1,0 +1,1 @@
+stayLength.max must not be less than stayLength.min

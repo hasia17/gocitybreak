@@ -1,0 +1,38 @@
+{
+  "offers": [
+    {
+      "kind": "oneWay",
+      "outbound": {
+        "isDirect": true,
+        "flights": [
+          {
+            "departureAirport": "KRK",
+            "arrivalAirport": "BGY",
+            "departure": {
+              "date": "2026-12-05",
+              "time": "06:15",
+              "timeZone": "Europe/Warsaw"
+            },
+            "arrival": {
+              "date": "2026-12-05",
+              "time": "08:10",
+              "timeZone": "Europe/Rome"
+            },
+            "originalPrice": {
+              "amount": 89,
+              "currency": "PLN"
+            },
+            "fetchedAt": "2026-11-10T08:00:00Z"
+          }
+        ]
+      },
+      "price": {
+        "amount": 89,
+        "currency": "PLN",
+        "approximate": false
+      },
+      "priceFetchedAt": "2026-11-10T08:00:00Z"
+    }
+  ]
+}
+

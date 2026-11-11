@@ -34,41 +34,19 @@ func TestSearchPairsOutboundAndInboundFlightsIntoRoundTripOffer(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("status code = %d, want %d", code, http.StatusOK)
 	}
-	want := []offerBody{{
-		Kind: "roundTrip",
-		Outbound: legBody{
-			IsDirect: true,
-			Flights: []flightBody{{
-				DepartureAirport: "KRK",
-				ArrivalAirport:   "BGY",
-				Departure:        localTimeBody{Date: "2026-12-04", Time: "18:00", TimeZone: "Europe/Warsaw"},
-				Arrival:          localTimeBody{Date: "2026-12-04", Time: "19:55", TimeZone: "Europe/Rome"},
-				OriginalPrice:    moneyBody{Amount: 89.00, Currency: "PLN"},
-				FetchedAt:        "2026-11-10T08:00:00Z",
-			}},
-		},
-		Inbound: &legBody{
-			IsDirect: true,
-			Flights: []flightBody{{
-				DepartureAirport: "BGY",
-				ArrivalAirport:   "KRK",
-				Departure:        localTimeBody{Date: "2026-12-06", Time: "20:00", TimeZone: "Europe/Rome"},
-				Arrival:          localTimeBody{Date: "2026-12-06", Time: "21:50", TimeZone: "Europe/Warsaw"},
-				OriginalPrice:    moneyBody{Amount: 19.99, Currency: "EUR"},
-				FetchedAt:        "2026-11-09T07:00:00Z",
-			}},
-		},
-		Nights: new(2),
-		// Friday after the default work end of 17:00, back on Sunday.
-		LeaveDays: new(0),
-		// 89.00 PLN + 19.99 EUR × 4.2512 PLN/EUR (84.98 PLN) = 173.98 PLN, approximate.
-		Price: priceBody{Amount: 173.98, Currency: "PLN", Approximate: true},
-		// 173.98 PLN / 2 nights.
-		PricePerNight: &priceBody{Amount: 86.99, Currency: "PLN", Approximate: true},
-		// The older of the two stored prices.
-		PriceFetchedAt: "2026-11-09T07:00:00Z",
-	}}
-	assertOffers(t, body.Offers, want)
+	if len(body.Offers) != 1 {
+		t.Fatalf("offers = %+v, want one round trip", body.Offers)
+	}
+	offer := body.Offers[0]
+	if offer.Kind != "roundTrip" || offer.Inbound == nil || offer.Nights == nil || *offer.Nights != 2 || offer.LeaveDays == nil || *offer.LeaveDays != 0 {
+		t.Errorf("round trip = %+v, want 2 nights and 0 leave days", offer)
+	}
+	if offer.Price != (priceBody{Amount: 173.98, Currency: "PLN", Approximate: true}) || offer.PricePerNight == nil || *offer.PricePerNight != (priceBody{Amount: 86.99, Currency: "PLN", Approximate: true}) {
+		t.Errorf("prices = %+v / %+v", offer.Price, offer.PricePerNight)
+	}
+	if offer.PriceFetchedAt != "2026-11-09T07:00:00Z" {
+		t.Errorf("price fetched at = %s, want older flight's timestamp", offer.PriceFetchedAt)
+	}
 }
 
 func TestSearchRespectsStayLengthInHotelNights(t *testing.T) {

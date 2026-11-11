@@ -1,3 +1,7 @@
+import roundTripRequest from '../../../../contract/round-trip.request.json';
+import oneWayRequest from '../../../../contract/one-way.request.json';
+import foreignCurrencyRequest from '../../../../contract/foreign-currency.request.json';
+import queryErrorRequest from '../../../../contract/query-error.request.json';
 import { Catalogue, SearchQuery } from './search-api';
 import {
   buildSearchQuery,
@@ -72,6 +76,28 @@ function rawValue(): SearchFormValue {
 
 /** How the form's raw value and the catalogue become the search request. */
 describe('buildSearchQuery', () => {
+  it('builds the shared round-trip request with default work hours', () => {
+    expect(buildSearchQuery(rawValue(), catalogue)).toEqual(roundTripRequest);
+  });
+
+  it('builds the shared one-way request without work hours', () => {
+    const value = rawValue();
+    value.kind = 'oneWay';
+    expect(buildSearchQuery(value, catalogue)).toEqual(oneWayRequest);
+  });
+
+  it('builds the shared foreign-currency scenario request', () => {
+    const value = rawValue();
+    value.stayLength = { min: 0, max: 10 };
+    expect(buildSearchQuery(value, catalogue)).toEqual(foreignCurrencyRequest);
+  });
+
+  it('serializes the invalid stay range in the shared error request', () => {
+    const value = rawValue();
+    value.stayLength = { min: 3, max: 2 };
+    expect(buildSearchQuery(value, catalogue)).toEqual(queryErrorRequest);
+  });
+
   it('builds a round-trip query, with the default work hours and price sort, that restricts nothing else', () => {
     const v = rawValue();
     v.homeAirports = 'krk, KTW krk';

@@ -27,23 +27,9 @@ func TestSearchReturnsOneWayOfferForDirectFlightInTravelWindow(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("status code = %d, want %d", code, http.StatusOK)
 	}
-	want := []offerBody{{
-		Kind: "oneWay",
-		Outbound: legBody{
-			IsDirect: true,
-			Flights: []flightBody{{
-				DepartureAirport: "KRK",
-				ArrivalAirport:   "BGY",
-				Departure:        localTimeBody{Date: "2026-12-05", Time: "06:15", TimeZone: "Europe/Warsaw"},
-				Arrival:          localTimeBody{Date: "2026-12-05", Time: "08:10", TimeZone: "Europe/Rome"},
-				OriginalPrice:    moneyBody{Amount: 89.00, Currency: "PLN"},
-				FetchedAt:        "2026-11-10T08:00:00Z",
-			}},
-		},
-		Price:          priceBody{Amount: 89.00, Currency: "PLN", Approximate: false},
-		PriceFetchedAt: "2026-11-10T08:00:00Z",
-	}}
-	assertOffers(t, body.Offers, want)
+	if len(body.Offers) != 1 || body.Offers[0].Kind != "oneWay" {
+		t.Fatalf("offers = %+v, want one one-way offer", body.Offers)
+	}
 }
 
 func TestSearchSkipsFlightsOutsideQuery(t *testing.T) {
@@ -301,13 +287,4 @@ func search(t *testing.T, srv *httptest.Server, query string) (int, searchRespon
 		}
 	}
 	return resp.StatusCode, body
-}
-
-func assertOffers(t *testing.T, got, want []offerBody) {
-	t.Helper()
-	gotJSON, _ := json.MarshalIndent(got, "", "  ")
-	wantJSON, _ := json.MarshalIndent(want, "", "  ")
-	if !bytes.Equal(gotJSON, wantJSON) {
-		t.Errorf("offers:\n got: %s\nwant: %s", gotJSON, wantJSON)
-	}
 }
