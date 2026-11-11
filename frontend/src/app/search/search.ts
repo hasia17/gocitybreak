@@ -10,6 +10,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { readPlaces } from './places';
+import { ryanairTickets } from './ryanair-booking';
 import {
   Catalogue,
   Flight,
@@ -20,6 +21,7 @@ import {
   SearchQuery,
   SearchResponse,
 } from './search-api';
+import { loadSearchSettings, saveSearchSettings } from './search-settings';
 
 /** One or more airport codes separated by commas or spaces, e.g. "KRK, KTW". */
 const airportCodes = [
@@ -79,6 +81,7 @@ export class Search {
   protected readonly error = signal<string | undefined>(undefined);
   /** Whether the user has tried to search; invalid fields are marked only after that. */
   protected readonly submitted = signal(false);
+  protected readonly ryanairTickets = ryanairTickets;
 
   constructor() {
     // Typed places are checked again once the catalogue arrives. Without it, airport codes still work.
@@ -99,12 +102,15 @@ export class Search {
       if (kind === 'roundTrip') stayLength.enable();
       else stayLength.disable();
     });
+    const settings = loadSearchSettings();
+    if (settings) this.form.patchValue(settings);
   }
 
   protected submit() {
     this.submitted.set(true);
     if (this.form.invalid) return;
     const v = this.form.getRawValue();
+    saveSearchSettings(v);
     const query: SearchQuery = {
       kind: v.kind,
       homeAirports: [
@@ -167,6 +173,12 @@ export class Search {
     const year = Number(date.slice(0, 4));
     const label = dayFormat.format(Date.parse(date));
     return year === thisYear ? label : `${label} ${year}`;
+  }
+
+  /** A small count in words, e.g. "two"; numerals from 10 on. */
+  protected count(n: number): string {
+    const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+    return words[n] ?? `${n}`;
   }
 
   protected money(m: Money): string {

@@ -30,6 +30,7 @@ describe('Search', () => {
   let httpTesting: HttpTestingController;
 
   beforeEach(async () => {
+    localStorage.clear(); // search remembers its settings; each test starts from the defaults
     await TestBed.configureTestingModule({
       imports: [Search],
       providers: [provideHttpClient(), provideHttpClientTesting()],
