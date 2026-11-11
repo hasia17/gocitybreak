@@ -250,5 +250,8 @@ describe('Search conveniences', () => {
     const results = root.querySelector('[data-testid="results"]')!.textContent!;
     expect(results).toContain('No offers match');
     expect(results).toMatch(/loosen/i);
+    expect(results).toContain('leave days');
+    expect(results).toContain('time ranges');
+    expect(results).toContain('weekdays');
   });
 });

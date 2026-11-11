@@ -183,8 +183,11 @@
   <section class="results" data-testid="results" aria-live="polite">
     @if (offers.length === 0) {
       <p class="empty">
-        No offers match your search. Try loosening it: a wider travel window, more nights to choose
-        from or more airports.
+        No offers match your search. Try loosening it: a wider travel window, more airports,
+        @if (kind() === 'roundTrip') {
+          more nights to choose from, more leave days,
+        }
+        or fewer filters: wider time ranges, more weekdays.
       </p>
     } @else {
       <header class="results-head">
