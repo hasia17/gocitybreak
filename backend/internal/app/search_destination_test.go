@@ -8,8 +8,8 @@ import (
 )
 
 func TestSearchExpandsCityIntoItsAirportsIncludingOurAdditions(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, europeanAirports+oneFlightFromKrakowToEveryDestination)
+	srv, url := startAPI(t, "test")
+	seed(t, url, europeanAirports+oneFlightFromKrakowToEveryDestination)
 
 	for name, tc := range map[string]struct {
 		cities []string
@@ -36,8 +36,8 @@ func TestSearchExpandsCityIntoItsAirportsIncludingOurAdditions(t *testing.T) {
 }
 
 func TestSearchCombinesAirportsCitiesAndCountriesOfTheDestination(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, europeanAirports+oneFlightFromKrakowToEveryDestination)
+	srv, url := startAPI(t, "test")
+	seed(t, url, europeanAirports+oneFlightFromKrakowToEveryDestination)
 
 	code, body := search(t, srv, oneWayFromKrakowTo(t, map[string]any{
 		"airports":  []string{"OSL"},
@@ -55,8 +55,8 @@ func TestSearchCombinesAirportsCitiesAndCountriesOfTheDestination(t *testing.T) 
 }
 
 func TestSearchAnywhereCoversEveryAirportReachableFromHomeAirports(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, europeanAirports+oneFlightFromKrakowToEveryDestination+`
+	srv, url := startAPI(t, "test")
+	seed(t, url, europeanAirports+oneFlightFromKrakowToEveryDestination+`
 		-- from Katowice, which is not a home airport of the search
 		INSERT INTO flights (departure_airport, arrival_airport,
 			departure_date, departure_time, arrival_date, arrival_time,
@@ -76,8 +76,8 @@ func TestSearchAnywhereCoversEveryAirportReachableFromHomeAirports(t *testing.T)
 }
 
 func TestSearchRemovesExclusionsFromTheDestination(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, europeanAirports+oneFlightFromKrakowToEveryDestination)
+	srv, url := startAPI(t, "test")
+	seed(t, url, europeanAirports+oneFlightFromKrakowToEveryDestination)
 
 	for name, tc := range map[string]struct {
 		destination, exclusions map[string]any
@@ -119,8 +119,8 @@ func TestSearchRemovesExclusionsFromTheDestination(t *testing.T) {
 }
 
 func TestSearchPairsRoundTripThroughTheSameAirportOfTheCity(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, europeanAirports+`
+	srv, url := startAPI(t, "test")
+	seed(t, url, europeanAirports+`
 		INSERT INTO flights (departure_airport, arrival_airport,
 			departure_date, departure_time, arrival_date, arrival_time,
 			price_amount, price_currency, fetched_at)

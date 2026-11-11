@@ -9,8 +9,8 @@ import (
 )
 
 func TestSearchKeepsOutboundDepartureWithinTimeRange(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, polishAndItalianAirports+`
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports+`
 		INSERT INTO flights (departure_airport, arrival_airport,
 			departure_date, departure_time, arrival_date, arrival_time,
 			price_amount, price_currency, fetched_at)
@@ -43,8 +43,8 @@ func TestSearchKeepsOutboundDepartureWithinTimeRange(t *testing.T) {
 }
 
 func TestSearchKeepsOutboundArrivalWithinTimeRangeInLocalTimeOfArrivalAirport(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, polishAndItalianAirports+`
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports+`
 		INSERT INTO airports (code, name, time_zone, supported) VALUES ('LIS', 'Lisbon', 'Europe/Lisbon', false);
 		INSERT INTO flights (departure_airport, arrival_airport,
 			departure_date, departure_time, arrival_date, arrival_time,
@@ -76,8 +76,8 @@ func TestSearchKeepsOutboundArrivalWithinTimeRangeInLocalTimeOfArrivalAirport(t 
 }
 
 func TestSearchKeepsInboundDepartureAndArrivalWithinTheirTimeRanges(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, polishAndItalianAirports+`
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports+`
 		INSERT INTO flights (departure_airport, arrival_airport,
 			departure_date, departure_time, arrival_date, arrival_time,
 			price_amount, price_currency, fetched_at)
@@ -117,8 +117,8 @@ func TestSearchKeepsInboundDepartureAndArrivalWithinTheirTimeRanges(t *testing.T
 }
 
 func TestSearchTimeRangeWrapsPastMidnightWhenItEndsBeforeItStarts(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, polishAndItalianAirports+`
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports+`
 		INSERT INTO flights (departure_airport, arrival_airport,
 			departure_date, departure_time, arrival_date, arrival_time,
 			price_amount, price_currency, fetched_at)
@@ -147,8 +147,8 @@ func TestSearchTimeRangeWrapsPastMidnightWhenItEndsBeforeItStarts(t *testing.T) 
 }
 
 func TestSearchKeepsOutboundAndInboundDeparturesOnChosenWeekdays(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, polishAndItalianAirports+`
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports+`
 		INSERT INTO flights (departure_airport, arrival_airport,
 			departure_date, departure_time, arrival_date, arrival_time,
 			price_amount, price_currency, fetched_at)
@@ -188,8 +188,8 @@ func TestSearchKeepsOutboundAndInboundDeparturesOnChosenWeekdays(t *testing.T) {
 }
 
 func TestSearchDirectOnlyKeepsDirectOffers(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, polishAndItalianAirports+`
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports+`
 		INSERT INTO flights (departure_airport, arrival_airport,
 			departure_date, departure_time, arrival_date, arrival_time,
 			price_amount, price_currency, fetched_at)
@@ -219,8 +219,8 @@ func TestSearchDirectOnlyKeepsDirectOffers(t *testing.T) {
 }
 
 func TestSearchSortsRoundTripOffersByPricePerNight(t *testing.T) {
-	srv, pg := startAPI(t, "test")
-	seed(t, pg, polishAndItalianAirports+`
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports+`
 		INSERT INTO exchange_rates (currency, rate_date, rate) VALUES ('EUR', '2026-11-10', 4.2512);
 		INSERT INTO flights (departure_airport, arrival_airport,
 			departure_date, departure_time, arrival_date, arrival_time,
