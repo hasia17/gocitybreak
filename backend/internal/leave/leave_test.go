@@ -7,8 +7,8 @@ import (
 	"github.com/hasia17/gocitybreak/backend/internal/leave"
 )
 
-// officeHours is 09:00–17:00.
-var officeHours = leave.WorkHours{Start: 9 * time.Hour, End: 17 * time.Hour}
+// Office hours: work start at 09:00, work end at 17:00.
+const workStart, workEnd = 9 * time.Hour, 17 * time.Hour
 
 func TestDays(t *testing.T) {
 	tests := []struct {
@@ -74,7 +74,7 @@ func TestDays(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := leave.Days(wallClock(t, tt.departure), wallClock(t, tt.arrival), officeHours)
+			got := leave.Days(wallClock(t, tt.departure), wallClock(t, tt.arrival), workStart, workEnd)
 			if got != tt.want {
 				t.Errorf("Days(%s, %s) = %d, want %d", tt.departure, tt.arrival, got, tt.want)
 			}

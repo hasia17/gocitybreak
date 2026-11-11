@@ -10,6 +10,7 @@ import (
 
 	"github.com/hasia17/gocitybreak/backend/internal/catalogue"
 	"github.com/hasia17/gocitybreak/backend/internal/search"
+	"github.com/hasia17/gocitybreak/backend/internal/wallclock"
 )
 
 // timeLayout formats local times without seconds; dates use time.DateOnly.
@@ -172,10 +173,10 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 			return search.Query{}, errors.New("stayLength.max must not be less than stayLength.min")
 		}
 		q.StayLength = search.StayLength{Min: req.StayLength.Min, Max: req.StayLength.Max}
-		if q.WorkHours.Start, err = timeOfDay(cmp.Or(req.WorkStart, defaultWorkStart)); err != nil {
+		if q.WorkStart, err = timeOfDay(cmp.Or(req.WorkStart, defaultWorkStart)); err != nil {
 			return search.Query{}, errors.New("workStart must be a time in HH:MM format")
 		}
-		if q.WorkHours.End, err = timeOfDay(cmp.Or(req.WorkEnd, defaultWorkEnd)); err != nil {
+		if q.WorkEnd, err = timeOfDay(cmp.Or(req.WorkEnd, defaultWorkEnd)); err != nil {
 			return search.Query{}, errors.New("workEnd must be a time in HH:MM format")
 		}
 		if req.MaxLeaveDays != nil && *req.MaxLeaveDays < 0 {
@@ -201,7 +202,7 @@ func timeOfDay(s string) (time.Duration, error) {
 	if err != nil {
 		return 0, err
 	}
-	return time.Duration(t.Hour())*time.Hour + time.Duration(t.Minute())*time.Minute, nil
+	return wallclock.TimeOfDay(t), nil
 }
 
 func toOfferJSON(o search.Offer) offerJSON {

@@ -3,6 +3,8 @@ package search
 import (
 	"slices"
 	"time"
+
+	"github.com/hasia17/gocitybreak/backend/internal/wallclock"
 )
 
 // Filters narrow the offers down; the zero value restricts nothing.
@@ -27,8 +29,7 @@ type TimeRange struct {
 
 // contains reports whether the time of day of t falls within the range.
 func (r TimeRange) contains(t LocalTime) bool {
-	h, m, s := t.DateTime.Clock()
-	clock := time.Duration(h)*time.Hour + time.Duration(m)*time.Minute + time.Duration(s)*time.Second
+	clock := wallclock.TimeOfDay(t.DateTime)
 	if r.To < r.From {
 		return clock >= r.From || clock <= r.To
 	}

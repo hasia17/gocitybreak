@@ -35,9 +35,9 @@ type Query struct {
 	TravelWindow TravelWindow
 	// StayLength applies to round-trip offers only.
 	StayLength StayLength
-	// WorkHours are the traveller's work start and work end, from which the leave days
-	// of round-trip offers are counted.
-	WorkHours leave.WorkHours
+	// WorkStart and WorkEnd are offsets from midnight in the home airport's local time,
+	// from which the leave days of round-trip offers are counted.
+	WorkStart, WorkEnd time.Duration
 	// MaxLeaveDays, when set, leaves out round-trip offers that cost more leave days.
 	MaxLeaveDays *int
 	Filters      Filters
@@ -319,7 +319,7 @@ func (s *Searcher) roundTrip(ctx context.Context, q Query, destination []string)
 		price, fetchedAt := offerPrice(out, in)
 		// The outbound flight departs from a home airport and the inbound flight lands at one,
 		// so both times are in a home airport's local time.
-		leaveDays := leave.Days(out.Departure.DateTime, in.Arrival.DateTime, q.WorkHours)
+		leaveDays := leave.Days(out.Departure.DateTime, in.Arrival.DateTime, q.WorkStart, q.WorkEnd)
 		return Offer{
 			Kind:           RoundTrip,
 			Outbound:       Leg{Flights: []Flight{out.Flight}},
