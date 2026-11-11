@@ -70,7 +70,7 @@ _Code_: `Country`
 _Avoid_: region, place
 
 **Catalogue**:
-Every airport we know, with the supported airports among them, grouped into cities and countries: the airports, cities and countries the user picks home airports, destinations and exclusions from.
+Every airport we know, with the supported airports among them, grouped into cities and countries: the airports, cities and countries the user picks home airports, destinations and exclusions from. Their names come from Ryanair in each language of the interface; the user may type a name in any of these languages, whichever is shown.
 _Code_: `Catalogue`
 _Avoid_: places, locations, airport list
 
@@ -85,6 +85,11 @@ _Avoid_: blacklist, filter
 The date range the whole offer must fit into: outbound flight on the first day at the earliest, inbound flight on the last day at the latest (for a one-way offer: its only flight within the range).
 _Code_: `TravelWindow`
 _Avoid_: departure window, date range
+
+**Fixed dates**:
+The exact local departure date of the outbound flight and of the inbound flight (for a one-way offer: of its only flight), searched instead of a travel window and stay length; the nights follow from the flights.
+_Code_: `FixedDates`
+_Avoid_: exact dates, specific days
 
 **Local time**:
 The time at an airport in that airport's own time zone, as printed on the ticket: a departure is always in the departure airport's local time, an arrival in the arrival airport's.
@@ -121,6 +126,11 @@ _Code_: `workEnd`
 The user-set time, in the home airport's local time, before which a return does not cost them a working day.
 _Code_: `workStart`
 
+**Leave limit**:
+The most leave days an offer may cost the user. They may switch it off when leave is no concern to them; offers still show their leave days and can still be sorted by them.
+_Code_: `maxLeaveDays` (absent when switched off)
+_Avoid_: vacation cap, max days off
+
 **Leave days**:
 The number of working days from the departure date to the return date inclusive, skipping the departure day when the outbound flight departs after work end, and the return day when the inbound flight lands before work start.
 _Code_: `leaveDays`
@@ -152,8 +162,3 @@ _Avoid_: cached price, old price
 A flight price fetched from Ryanair live at the moment the user selects an offer.
 _Code_: `LivePrice`
 _Avoid_: current price, real price
-
-**Price per night**:
-The offer price of a round-trip offer divided by its number of nights.
-_Code_: `pricePerNight`
-_Avoid_: price per day
