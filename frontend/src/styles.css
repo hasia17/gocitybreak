@@ -1,1 +1,58 @@
-/* You can add global styles to this file, and also import other style files */
+/* Design tokens: neutral greys, hairline borders, a serif display face (GitHub #18). */
+:root {
+  --page: #f8f8f8;
+  --surface: #fff;
+  --subtle: #f0f0f0;
+  --text: #161616;
+  --muted: #666;
+  --faint: #a3a3a3;
+  --line: rgb(0 0 0 / 0.1);
+  --ring: #161616;
+  --danger: #b91c1c;
+  --ok: #15803d;
+  --shadow-composer: 0 4px 16px 0 rgb(0 0 0 / 0.05);
+  --radius-md: 12px;
+  --radius-xl: 24px;
+  --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Noto Serif', Georgia, serif;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #161616;
+    --surface: #202020;
+    --subtle: #2b2b2b;
+    --text: #ececec;
+    --muted: #9a9a9a;
+    --faint: #6b6b6b;
+    --line: rgb(255 255 255 / 0.1);
+    --ring: #ececec;
+    --danger: #f87171;
+    --ok: #4ade80;
+    --shadow-composer: 0 4px 16px 0 rgb(0 0 0 / 0.24);
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--text);
+  color: var(--page);
+}

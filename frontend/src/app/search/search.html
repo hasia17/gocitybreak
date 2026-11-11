@@ -1,69 +1,110 @@
-<form [formGroup]="form" (ngSubmit)="submit()">
-  <fieldset>
-    <legend>One-way flight</legend>
-    <label>
-      From
-      <input formControlName="homeAirport" placeholder="KRK" maxlength="3" autocomplete="off" />
-    </label>
-    <label>
-      To
-      <input
-        formControlName="destinationAirport"
-        placeholder="BGY"
-        maxlength="3"
-        autocomplete="off"
-      />
-    </label>
-  </fieldset>
-  <fieldset>
-    <legend>Travel window</legend>
-    <label>
-      Earliest
-      <input type="date" formControlName="from" />
-    </label>
-    <label>
-      Latest
-      <input type="date" formControlName="to" />
-    </label>
-  </fieldset>
-  @if (form.invalid && form.touched) {
-    <p role="alert">Enter two 3-letter airport codes and both dates.</p>
+<section class="hero" [class.compact]="offers() !== undefined">
+  <h1>Where to this weekend?</h1>
+  <p class="lede">Cheap one-way Ryanair flights for a short city break.</p>
+
+  <form class="composer" [formGroup]="form" (ngSubmit)="submit()">
+    <div class="fields">
+      <label class="field code" [class.invalid]="invalid('homeAirport')">
+        From
+        <input
+          formControlName="homeAirport"
+          placeholder="KRK"
+          maxlength="3"
+          autocomplete="off"
+          [attr.aria-invalid]="invalid('homeAirport')"
+        />
+      </label>
+      <span class="arrow" aria-hidden="true">→</span>
+      <label class="field code" [class.invalid]="invalid('destinationAirport')">
+        To
+        <input
+          formControlName="destinationAirport"
+          placeholder="BGY"
+          maxlength="3"
+          autocomplete="off"
+          [attr.aria-invalid]="invalid('destinationAirport')"
+        />
+      </label>
+      <span class="divider" aria-hidden="true"></span>
+      <label class="field" [class.invalid]="invalid('from')">
+        Earliest
+        <input type="date" formControlName="from" [attr.aria-invalid]="invalid('from')" />
+      </label>
+      <label class="field" [class.invalid]="invalid('to')">
+        Latest
+        <input type="date" formControlName="to" [attr.aria-invalid]="invalid('to')" />
+      </label>
+    </div>
+    <button
+      class="send"
+      type="submit"
+      [disabled]="loading()"
+      [attr.aria-busy]="loading()"
+      aria-label="Search"
+    >
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+        <path d="M5 12h14M13 6l6 6-6 6" />
+      </svg>
+    </button>
+  </form>
+
+  @if (form.invalid && submitted()) {
+    <p class="hint" role="alert">Enter two 3-letter airport codes and both dates.</p>
   }
-  <button type="submit" [disabled]="loading()">Search</button>
-</form>
+</section>
 
 @if (error(); as message) {
-  <p role="alert">{{ message }}</p>
+  <p class="error" role="alert">{{ message }}</p>
 }
 
 @if (offers(); as offers) {
-  @if (offers.length === 0) {
-    <p>No offers match your search. Try a wider travel window or other airports.</p>
-  } @else {
-    <ol class="offers">
-      @for (offer of offers; track $index) {
-        <li data-testid="offer">
-          @for (flight of offer.outbound.flights; track $index) {
-            <div class="flight">
-              <strong>{{ flight.departureAirport }} → {{ flight.arrivalAirport }}</strong>
-              <span>{{ flight.departure.date }}</span>
-              <span>
-                {{ flight.departure.time }} – {{ flight.arrival.time }}
-                @if (daysLater(flight); as days) {
-                  <abbr title="arrives {{ flight.arrival.date }}">+{{ days }}</abbr>
-                }
-              </span>
+  <section class="results" data-testid="results" aria-live="polite">
+    @if (offers.length === 0) {
+      <p class="empty">No offers match your search. Try a wider travel window or other airports.</p>
+    } @else {
+      <header class="results-head">
+        <h2>{{ offers.length }} {{ offers.length === 1 ? 'offer' : 'offers' }}</h2>
+        <span>Prices per person, no cabin bag</span>
+      </header>
+      <ol class="offers">
+        @for (offer of offers; track $index) {
+          <li class="offer" data-testid="offer">
+            <div class="legs">
+              @for (flight of offer.outbound.flights; track $index) {
+                <div class="flight">
+                  <time class="date" [attr.datetime]="flight.departure.date">
+                    {{ day(flight.departure.date) }}
+                  </time>
+                  <span class="times">
+                    {{ flight.departure.time }} – {{ flight.arrival.time }}
+                    @if (daysLater(flight); as days) {
+                      <abbr title="arrives {{ flight.arrival.date }}">+{{ days }}</abbr>
+                    }
+                  </span>
+                  <span class="route"
+                    >{{ flight.departureAirport }} → {{ flight.arrivalAirport }}</span
+                  >
+                </div>
+              }
+              @if (!offer.outbound.isDirect) {
+                <span class="badge">
+                  {{ offer.outbound.flights.length - 1 }}
+                  {{ offer.outbound.flights.length === 2 ? 'stop' : 'stops' }}
+                </span>
+              }
             </div>
-          }
-          <div class="price">
-            <strong>{{ offer.price.approximate ? '≈ ' : '' }}{{ money(offer.price) }}</strong>
-            @for (original of foreignPrices(offer); track $index) {
-              <span>({{ money(original) }})</span>
-            }
-            <small>per person, no cabin bag · price checked {{ priceAge(offer) }}</small>
-          </div>
-        </li>
-      }
-    </ol>
-  }
+            <div class="price">
+              <strong>{{ offer.price.approximate ? '≈ ' : '' }}{{ money(offer.price) }}</strong>
+              <small>
+                @for (original of foreignPrices(offer); track $index) {
+                  {{ money(original) }} ·
+                }
+                checked {{ priceAge(offer) }}
+              </small>
+            </div>
+          </li>
+        }
+      </ol>
+    }
+  </section>
 }
