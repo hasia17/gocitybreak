@@ -72,13 +72,15 @@ describe('Search', () => {
     root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
 
     const req = httpTesting.expectOne({ method: 'POST', url: '/api/search' });
-    expect(req.request.body).toEqual({
-      kind: 'roundTrip',
-      homeAirports: ['KRK', 'KTW'],
-      destination: { airports: ['BGY'] },
-      travelWindow: { from: '2026-12-01', to: '2026-12-10' },
-      stayLength: { min: 2, max: 4 },
-    });
+    expect(req.request.body).toEqual(
+      expect.objectContaining({
+        kind: 'roundTrip',
+        homeAirports: ['KRK', 'KTW'],
+        destination: { airports: ['BGY'] },
+        travelWindow: { from: '2026-12-01', to: '2026-12-10' },
+        stayLength: { min: 2, max: 4 },
+      }),
+    );
     const fetchedAt = new Date().toISOString();
     req.flush({
       offers: [
@@ -124,6 +126,119 @@ describe('Search', () => {
     expect(offer).toContain('≈ 173.98 PLN');
     expect(offer).toContain('19.99 EUR');
     expect(offer).not.toContain('89.00 PLN ·');
+  });
+
+  it('searches with work hours, a maximum of leave days and the leave-days sort, and shows leave days', async () => {
+    const fixture = TestBed.createComponent(Search);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+
+    fill(root, 'From', 'KRK');
+    fill(root, 'To', 'BGY');
+    fill(root, 'Earliest', '2026-12-01');
+    fill(root, 'Latest', '2026-12-10');
+    fill(root, 'Work start', '08:00');
+    fill(root, 'Work end', '16:00');
+    fill(root, 'Max leave days', '0');
+    const sort = root.querySelector<HTMLSelectElement>('select[aria-label="Sort by"]')!;
+    sort.value = 'leaveDays';
+    sort.dispatchEvent(new Event('change'));
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+
+    const req = httpTesting.expectOne({ method: 'POST', url: '/api/search' });
+    expect(req.request.body).toEqual({
+      kind: 'roundTrip',
+      homeAirports: ['KRK'],
+      destination: { airports: ['BGY'] },
+      travelWindow: { from: '2026-12-01', to: '2026-12-10' },
+      stayLength: { min: 2, max: 3 },
+      workStart: '08:00',
+      workEnd: '16:00',
+      maxLeaveDays: 0,
+      sort: 'leaveDays',
+    });
+    const fetchedAt = new Date().toISOString();
+    const flight = (from: string, to: string, date: string, time: string) => ({
+      departureAirport: from,
+      arrivalAirport: to,
+      departure: { date, time, timeZone: 'Europe/Warsaw' },
+      arrival: { date, time, timeZone: 'Europe/Warsaw' },
+      originalPrice: { amount: 50, currency: 'PLN' },
+      fetchedAt,
+    });
+    const offer = (leaveDays: number) => ({
+      kind: 'roundTrip',
+      outbound: { isDirect: true, flights: [flight('KRK', 'BGY', '2026-12-04', '18:00')] },
+      inbound: { isDirect: true, flights: [flight('BGY', 'KRK', '2026-12-06', '20:00')] },
+      nights: 2,
+      leaveDays,
+      price: { amount: 100, currency: 'PLN', approximate: false },
+      priceFetchedAt: fetchedAt,
+    });
+    req.flush({ offers: [offer(0), offer(1), offer(2)] });
+    await fixture.whenStable();
+
+    const offers = Array.from(root.querySelectorAll('[data-testid="offer"]')).map((o) =>
+      o.textContent?.replace(/\s+/g, ' '),
+    );
+    expect(offers[0]).toContain('no leave');
+    expect(offers[1]).toContain('1 leave day');
+    expect(offers[1]).not.toContain('1 leave days');
+    expect(offers[2]).toContain('2 leave days');
+  });
+
+  it('leaves out the maximum of leave days when it is empty, and sorts by price by default', async () => {
+    const fixture = TestBed.createComponent(Search);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+
+    fill(root, 'From', 'KRK');
+    fill(root, 'To', 'BGY');
+    fill(root, 'Earliest', '2026-12-01');
+    fill(root, 'Latest', '2026-12-10');
+    fill(root, 'Max leave days', '');
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+
+    const req = httpTesting.expectOne({ method: 'POST', url: '/api/search' });
+    expect(req.request.body).toEqual(
+      expect.objectContaining({ workStart: '09:00', workEnd: '17:00', sort: 'price' }),
+    );
+    expect(req.request.body).not.toHaveProperty('maxLeaveDays');
+    req.flush({ offers: [] });
+  });
+
+  it('remembers work hours, the maximum of leave days and the sort for the next visit', async () => {
+    const first = TestBed.createComponent(Search);
+    await first.whenStable();
+    let root = first.nativeElement as HTMLElement;
+    fill(root, 'From', 'KRK');
+    fill(root, 'To', 'BGY');
+    fill(root, 'Earliest', '2026-12-01');
+    fill(root, 'Latest', '2026-12-10');
+    fill(root, 'Work start', '07:30');
+    fill(root, 'Work end', '15:30');
+    fill(root, 'Max leave days', '1');
+    const sort = root.querySelector<HTMLSelectElement>('select[aria-label="Sort by"]')!;
+    sort.value = 'leaveDays';
+    sort.dispatchEvent(new Event('change'));
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+    httpTesting.expectOne('/api/search').flush({ offers: [] });
+    first.destroy();
+
+    const fixture = TestBed.createComponent(Search);
+    await fixture.whenStable();
+    root = fixture.nativeElement as HTMLElement;
+
+    const value = (label: string) =>
+      Array.from(root.querySelectorAll('label'))
+        .find((l) => l.textContent?.trim().startsWith(label))
+        ?.querySelector('input')?.value;
+    expect(value('Work start')).toBe('07:30');
+    expect(value('Work end')).toBe('15:30');
+    expect(value('Max leave days')).toBe('1');
+    expect(root.querySelector<HTMLSelectElement>('select[aria-label="Sort by"]')!.value).toBe(
+      'leaveDays',
+    );
   });
 
   it('marks the nights invalid when the maximum is below the minimum', async () => {

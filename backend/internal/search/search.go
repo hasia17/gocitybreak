@@ -5,6 +5,7 @@
 package search
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"slices"
@@ -14,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/hasia17/gocitybreak/backend/internal/catalogue"
+	"github.com/hasia17/gocitybreak/backend/internal/leave"
 )
 
 // OfferKind tells a one-way offer from a round-trip offer.
@@ -34,7 +36,24 @@ type Query struct {
 	TravelWindow TravelWindow
 	// StayLength applies to round-trip offers only.
 	StayLength StayLength
+	// WorkHours are the traveller's work start and work end, from which the leave days
+	// of round-trip offers are counted.
+	WorkHours leave.WorkHours
+	// MaxLeaveDays, when set, leaves out round-trip offers that cost more leave days.
+	MaxLeaveDays *int
+	// Sort is the order of the offers; by price when unset.
+	Sort SortOrder
 }
+
+// SortOrder is the order in which offers are returned.
+type SortOrder string
+
+const (
+	// ByPrice sorts offers by ascending offer price.
+	ByPrice SortOrder = "price"
+	// ByLeaveDays sorts round-trip offers by ascending leave days, then by price.
+	ByLeaveDays SortOrder = "leaveDays"
+)
 
 // Destination is where the traveller wants to fly: any number of airports, cities and countries,
 // or anywhere, minus the exclusions.
@@ -67,6 +86,8 @@ type Offer struct {
 	Price  Price
 	// PriceFetchedAt is when the oldest stored price of the offer's flights was fetched.
 	PriceFetchedAt time.Time
+	// LeaveDays is the number of leave days of a round-trip offer (GLOSSARY: Leave days); 0 for a one-way offer.
+	LeaveDays int
 }
 
 // Leg is one-way travel made of one or more flights.
@@ -254,6 +275,9 @@ func (s *Searcher) roundTrip(ctx context.Context, q Query, destination []string)
 			return Offer{}, err
 		}
 		price, fetchedAt := offerPrice(out, in)
+		// The outbound flight departs from a home airport and the inbound flight lands at one,
+		// so both times are in a home airport's local time.
+		leaveDays := leave.Days(out.Departure.DateTime, in.Arrival.DateTime, q.WorkHours)
 		return Offer{
 			Kind:           RoundTrip,
 			Outbound:       Leg{Flights: []Flight{out.Flight}},
@@ -261,10 +285,18 @@ func (s *Searcher) roundTrip(ctx context.Context, q Query, destination []string)
 			Nights:         nights,
 			Price:          price,
 			PriceFetchedAt: fetchedAt,
+			LeaveDays:      leaveDays,
 		}, nil
 	})
 	if err != nil {
 		return nil, fmt.Errorf("read flight pairs: %w", err)
+	}
+	if q.MaxLeaveDays != nil {
+		offers = slices.DeleteFunc(offers, func(o Offer) bool { return o.LeaveDays > *q.MaxLeaveDays })
+	}
+	if q.Sort == ByLeaveDays {
+		// Stable, so offers with equal leave days stay in price order.
+		slices.SortStableFunc(offers, func(a, b Offer) int { return cmp.Compare(a.LeaveDays, b.LeaveDays) })
 	}
 	return offers, nil
 }
