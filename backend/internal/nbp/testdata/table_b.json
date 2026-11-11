@@ -1,0 +1,12 @@
+[
+  {
+    "table": "B",
+    "no": "222/B/NBP/2026",
+    "tradingDate": "2026-11-03",
+    "effectiveDate": "2026-11-04",
+    "rates": [
+      {"currency": "dirham marokański", "code": "MAD", "mid": 0.4012},
+      {"currency": "dinar kuwejcki", "code": "KWD", "mid": 12.4871}
+    ]
+  }
+]
