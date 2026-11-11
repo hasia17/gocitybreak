@@ -25,6 +25,33 @@ describe('Search', () => {
     input.dispatchEvent(new Event('input'));
   }
 
+  function labelled<T extends Element>(root: HTMLElement, name: string): T {
+    const el = Array.from(root.querySelectorAll<T>('input, select')).find(
+      (e) =>
+        e.getAttribute('aria-label') === name || e.closest('label')?.textContent?.trim() === name,
+    );
+    if (!el) throw new Error(`no control labelled ${name}`);
+    return el;
+  }
+
+  function time(root: HTMLElement, name: string, value: string) {
+    const input = labelled<HTMLInputElement>(root, name);
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+  }
+
+  /** Ticks a weekday checkbox, e.g. "Fri" among the "Departure days". */
+  function day(root: HTMLElement, days: string, weekday: string) {
+    const fieldset = Array.from(root.querySelectorAll('fieldset')).find(
+      (f) => f.querySelector('legend')?.textContent?.trim() === days,
+    );
+    const box = Array.from(fieldset?.querySelectorAll('label') ?? [])
+      .find((l) => l.textContent?.trim() === weekday)
+      ?.querySelector('input');
+    if (!box) throw new Error(`no ${weekday} among ${days}`);
+    box.click();
+  }
+
   function nights(root: HTMLElement, which: 'Minimum' | 'Maximum') {
     return root.querySelector<HTMLInputElement>(`input[aria-label="${which} nights"]`);
   }
@@ -96,6 +123,121 @@ describe('Search', () => {
     expect(offer).toContain('≈ 173.98 PLN');
     expect(offer).toContain('19.99 EUR');
     expect(offer).not.toContain('89.00 PLN ·');
+  });
+
+  it('sends the chosen time ranges, weekdays, direct only and price-per-night sort', async () => {
+    const fixture = TestBed.createComponent(Search);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+
+    fill(root, 'From', 'KRK');
+    fill(root, 'To', 'BGY');
+    fill(root, 'Earliest', '2026-12-01');
+    fill(root, 'Latest', '2026-12-10');
+    labelled<HTMLInputElement>(root, 'Direct flights only').click();
+    time(root, 'Outbound departure from', '06:00');
+    time(root, 'Outbound departure to', '12:00');
+    // An open-ended range runs to the end of the day, or from its start.
+    time(root, 'Inbound arrival to', '22:00');
+    time(root, 'Outbound arrival from', '09:00');
+    day(root, 'Departure days', 'Thu');
+    day(root, 'Departure days', 'Fri');
+    day(root, 'Return days', 'Sun');
+    const sort = labelled<HTMLSelectElement>(root, 'Sort by');
+    sort.value = 'pricePerNight';
+    sort.dispatchEvent(new Event('change'));
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+
+    const req = httpTesting.expectOne({ method: 'POST', url: '/api/search' });
+    expect(req.request.body).toEqual({
+      kind: 'roundTrip',
+      homeAirports: ['KRK'],
+      destination: { airports: ['BGY'] },
+      travelWindow: { from: '2026-12-01', to: '2026-12-10' },
+      stayLength: { min: 2, max: 3 },
+      filters: {
+        directOnly: true,
+        outboundDeparture: { from: '06:00', to: '12:00' },
+        outboundArrival: { from: '09:00', to: '23:59' },
+        inboundArrival: { from: '00:00', to: '22:00' },
+        departureWeekdays: ['thu', 'fri'],
+        returnWeekdays: ['sun'],
+      },
+      sort: 'pricePerNight',
+    });
+    req.flush({ offers: [] });
+  });
+
+  it('offers only outbound filters and price sorting for one-way offers', async () => {
+    const fixture = TestBed.createComponent(Search);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+
+    fill(root, 'From', 'KRK');
+    fill(root, 'To', 'BGY');
+    fill(root, 'Earliest', '2026-12-01');
+    fill(root, 'Latest', '2026-12-10');
+    time(root, 'Inbound departure from', '14:00');
+    day(root, 'Return days', 'Sun');
+    const sort = labelled<HTMLSelectElement>(root, 'Sort by');
+    sort.value = 'pricePerNight';
+    sort.dispatchEvent(new Event('change'));
+    root.querySelector<HTMLInputElement>('input[type="radio"][value="oneWay"]')!.click();
+    await fixture.whenStable();
+
+    expect(root.querySelector('input[aria-label="Inbound departure from"]')).toBeNull();
+    expect(root.textContent).not.toContain('Return days');
+    expect(root.querySelector('option[value="pricePerNight"]')).toBeNull();
+    time(root, 'Outbound arrival to', '10:00');
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+
+    const req = httpTesting.expectOne({ method: 'POST', url: '/api/search' });
+    expect(req.request.body).toEqual({
+      kind: 'oneWay',
+      homeAirports: ['KRK'],
+      destination: { airports: ['BGY'] },
+      travelWindow: { from: '2026-12-01', to: '2026-12-10' },
+      filters: { outboundArrival: { from: '00:00', to: '10:00' } },
+    });
+    req.flush({ offers: [] });
+  });
+
+  it('shows the price per night of a round-trip offer', async () => {
+    const fixture = TestBed.createComponent(Search);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+
+    fill(root, 'From', 'KRK');
+    fill(root, 'To', 'BGY');
+    fill(root, 'Earliest', '2026-12-01');
+    fill(root, 'Latest', '2026-12-10');
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+    const fetchedAt = new Date().toISOString();
+    const flight = (from: string, to: string, date: string) => ({
+      departureAirport: from,
+      arrivalAirport: to,
+      departure: { date, time: '18:00', timeZone: 'Europe/Warsaw' },
+      arrival: { date, time: '19:55', timeZone: 'Europe/Rome' },
+      originalPrice: { amount: 50, currency: 'PLN' },
+      fetchedAt,
+    });
+    httpTesting.expectOne('/api/search').flush({
+      offers: [
+        {
+          kind: 'roundTrip',
+          outbound: { isDirect: true, flights: [flight('KRK', 'BGY', '2026-12-04')] },
+          inbound: { isDirect: true, flights: [flight('BGY', 'KRK', '2026-12-07')] },
+          nights: 3,
+          price: { amount: 90.99, currency: 'PLN', approximate: true },
+          pricePerNight: { amount: 30.33, currency: 'PLN', approximate: true },
+          priceFetchedAt: fetchedAt,
+        },
+      ],
+    });
+    await fixture.whenStable();
+
+    const offer = root.querySelector('[data-testid="offer"]')?.textContent?.replace(/\s+/g, ' ');
+    expect(offer).toContain('≈ 30.33 PLN per night');
   });
 
   it('marks the nights invalid when the maximum is below the minimum', async () => {

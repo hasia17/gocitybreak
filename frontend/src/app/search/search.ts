@@ -8,7 +8,17 @@ import {
   ValidationErrors,
   Validators,
 } from '@angular/forms';
-import { Flight, Leg, Money, Offer, OfferKind, SearchQuery, SearchResponse } from './search-api';
+import {
+  Flight,
+  Leg,
+  Money,
+  Offer,
+  OfferKind,
+  SearchQuery,
+  SearchResponse,
+  SortOrder,
+} from './search-api';
+import { filtersForm, moments, toSearchFilters, weekdays } from './search-filters';
 
 const airportCode = [Validators.required, Validators.pattern(/^[A-Za-z]{3}$/)];
 /** One or more airport codes separated by commas or spaces, e.g. "KRK, KTW". */
@@ -36,7 +46,7 @@ const dayFormat = new Intl.DateTimeFormat('en-GB', {
 @Component({
   selector: 'app-search',
   imports: [ReactiveFormsModule],
-  styleUrl: './search.css',
+  styleUrls: ['./search.css', './search-filters.css'],
   templateUrl: './search.html',
 })
 export class Search {
@@ -53,7 +63,11 @@ export class Search {
       { min: [2, nightCount], max: [3, nightCount] },
       { validators: maxBelowMin },
     ),
+    filters: filtersForm(this.fb),
+    sort: this.fb.control<SortOrder>('price'),
   });
+  protected readonly moments = moments;
+  protected readonly weekdays = weekdays;
 
   protected readonly kind = toSignal(this.form.controls.kind.valueChanges, {
     initialValue: this.form.controls.kind.value,
@@ -72,6 +86,10 @@ export class Search {
       const stayLength = this.form.controls.stayLength;
       if (kind === 'roundTrip') stayLength.enable();
       else stayLength.disable();
+      // A one-way offer has no nights to divide its price by.
+      if (kind === 'oneWay' && this.form.controls.sort.value === 'pricePerNight') {
+        this.form.controls.sort.setValue('price');
+      }
     });
   }
 
@@ -95,6 +113,9 @@ export class Search {
     if (v.kind === 'roundTrip') {
       query.stayLength = { min: Number(v.stayLength.min), max: Number(v.stayLength.max) };
     }
+    const filters = toSearchFilters(v.filters, v.kind);
+    if (filters) query.filters = filters;
+    if (v.sort !== 'price') query.sort = v.sort;
     this.loading.set(true);
     this.error.set(undefined);
     this.http.post<SearchResponse>('/api/search', query).subscribe({

@@ -77,6 +77,54 @@
         </svg>
       </button>
     </div>
+    <details class="filters" formGroupName="filters">
+      <summary>Filters and sorting</summary>
+      <div class="filters-body">
+        <label class="check"
+          ><input type="checkbox" formControlName="directOnly" />Direct flights only</label
+        >
+        <label class="sort">
+          Sort by
+          <select [formControl]="form.controls.sort" aria-label="Sort by">
+            <option value="price">Price</option>
+            @if (kind() === 'roundTrip') {
+              <option value="pricePerNight">Price per night</option>
+            }
+          </select>
+        </label>
+        <div class="time-ranges">
+          <p class="note">Hours in local time at each airport.</p>
+          @for (moment of moments; track moment.name) {
+            @if (!moment.inbound || kind() === 'roundTrip') {
+              <div class="time-range" [formGroupName]="moment.name">
+                <span>{{ moment.label }}</span>
+                <input
+                  type="time"
+                  formControlName="from"
+                  [attr.aria-label]="moment.label + ' from'"
+                />
+                <span aria-hidden="true">–</span>
+                <input type="time" formControlName="to" [attr.aria-label]="moment.label + ' to'" />
+              </div>
+            }
+          }
+        </div>
+        <fieldset class="days" formGroupName="departureWeekdays">
+          <legend>Departure days</legend>
+          @for (day of weekdays; track day.value) {
+            <label><input type="checkbox" [formControlName]="day.value" />{{ day.label }}</label>
+          }
+        </fieldset>
+        @if (kind() === 'roundTrip') {
+          <fieldset class="days" formGroupName="returnWeekdays">
+            <legend>Return days</legend>
+            @for (day of weekdays; track day.value) {
+              <label><input type="checkbox" [formControlName]="day.value" />{{ day.label }}</label>
+            }
+          </fieldset>
+        }
+      </div>
+    </details>
   </form>
 
   @if (form.invalid && submitted()) {
@@ -135,6 +183,11 @@
             </div>
             <div class="price">
               <strong>{{ offer.price.approximate ? '≈ ' : '' }}{{ money(offer.price) }}</strong>
+              @if (offer.pricePerNight; as perNight) {
+                <small class="per-night"
+                  >{{ perNight.approximate ? '≈ ' : '' }}{{ money(perNight) }} per night</small
+                >
+              }
               <small>
                 @for (original of foreignPrices(offer); track $index) {
                   {{ money(original) }} ·
