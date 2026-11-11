@@ -38,9 +38,7 @@ type Query struct {
 	// WorkStart and WorkEnd are offsets from midnight in the home airport's local time,
 	// from which the leave days of round-trip offers are counted.
 	WorkStart, WorkEnd time.Duration
-	// MaxLeaveDays, when set, leaves out round-trip offers that cost more leave days.
-	MaxLeaveDays *int
-	Filters      Filters
+	Filters            Filters
 	// Sort is the order of the offers; by price when unset.
 	Sort SortOrder
 }
@@ -91,6 +89,17 @@ type Offer struct {
 	PriceFetchedAt time.Time
 	// LeaveDays is the number of leave days of a round-trip offer (GLOSSARY: Leave days); 0 for a one-way offer.
 	LeaveDays int
+}
+
+// PricePerNight is the offer price divided by the number of hotel nights (GLOSSARY: Price per night),
+// rounded to minor units; ok is false for an offer of 0 nights, including every one-way offer.
+func (o Offer) PricePerNight() (price Price, ok bool) {
+	if o.Nights <= 0 {
+		return Price{}, false
+	}
+	price = o.Price
+	price.Amount = (o.Price.Amount + int64(o.Nights)/2) / int64(o.Nights)
+	return price, true
 }
 
 // Leg is one-way travel made of one or more flights.
@@ -332,9 +341,6 @@ func (s *Searcher) roundTrip(ctx context.Context, q Query, destination []string)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("read flight pairs: %w", err)
-	}
-	if q.MaxLeaveDays != nil {
-		offers = slices.DeleteFunc(offers, func(o Offer) bool { return o.LeaveDays > *q.MaxLeaveDays })
 	}
 	return offers, nil
 }

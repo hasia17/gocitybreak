@@ -19,6 +19,8 @@ type Filters struct {
 	// at the departure airport; an empty list allows every day. They go by departure, unlike leave days,
 	// which go by the inbound arrival.
 	OutboundDepartureWeekdays, InboundDepartureWeekdays []time.Weekday
+	// MaxLeaveDays, when set, leaves out round-trip offers that cost more leave days.
+	MaxLeaveDays *int
 }
 
 // TimeRange is a range of times of day, both ends inclusive, each measured from midnight.
@@ -52,7 +54,8 @@ func (f Filters) keep(o Offer) bool {
 	if in := o.Inbound; in != nil {
 		return (!f.DirectOnly || in.IsDirect()) &&
 			within(f.InboundDeparture, in.departure()) && within(f.InboundArrival, in.arrival()) &&
-			onDay(f.InboundDepartureWeekdays, in.departure())
+			onDay(f.InboundDepartureWeekdays, in.departure()) &&
+			(f.MaxLeaveDays == nil || o.LeaveDays <= *f.MaxLeaveDays)
 	}
 	return true
 }

@@ -162,6 +162,9 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 		TravelWindow: search.TravelWindow{From: from, To: to},
 		Sort:         search.SortOrder(req.Sort),
 	}
+	if q.Filters, err = req.Filters.parse(); err != nil {
+		return search.Query{}, err
+	}
 	if kind == search.RoundTrip {
 		if req.StayLength == nil {
 			return search.Query{}, errors.New("stayLength is required for a round trip")
@@ -182,10 +185,7 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 		if req.MaxLeaveDays != nil && *req.MaxLeaveDays < 0 {
 			return search.Query{}, errors.New("maxLeaveDays must not be negative")
 		}
-		q.MaxLeaveDays = req.MaxLeaveDays
-	}
-	if q.Filters, err = req.Filters.parse(); err != nil {
-		return search.Query{}, err
+		q.Filters.MaxLeaveDays = req.MaxLeaveDays
 	}
 	return q, nil
 }
