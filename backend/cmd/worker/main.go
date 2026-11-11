@@ -67,6 +67,7 @@ func run() error {
 		Pool:    db.Pool,
 		Ryanair: ryanair.NewHTTPClient(env("RYANAIR_URL", "https://www.ryanair.com"), ryanairFetch),
 		NBP:     nbp.NewClient(env("NBP_URL", "https://api.nbp.pl"), nbpFetch),
+		Logger:  slog.Default(),
 	})
 
 	slog.Info("worker started", "ryanairRequestsPerSecond", rps, "priceRefreshPause", pause)

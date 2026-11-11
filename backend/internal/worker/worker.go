@@ -33,6 +33,8 @@ type Config struct {
 	Freshness Freshness
 	// Now tells the time (default time.Now); tests pin it.
 	Now func() time.Time
+	// Logger receives the worker's progress and failures (default slog.Default()).
+	Logger *slog.Logger
 }
 
 // Worker fetches prices and rates into the database.
@@ -44,6 +46,7 @@ type Worker struct {
 	horizon   time.Duration
 	freshness Freshness
 	now       func() time.Time
+	logger    *slog.Logger
 }
 
 // Freshness is a list of tiers, nearest first: route-months whose flights start departing sooner than a tier's
@@ -79,7 +82,7 @@ func (f Freshness) maxAge(untilDeparture time.Duration) time.Duration {
 // New returns a Worker for cfg.
 func New(cfg Config) *Worker {
 	w := &Worker{pool: cfg.Pool, store: pricestore.New(cfg.Pool), ryanair: cfg.Ryanair, nbp: cfg.NBP,
-		horizon: cfg.Horizon, freshness: cfg.Freshness, now: cfg.Now}
+		horizon: cfg.Horizon, freshness: cfg.Freshness, now: cfg.Now, logger: cmp.Or(cfg.Logger, slog.Default())}
 	if w.horizon <= 0 {
 		w.horizon = 183 * day
 	}
@@ -108,7 +111,7 @@ func (w *Worker) Run(ctx context.Context, s Schedule) {
 		for {
 			wait := s.RatesInterval
 			if err := w.RefreshExchangeRates(ctx); err != nil {
-				slog.ErrorContext(ctx, "exchange rate refresh failed", "err", err)
+				w.logger.ErrorContext(ctx, "exchange rate refresh failed", "err", err)
 				wait = s.RatesRetry
 			}
 			if !sleep(ctx, wait) {
@@ -119,12 +122,12 @@ func (w *Worker) Run(ctx context.Context, s Schedule) {
 	for {
 		start := time.Now()
 		if err := w.RefreshCatalogue(ctx); err != nil {
-			slog.ErrorContext(ctx, "catalogue refresh failed", "err", err)
+			w.logger.ErrorContext(ctx, "catalogue refresh failed", "err", err)
 		}
 		if err := w.RefreshPrices(ctx); err != nil {
-			slog.ErrorContext(ctx, "price refresh incomplete", "err", err)
+			w.logger.ErrorContext(ctx, "price refresh incomplete", "err", err)
 		}
-		slog.InfoContext(ctx, "price refresh finished", "took", time.Since(start).Round(time.Second))
+		w.logger.InfoContext(ctx, "price refresh finished", "took", time.Since(start).Round(time.Second))
 		if !sleep(ctx, s.PricePause) {
 			return
 		}
@@ -150,7 +153,7 @@ func (w *Worker) RefreshCatalogue(ctx context.Context) error {
 	if err := w.store.UpsertAirports(ctx, airports); err != nil {
 		return err
 	}
-	slog.InfoContext(ctx, "catalogue stored", "airports", len(airports))
+	w.logger.InfoContext(ctx, "catalogue stored", "airports", len(airports))
 	return nil
 }
 
@@ -173,7 +176,7 @@ func (w *Worker) refreshExchangeRateTable(ctx context.Context, table string) err
 	if err := w.store.UpsertExchangeRates(ctx, rates); err != nil {
 		return fmt.Errorf("store NBP table %s: %w", table, err)
 	}
-	slog.InfoContext(ctx, "exchange rates stored", "table", table, "rates", len(rates))
+	w.logger.InfoContext(ctx, "exchange rates stored", "table", table, "rates", len(rates))
 	return nil
 }
 
@@ -206,12 +209,12 @@ func (w *Worker) RefreshPrices(ctx context.Context) error {
 			return err
 		}
 		if err := w.refreshRouteMonth(ctx, rm); err != nil {
-			slog.WarnContext(ctx, "route refresh failed", "from", rm.route.from, "to", rm.route.to,
+			w.logger.WarnContext(ctx, "route refresh failed", "from", rm.route.from, "to", rm.route.to,
 				"month", rm.month.Format("2006-01"), "err", err)
 			failures = append(failures, err)
 		}
 	}
-	slog.InfoContext(ctx, "prices refreshed", "routes", len(routes), "routeMonths", len(due), "failures", len(failures))
+	w.logger.InfoContext(ctx, "prices refreshed", "routes", len(routes), "routeMonths", len(due), "failures", len(failures))
 	if len(failures) > 0 {
 		return fmt.Errorf("%d route-months failed: %w", len(failures), errors.Join(failures...))
 	}
@@ -282,12 +285,12 @@ func (w *Worker) routes(ctx context.Context) ([]route, error) {
 	for _, home := range supported {
 		destinations, err := w.ryanair.Routes(ctx, home)
 		if err != nil {
-			slog.WarnContext(ctx, "routes unavailable", "airport", home, "err", err)
+			w.logger.WarnContext(ctx, "routes unavailable", "airport", home, "err", err)
 			continue
 		}
 		for _, d := range destinations {
 			if !slices.Contains(known, d) {
-				slog.WarnContext(ctx, "route to an airport missing from the catalogue", "from", home, "to", d)
+				w.logger.WarnContext(ctx, "route to an airport missing from the catalogue", "from", home, "to", d)
 				continue
 			}
 			seen[route{home, d}] = true
@@ -306,7 +309,7 @@ func (w *Worker) routes(ctx context.Context) ([]route, error) {
 
 // refreshRouteMonth prices and stores a route-month.
 func (w *Worker) refreshRouteMonth(ctx context.Context, rm routeMonth) error {
-	flights, complete, err := pricing.RouteMonth(ctx, slog.Default(), w.ryanair, rm.route.from, rm.route.to, rm.month, rm.first, rm.last)
+	flights, complete, err := pricing.RouteMonth(ctx, w.logger, w.ryanair, rm.route.from, rm.route.to, rm.month, rm.first, rm.last)
 	if err != nil {
 		return err
 	}
