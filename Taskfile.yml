@@ -8,14 +8,13 @@ tasks:
       - task: run
 
   run:
-    desc: Build and start everything, load sample flights, open on http://localhost:8080
+    desc: Build and start everything (the price worker starts fetching real prices), open on http://localhost:8080
     cmds:
       - docker compose up -d --build
-      - task: seed
-      - echo "Ready at http://localhost:8080 (logs - task logs, stop - task stop)"
+      - echo "Ready at http://localhost:8080 (logs - task logs, stop - task stop, sample flights - task seed)"
 
   seed:
-    desc: Load sample flights (safe to re-run); waits until the API has migrated the database
+    desc: Load hand-made sample flights for working offline (safe to re-run); waits until the API has migrated the database
     cmds:
       # The API creates the tables on startup, so wait for it from inside the stack (the loop runs in a Linux container).
       - >-

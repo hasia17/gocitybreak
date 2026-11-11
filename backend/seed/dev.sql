@@ -1,4 +1,4 @@
--- Hand-made sample data for local development, until the price worker (#5) fills the database.
+-- Hand-made sample data for working offline, without waiting for the price worker to fill the database.
 -- Dates are relative to today, so the data stays searchable. Safe to re-run: it only adds missing sample rows
 -- and never changes or deletes existing ones, including prices stored by the worker.
 --

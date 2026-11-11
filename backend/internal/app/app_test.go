@@ -7,10 +7,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 
 	"github.com/hasia17/gocitybreak/backend/internal/app"
+	"github.com/hasia17/gocitybreak/backend/internal/database/databasetest"
 )
 
 func TestStatusReportsVersionAndMigratedDatabase(t *testing.T) {
@@ -69,7 +69,7 @@ type statusBody struct {
 // startAPI starts the API with the given version on a fresh PostgreSQL container.
 func startAPI(t *testing.T, version string) (*httptest.Server, *postgres.PostgresContainer) {
 	t.Helper()
-	pg, url := startPostgres(t)
+	pg, url := databasetest.StartPostgres(t)
 	a, err := app.New(context.Background(), app.Config{DatabaseURL: url, Version: version})
 	if err != nil {
 		t.Fatalf("app.New: %v", err)
@@ -95,25 +95,4 @@ func getStatus(t *testing.T, srv *httptest.Server) (int, statusBody) {
 		t.Fatalf("decode body: %v", err)
 	}
 	return resp.StatusCode, body
-}
-
-// startPostgres runs a throwaway PostgreSQL container for the test and returns its connection string.
-func startPostgres(t *testing.T) (*postgres.PostgresContainer, string) {
-	t.Helper()
-	ctx := context.Background()
-	ctr, err := postgres.Run(ctx, "postgres:17-alpine",
-		postgres.WithDatabase("gocitybreak"),
-		postgres.WithUsername("gocitybreak"),
-		postgres.WithPassword("gocitybreak"),
-		postgres.BasicWaitStrategies(),
-	)
-	testcontainers.CleanupContainer(t, ctr)
-	if err != nil {
-		t.Fatalf("start postgres: %v", err)
-	}
-	url, err := ctr.ConnectionString(ctx, "sslmode=disable")
-	if err != nil {
-		t.Fatalf("postgres connection string: %v", err)
-	}
-	return ctr, url
 }
