@@ -180,6 +180,40 @@ describe('Search', () => {
     req.flush({ offers: [] });
   });
 
+  it('remembers work hours, the maximum of leave days and the sort for the next visit', async () => {
+    const first = TestBed.createComponent(Search);
+    await first.whenStable();
+    let root = first.nativeElement as HTMLElement;
+    fill(root, 'From', 'KRK');
+    fill(root, 'To', 'BGY');
+    fill(root, 'Earliest', '2026-12-01');
+    fill(root, 'Latest', '2026-12-10');
+    fill(root, 'Work start', '07:30');
+    fill(root, 'Work end', '15:30');
+    fill(root, 'Max leave days', '1');
+    const sort = root.querySelector<HTMLSelectElement>('select[aria-label="Sort by"]')!;
+    sort.value = 'leaveDays';
+    sort.dispatchEvent(new Event('change'));
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+    httpTesting.expectOne('/api/search').flush({ offers: [] });
+    first.destroy();
+
+    const fixture = TestBed.createComponent(Search);
+    await fixture.whenStable();
+    root = fixture.nativeElement as HTMLElement;
+
+    const value = (label: string) =>
+      Array.from(root.querySelectorAll('label'))
+        .find((l) => l.textContent?.trim().startsWith(label))
+        ?.querySelector('input')?.value;
+    expect(value('Work start')).toBe('07:30');
+    expect(value('Work end')).toBe('15:30');
+    expect(value('Max leave days')).toBe('1');
+    expect(root.querySelector<HTMLSelectElement>('select[aria-label="Sort by"]')!.value).toBe(
+      'leaveDays',
+    );
+  });
+
   it('marks the nights invalid when the maximum is below the minimum', async () => {
     const fixture = TestBed.createComponent(Search);
     await fixture.whenStable();
