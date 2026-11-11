@@ -356,10 +356,7 @@ func (w *Worker) refreshRouteMonth(ctx context.Context, rm routeMonth) error {
 		if s.Date.Before(from) || s.Date.After(to) {
 			continue
 		}
-		departure, arrival, err := scheduledTimes(s)
-		if err != nil {
-			return err
-		}
+		departure, arrival := s.Departure, s.Arrival
 		f := flight{departure: departure, arrival: arrival}
 		switch c, ok := cheapestByDay[s.Date]; {
 		case ok && c == nil:
@@ -385,25 +382,6 @@ func (w *Worker) refreshRouteMonth(ctx context.Context, rm routeMonth) error {
 		}
 	}
 	return w.store(ctx, rm, flights, complete)
-}
-
-// scheduledTimes turns a timetable entry into local departure and arrival times;
-// an arrival earlier in the day than the departure lands the next day.
-func scheduledTimes(s ryanair.ScheduledFlight) (departure, arrival time.Time, err error) {
-	dep, err := time.Parse("15:04", s.DepartureTime)
-	if err != nil {
-		return time.Time{}, time.Time{}, fmt.Errorf("timetable: bad departure time %q", s.DepartureTime)
-	}
-	arr, err := time.Parse("15:04", s.ArrivalTime)
-	if err != nil {
-		return time.Time{}, time.Time{}, fmt.Errorf("timetable: bad arrival time %q", s.ArrivalTime)
-	}
-	departure = s.Date.Add(time.Duration(dep.Hour())*time.Hour + time.Duration(dep.Minute())*time.Minute)
-	arrival = s.Date.Add(time.Duration(arr.Hour())*time.Hour + time.Duration(arr.Minute())*time.Minute)
-	if arrival.Before(departure) {
-		arrival = arrival.AddDate(0, 0, 1)
-	}
-	return departure, arrival, nil
 }
 
 // store upserts the flights of rm with the current fetch time and records the refresh. When the timetable was

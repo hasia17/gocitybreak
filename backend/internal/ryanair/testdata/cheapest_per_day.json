@@ -1,0 +1,40 @@
+{
+  "outbound": {
+    "fares": [
+      {
+        "day": "2026-12-04",
+        "departureDate": "2026-12-04T05:50:00",
+        "arrivalDate": "2026-12-04T07:40:00",
+        "price": {"value": 70.27, "currencyCode": "PLN", "valueMinorUnit": 7027},
+        "soldOut": false,
+        "unavailable": false
+      },
+      {
+        "day": "2026-12-05",
+        "departureDate": "2026-12-05T06:05:00",
+        "arrivalDate": "2026-12-05T07:55:00",
+        "price": {"value": 25.00, "currencyCode": "PLN", "valueMinorUnit": 2500},
+        "soldOut": true,
+        "unavailable": false
+      },
+      {
+        "day": "2026-12-06",
+        "departureDate": "2026-12-06T06:05:00",
+        "arrivalDate": "2026-12-06T07:55:00",
+        "price": {"value": 25.00, "currencyCode": "PLN", "valueMinorUnit": 2500},
+        "soldOut": false,
+        "unavailable": true
+      },
+      {
+        "day": "2026-12-07",
+        "departureDate": null,
+        "arrivalDate": null,
+        "price": null,
+        "soldOut": false,
+        "unavailable": false
+      }
+    ],
+    "minFare": {"value": 70.27, "currencyCode": "PLN", "valueMinorUnit": 7027},
+    "maxFare": null
+  }
+}

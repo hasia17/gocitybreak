@@ -1,0 +1,29 @@
+[
+  {
+    "code": "BGY",
+    "name": "Milan Bergamo",
+    "timeZone": "Europe/Rome",
+    "base": true,
+    "priority": 49,
+    "city": {"code": "MILAN", "name": "Milan"},
+    "country": {"code": "it", "name": "Italy", "currency": "EUR", "currencySymbol": "€", "sepa": true}
+  },
+  {
+    "code": "KRK",
+    "name": "Krakow",
+    "timeZone": "Europe/Warsaw",
+    "base": true,
+    "priority": 51,
+    "city": {"code": "KRAKOW", "name": "Krakow"},
+    "country": {"code": "pl", "name": "Poland", "currency": "PLN", "currencySymbol": "zł", "sepa": true}
+  },
+  {
+    "code": "RAK",
+    "name": "Marrakesh Menara",
+    "timeZone": "Africa/Casablanca",
+    "base": true,
+    "priority": 53,
+    "city": {"code": "MARRAKESH", "name": "Marrakesh"},
+    "country": {"code": "ma", "name": "Morocco", "currency": "MAD", "currencySymbol": "DH", "sepa": false}
+  }
+]
