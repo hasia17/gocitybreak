@@ -44,6 +44,34 @@ func TestSearchCountsLeaveDaysFromWorkHours(t *testing.T) {
 	}
 }
 
+func TestSearchDefaultAndMidnightWorkHours(t *testing.T) {
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports, fixture{flights: []fixtureFlight{
+		{"KRK", "BGY", "2026-12-04", "17:30", "2026-12-04", "19:25", 1000, "PLN", "2026-11-10T08:00:00Z"},
+		{"BGY", "KRK", "2026-12-07", "07:00", "2026-12-07", "08:50", 1000, "PLN", "2026-11-10T08:00:00Z"},
+	}})
+	for _, tt := range []struct {
+		name, hours, want string
+	}{
+		{"defaults", "", "Fri 17:30 → Mon 07:00, 0 leave days"},
+		{"midnight start", `, "workStart": "00:00"`, "Fri 17:30 → Mon 07:00, 1 leave days"},
+		{"later end", `, "workEnd": "18:00"`, "Fri 17:30 → Mon 07:00, 1 leave days"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			code, body := search(t, srv, `{
+				"homeAirports": ["KRK"], "destination": {"airports": ["BGY"]},
+				"travelWindow": {"from": "2026-12-01", "to": "2026-12-10"},
+				"stayLength": {"min": 0, "max": 5}`+tt.hours+`}`)
+			if code != http.StatusOK {
+				t.Fatalf("status code = %d, want %d", code, http.StatusOK)
+			}
+			if got := leaveDays(t, body.Offers); !slices.Equal(got, []string{tt.want}) {
+				t.Errorf("offers = %v, want [%s]", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestSearchFiltersByMaximumLeaveDays(t *testing.T) {
 	srv, url := startAPI(t, "test")
 	seed(t, url, polishAndItalianAirports, fixture{

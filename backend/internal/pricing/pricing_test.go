@@ -1,8 +1,10 @@
 package pricing_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -55,14 +57,15 @@ func TestRouteMonth(t *testing.T) {
 		complete    bool
 		wantCalls   []time.Time
 		wantErr     error
+		wantLog     string
 	}{
 		{name: "cheapest matched in timetable", client: memoryClient{cheapest: []ryanair.DayFare{{Day: day, Fare: fare}}, timetable: []ryanair.ScheduledFlight{scheduled}}, want: []pricing.Flight{priced}, complete: true},
 		{name: "another flight priced by time window", client: memoryClient{cheapest: []ryanair.DayFare{{Day: day, Fare: fare}}, timetable: []ryanair.ScheduledFlight{scheduled, extra}, fares: map[time.Time]*ryanair.Fare{other: otherFare}}, want: []pricing.Flight{priced, {Departure: other, Arrival: otherFare.Arrival, Price: &otherFare.Price}}, complete: true, wantCalls: []time.Time{other}},
 		{name: "nothing on sale", client: memoryClient{cheapest: []ryanair.DayFare{{Day: day}}, timetable: []ryanair.ScheduledFlight{extra}}, want: []pricing.Flight{unpriced}, complete: true},
-		{name: "time window failure", client: memoryClient{timetable: []ryanair.ScheduledFlight{extra}, fareErr: failure}, want: []pricing.Flight{unpriced}, complete: true, wantCalls: []time.Time{other}},
+		{name: "time window failure", client: memoryClient{timetable: []ryanair.ScheduledFlight{extra}, fareErr: failure}, want: []pricing.Flight{unpriced}, complete: true, wantCalls: []time.Time{other}, wantLog: `level=WARN msg="time-window pricing failed, storing the flight without a price" from=KRK to=BGY departure="2026-12-04 18:00:00" err=unavailable`},
 		{name: "time window has no fare", client: memoryClient{timetable: []ryanair.ScheduledFlight{extra}}, want: []pricing.Flight{unpriced}, complete: true, wantCalls: []time.Time{other}},
 		{name: "cheapest missing from timetable", client: memoryClient{cheapest: []ryanair.DayFare{{Day: day, Fare: fare}}}, want: []pricing.Flight{priced}, complete: true},
-		{name: "timetable failure", client: memoryClient{cheapest: []ryanair.DayFare{{Day: day, Fare: fare}}, timetable: []ryanair.ScheduledFlight{extra}, timetableErr: failure}, want: []pricing.Flight{priced}},
+		{name: "timetable failure", client: memoryClient{cheapest: []ryanair.DayFare{{Day: day, Fare: fare}}, timetable: []ryanair.ScheduledFlight{extra}, timetableErr: failure}, want: []pricing.Flight{priced}, wantLog: `level=WARN msg="timetable unavailable, storing the cheapest flights only" from=KRK to=BGY month=2026-12 err=unavailable`},
 		{name: "outside range skipped", client: memoryClient{cheapest: []ryanair.DayFare{{Day: day, Fare: fare}}, timetable: []ryanair.ScheduledFlight{scheduled, extra}}, first: day.AddDate(0, 0, 1), last: day.AddDate(0, 0, 2), complete: true},
 		{name: "daily fares failure", client: memoryClient{cheapestErr: failure}, wantErr: failure},
 	}
@@ -72,9 +75,18 @@ func TestRouteMonth(t *testing.T) {
 			if first.IsZero() {
 				first, last = month, month.AddDate(0, 1, -1)
 			}
-			got, complete, err := pricing.RouteMonth(t.Context(), &tt.client, "KRK", "BGY", month, first, last)
+			var logs bytes.Buffer
+			logger := slog.New(slog.NewTextHandler(&logs, nil))
+			got, complete, err := pricing.RouteMonth(t.Context(), logger, &tt.client, "KRK", "BGY", month, first, last)
+			if tt.wantLog != "" {
+				assert.Contains(t, logs.String(), tt.wantLog)
+			} else {
+				assert.Empty(t, logs.String())
+			}
 			if tt.wantErr != nil {
 				require.ErrorIs(t, err, tt.wantErr)
+				assert.Nil(t, got)
+				assert.False(t, complete)
 				return
 			}
 			require.NoError(t, err)

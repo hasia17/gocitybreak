@@ -32,6 +32,27 @@ func TestSearchReturnsOneWayOfferForDirectFlightInTravelWindow(t *testing.T) {
 	}
 }
 
+func TestOneWaySearchIgnoresRoundTripOnlyFields(t *testing.T) {
+	srv, url := startAPI(t, "test")
+	seed(t, url, polishAndItalianAirports, fixture{
+		flights: []fixtureFlight{
+			{"KRK", "BGY", "2026-12-05", "06:15", "2026-12-05", "08:10", 8900, "PLN", "2026-11-10T08:00:00Z"},
+		},
+	})
+
+	code, body := search(t, srv, `{
+		"kind": "oneWay",
+		"homeAirports": ["KRK"],
+		"destination": {"airports": ["BGY"]},
+		"travelWindow": {"from": "2026-12-01", "to": "2026-12-10"},
+		"stayLength": {"min": -1, "max": -2},
+		"workStart": "invalid", "workEnd": "invalid", "maxLeaveDays": -1
+	}`)
+	if code != http.StatusOK || len(body.Offers) != 1 {
+		t.Fatalf("status = %d, offers = %+v; want 200 and one offer", code, body.Offers)
+	}
+}
+
 func TestSearchSkipsFlightsOutsideQuery(t *testing.T) {
 	srv, url := startAPI(t, "test")
 	seed(t, url, polishAndItalianAirports, fixture{

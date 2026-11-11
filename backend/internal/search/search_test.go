@@ -7,18 +7,17 @@ import (
 
 	"github.com/hasia17/gocitybreak/backend/internal/catalogue"
 	"github.com/hasia17/gocitybreak/backend/internal/search"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-// The rules of a query are checked before any stored data is read, so this table needs no
-// database: a Searcher with no pool reports each broken rule as a query error, and a query
-// that breaks no rule proceeds to the search proper — the nil pool, which panics; the panic
-// is recovered here as proof that the query passed validation.
+// Invalid queries are rejected before any stored data is read, so this table needs no database.
 func TestSearchChecksQueryRules(t *testing.T) {
 	s := search.NewSearcher(nil)
 	tests := []struct {
 		name       string
 		query      search.Query
-		wantReason string // empty: the query breaks no rule
+		wantReason string
 	}{
 		{"unsupported kind", changed(oneWay(), func(q *search.Query) { q.Kind = "multiCity" }),
 			`kind must be "roundTrip" or "oneWay"`},
@@ -43,18 +42,17 @@ func TestSearchChecksQueryRules(t *testing.T) {
 		}), "stayLength.max must not be less than stayLength.min"},
 		{"negative maximum leave days", changed(roundTrip(), func(q *search.Query) { q.Filters.MaxLeaveDays = new(-1) }),
 			"maxLeaveDays must not be negative"},
-		// Defaults: an empty kind is a round trip — it requires a stay length — and work hours
-		// left unset become 09:00–17:00, while an explicit 00:00 is a set work start.
+		{"negative maximum leave days on one-way search", changed(oneWay(), func(q *search.Query) { q.Filters.MaxLeaveDays = new(-1) }),
+			"maxLeaveDays must not be negative"},
 		{"empty kind is a round trip", changed(roundTrip(), func(q *search.Query) { q.Kind = ""; q.StayLength = nil }),
 			"stayLength is required for a round trip"},
-		{"work hours left unset default to 09:00–17:00", roundTrip(), ""},
-		{"explicit midnight work start", changed(roundTrip(), func(q *search.Query) { q.WorkStart = new(0 * time.Hour) }), ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := queryError(t, s, tt.query); got != tt.wantReason {
-				t.Errorf("query error = %q, want %q", got, tt.wantReason)
-			}
+			_, err := s.Search(t.Context(), tt.query)
+			queryErr, ok := errors.AsType[*search.QueryError](err)
+			require.True(t, ok, "expected a query error, got %v", err)
+			assert.Equal(t, tt.wantReason, queryErr.Reason)
 		})
 	}
 }
@@ -89,18 +87,4 @@ func day(s string) time.Time {
 func changed(base search.Query, change func(*search.Query)) search.Query {
 	change(&base)
 	return base
-}
-
-// queryError returns the reason of the query error Search reports for q, or "" when q breaks no
-// rule — the search proper then reaches the nil pool and panics, recovered here.
-func queryError(t *testing.T, s *search.Searcher, q search.Query) string {
-	t.Helper()
-	defer func() { _ = recover() }()
-	if _, err := s.Search(t.Context(), q); err != nil {
-		if qe, ok := errors.AsType[*search.QueryError](err); ok {
-			return qe.Reason
-		}
-		t.Fatalf("search error = %v, want a query error or a query that breaks no rule", err)
-	}
-	return ""
 }

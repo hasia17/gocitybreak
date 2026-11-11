@@ -148,21 +148,24 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 		TravelWindow: search.TravelWindow{From: from, To: to},
 		Sort:         search.SortOrder(req.Sort),
 	}
-	if req.StayLength != nil {
-		q.StayLength = &search.StayLength{Min: req.StayLength.Min, Max: req.StayLength.Max}
-	}
-	if q.WorkStart, err = req.WorkStart.parse("workStart"); err != nil {
-		return search.Query{}, err
-	}
-	if q.WorkEnd, err = req.WorkEnd.parse("workEnd"); err != nil {
-		return search.Query{}, err
-	}
 	if q.Filters, err = req.Filters.parse(); err != nil {
 		return search.Query{}, err
 	}
-	// The maximum of leave days sits at the top level of the request but among the query's
-	// filters; moving it there is this adapter's only rule-shaped step (spec #21, story 14).
-	q.Filters.MaxLeaveDays = req.MaxLeaveDays
+	// These fields apply only to round trips, including the default kind. Ignore them for
+	// one-way requests as before, even when their values would be invalid for a round trip.
+	if q.Kind == "" || q.Kind == search.RoundTrip {
+		if req.StayLength != nil {
+			q.StayLength = &search.StayLength{Min: req.StayLength.Min, Max: req.StayLength.Max}
+		}
+		if q.WorkStart, err = req.WorkStart.parse("workStart"); err != nil {
+			return search.Query{}, err
+		}
+		if q.WorkEnd, err = req.WorkEnd.parse("workEnd"); err != nil {
+			return search.Query{}, err
+		}
+		// The request's top-level maximum belongs among the query's filters.
+		q.Filters.MaxLeaveDays = req.MaxLeaveDays
+	}
 	return q, nil
 }
 

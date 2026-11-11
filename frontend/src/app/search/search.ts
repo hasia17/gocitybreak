@@ -10,7 +10,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { readTypedNames } from './typed-names';
-import { OfferView, offerView } from './offer-view';
+import { OfferView, offerView, priceAge } from './offer-view';
 import { Catalogue, OfferKind, SearchResponse, SortOrder } from './search-api';
 import { filtersForm } from './search-filters';
 import { loadSearchSettings, saveSearchSettings } from './search-settings';
@@ -74,6 +74,7 @@ export class Search {
   });
   protected readonly moments = moments;
   protected readonly weekdays = weekdays;
+  protected readonly priceAge = (fetchedAt: string) => priceAge(fetchedAt, Date.now());
 
   protected readonly kind = toSignal(this.form.controls.kind.valueChanges, {
     initialValue: this.form.controls.kind.value,

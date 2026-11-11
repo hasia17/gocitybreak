@@ -306,7 +306,7 @@ func (w *Worker) routes(ctx context.Context) ([]route, error) {
 
 // refreshRouteMonth prices and stores a route-month.
 func (w *Worker) refreshRouteMonth(ctx context.Context, rm routeMonth) error {
-	flights, complete, err := pricing.RouteMonth(ctx, w.ryanair, rm.route.from, rm.route.to, rm.month, rm.first, rm.last)
+	flights, complete, err := pricing.RouteMonth(ctx, slog.Default(), w.ryanair, rm.route.from, rm.route.to, rm.month, rm.first, rm.last)
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 import { Search } from './search';
 import { Catalogue } from './search-api';
 
@@ -359,6 +360,16 @@ describe('Search', () => {
     expect(offer).toContain('≈ 84.98 PLN');
     expect(offer).toContain('19.99 EUR');
     expect(offer).toContain('checked 3 h ago');
+    const clock = vi
+      .spyOn(Date, 'now')
+      .mockReturnValue(Date.parse(threeHoursAgo) + 4 * 60 * 60 * 1000);
+    try {
+      fill(root, 'To', 'KRK');
+      fixture.detectChanges();
+      expect(root.querySelector('[data-testid="offer"]')?.textContent).toContain('checked 4 h ago');
+    } finally {
+      clock.mockRestore();
+    }
     expect(offer).not.toContain('stop');
     expect(root.querySelector('[data-testid="results"]')?.textContent).toContain(
       'per person, no cabin bag',

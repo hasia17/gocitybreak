@@ -21,7 +21,7 @@ type Flight struct {
 
 // RouteMonth prices flights departing from first through last inclusive on the route
 // in month. An incomplete timetable means callers must retain previously stored flights.
-func RouteMonth(ctx context.Context, client ryanair.Client, fromAirport, toAirport string, month, first, last time.Time) ([]Flight, bool, error) {
+func RouteMonth(ctx context.Context, logger *slog.Logger, client ryanair.Client, fromAirport, toAirport string, month, first, last time.Time) ([]Flight, bool, error) {
 	cheapest, err := client.CheapestPerDay(ctx, fromAirport, toAirport, month)
 	if err != nil {
 		return nil, false, err
@@ -33,7 +33,7 @@ func RouteMonth(ctx context.Context, client ryanair.Client, fromAirport, toAirpo
 	timetable, err := client.Timetable(ctx, fromAirport, toAirport, month)
 	complete := err == nil
 	if err != nil {
-		slog.WarnContext(ctx, "timetable unavailable, storing the cheapest flights only", "from", fromAirport, "to", toAirport, "month", month.Format("2006-01"), "err", err)
+		logger.WarnContext(ctx, "timetable unavailable, storing the cheapest flights only", "from", fromAirport, "to", toAirport, "month", month.Format("2006-01"), "err", err)
 		timetable = nil
 	}
 	var flights []Flight
@@ -49,7 +49,7 @@ func RouteMonth(ctx context.Context, client ryanair.Client, fromAirport, toAirpo
 		default:
 			fare, err := client.FareAt(ctx, fromAirport, toAirport, s.Departure)
 			if err != nil {
-				slog.WarnContext(ctx, "time-window pricing failed, storing the flight without a price", "from", fromAirport, "to", toAirport, "departure", s.Departure.Format(time.DateTime), "err", err)
+				logger.WarnContext(ctx, "time-window pricing failed, storing the flight without a price", "from", fromAirport, "to", toAirport, "departure", s.Departure.Format(time.DateTime), "err", err)
 			} else if fare != nil {
 				f.Arrival, f.Price = fare.Arrival, &fare.Price
 			}

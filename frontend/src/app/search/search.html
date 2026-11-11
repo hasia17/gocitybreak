@@ -245,7 +245,7 @@
                 @for (original of offer.foreignPrices; track $index) {
                   {{ original }} ·
                 }
-                checked {{ offer.priceAge }}
+                checked {{ priceAge(offer.priceFetchedAt) }}
               </small>
               @let tickets = offer.tickets;
               @if (tickets.length > 1) {

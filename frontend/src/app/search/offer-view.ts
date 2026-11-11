@@ -18,8 +18,6 @@ export type OfferView = ReturnType<typeof offerView>;
 export function offerView(offer: Offer, now: number) {
   const year = new Date(now).getFullYear();
   const legs = [offer.outbound, ...(offer.inbound ? [offer.inbound] : [])];
-  const minutes = Math.max(0, Math.round((now - Date.parse(offer.priceFetchedAt)) / 60_000));
-  const hours = Math.round(minutes / 60);
   const tickets = ryanairTickets(offer);
   const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
   return {
@@ -64,12 +62,19 @@ export function offerView(offer: Offer, now: number) {
       .map((flight) => flight.originalPrice)
       .filter((price) => price.currency !== 'PLN')
       .map((price) => `${price.amount.toFixed(2)} ${price.currency}`),
-    priceAge:
-      minutes < 60
-        ? `${minutes} min ago`
-        : hours < 48
-          ? `${hours} h ago`
-          : `${Math.round(hours / 24)} days ago`,
+    priceFetchedAt: offer.priceFetchedAt,
+    priceAge: priceAge(offer.priceFetchedAt, now),
     tickets,
   };
+}
+
+/** Formats the age of a stored price at the given time. */
+export function priceAge(fetchedAt: string, now: number): string {
+  const minutes = Math.max(0, Math.round((now - Date.parse(fetchedAt)) / 60_000));
+  const hours = Math.round(minutes / 60);
+  return minutes < 60
+    ? `${minutes} min ago`
+    : hours < 48
+      ? `${hours} h ago`
+      : `${Math.round(hours / 24)} days ago`;
 }
