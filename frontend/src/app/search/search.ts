@@ -5,6 +5,14 @@ import { Flight, Money, Offer, SearchQuery, SearchResponse } from './search-api'
 
 const airportCode = [Validators.required, Validators.pattern(/^[A-Za-z]{3}$/)];
 
+const thisYear = new Date().getFullYear();
+const dayFormat = new Intl.DateTimeFormat('en-GB', {
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+  timeZone: 'UTC',
+});
+
 /** Search form for one-way offers and the list of offers it finds. */
 @Component({
   selector: 'app-search',
@@ -26,12 +34,12 @@ export class Search {
   protected readonly offers = signal<Offer[] | undefined>(undefined);
   protected readonly loading = signal(false);
   protected readonly error = signal<string | undefined>(undefined);
+  /** Whether the user has tried to search; invalid fields are marked only after that. */
+  protected readonly submitted = signal(false);
 
   protected submit() {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
-      return;
-    }
+    this.submitted.set(true);
+    if (this.form.invalid) return;
     const v = this.form.getRawValue();
     const query: SearchQuery = {
       kind: 'oneWay',
@@ -51,6 +59,18 @@ export class Search {
         this.loading.set(false);
       },
     });
+  }
+
+  /** Whether a field should be marked invalid: it is, and the user has tried to search. */
+  protected invalid(name: keyof typeof this.form.controls): boolean {
+    return this.submitted() && this.form.controls[name].invalid;
+  }
+
+  /** A local date like "Sat 5 Dec", with the year added outside the current year. */
+  protected day(date: string): string {
+    const year = Number(date.slice(0, 4));
+    const label = dayFormat.format(Date.parse(date));
+    return year === thisYear ? label : `${label} ${year}`;
   }
 
   protected money(m: Money): string {
