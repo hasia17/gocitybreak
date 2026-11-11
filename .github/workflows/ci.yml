@@ -25,6 +25,15 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
       - run: go vet ./...
+      # Modern Go (AGENTS.md § Go code): go fix -diff exits 0 even with pending rewrites, so fail on any output.
+      - name: go fix
+        run: |
+          diff=$(go fix -diff ./...)
+          if [ -n "$diff" ]; then
+            echo "$diff"
+            echo "::error::go fix would modernize this code: run 'go fix ./...' in backend/ and commit the result"
+            exit 1
+          fi
       # Tests start a real PostgreSQL in Docker via testcontainers.
       - run: go test -race ./...
 
