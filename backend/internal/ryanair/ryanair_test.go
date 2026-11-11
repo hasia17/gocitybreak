@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -101,6 +102,122 @@ func local(date string, hhmm string) time.Time {
 		panic(err)
 	}
 	return time.Date(d.Year(), d.Month(), d.Day(), hh, mm, 0, 0, time.UTC)
+}
+
+// queryOf parses a recorded request's query string.
+func queryOf(t *testing.T, requestURI string) url.Values {
+	t.Helper()
+	u, err := url.Parse(requestURI)
+	if err != nil {
+		t.Fatalf("parse request %q: %v", requestURI, err)
+	}
+	return u.Query()
+}
+
+func TestAirportsParsesTheRecordedCatalogue(t *testing.T) {
+	rec := newRecording(t, "/api/views/locate/5/airports/en/active",
+		http.StatusOK, payload(t, "airports.json"))
+
+	airports, err := rec.client().Airports(t.Context())
+
+	if err != nil {
+		t.Fatalf("Airports: %v", err)
+	}
+	assertEqual(t, "airports", airports, []ryanair.Airport{
+		{
+			Code: "BGY", Name: "Milan Bergamo", TimeZone: "Europe/Rome",
+			CityCode: "MILAN", CityName: "Milan", CountryCode: "it", CountryName: "Italy",
+		},
+		{
+			Code: "KRK", Name: "Krakow", TimeZone: "Europe/Warsaw",
+			CityCode: "KRAKOW", CityName: "Krakow", CountryCode: "pl", CountryName: "Poland",
+		},
+		{
+			Code: "RAK", Name: "Marrakesh Menara", TimeZone: "Africa/Casablanca",
+			CityCode: "MARRAKESH", CityName: "Marrakesh", CountryCode: "ma", CountryName: "Morocco",
+		},
+	})
+}
+
+func TestRoutesListDirectDestinationsOnly(t *testing.T) {
+	rec := newRecording(t, "/api/views/locate/searchWidget/routes/en/airport/KRK",
+		http.StatusOK, payload(t, "routes_krk.json"))
+
+	routes, err := rec.client().Routes(t.Context(), "KRK")
+
+	if err != nil {
+		t.Fatalf("Routes: %v", err)
+	}
+	// JFK is reachable only with a change of plane in Dublin, so it is not a direct route.
+	assertEqual(t, "routes", routes, []string{"BGY", "RAK"})
+}
+
+func TestCheapestPerDayPricesOnlyDaysOnSale(t *testing.T) {
+	rec := newRecording(t, "/api/farfnd/v4/oneWayFares/KRK/BGY/cheapestPerDay",
+		http.StatusOK, payload(t, "cheapest_per_day.json"))
+
+	days, err := rec.client().CheapestPerDay(t.Context(), "KRK", "BGY", day("2026-12-01"))
+
+	if err != nil {
+		t.Fatalf("CheapestPerDay: %v", err)
+	}
+	// Sold-out, unavailable and empty days come back without a fare; the rest is parsed.
+	assertEqual(t, "days", days, []ryanair.DayFare{
+		{Day: day("2026-12-04"), Fare: &ryanair.Fare{
+			Departure: local("2026-12-04", "05:50"), Arrival: local("2026-12-04", "07:40"),
+			Price: ryanair.Money{Amount: 7027, Currency: "PLN"},
+		}},
+		{Day: day("2026-12-05")}, // sold out
+		{Day: day("2026-12-06")}, // unavailable
+		{Day: day("2026-12-07")}, // no flight that day
+	})
+	if got := rec.request(); got != "/api/farfnd/v4/oneWayFares/KRK/BGY/cheapestPerDay?outboundMonthOfDate=2026-12-01" {
+		t.Errorf("asked for %q", got)
+	}
+}
+
+func TestFareAtReturnsTheFareOfTheFlightInTheTimeWindow(t *testing.T) {
+	rec := newRecording(t, "/api/farfnd/v4/oneWayFares",
+		http.StatusOK, payload(t, "one_way_fares.json"))
+
+	fare, err := rec.client().FareAt(t.Context(), "KRK", "BGY", local("2026-12-04", "05:50"))
+
+	if err != nil {
+		t.Fatalf("FareAt: %v", err)
+	}
+	// Two flights answer, but only the one departing inside the asked-for time window counts.
+	assertEqual(t, "fare", fare, &ryanair.Fare{
+		Departure: local("2026-12-04", "05:50"), Arrival: local("2026-12-04", "07:40"),
+		Price: ryanair.Money{Amount: 7027, Currency: "PLN"},
+	})
+	// The time window is what ties the answer to our flight, so pin the request.
+	q := queryOf(t, rec.request())
+	for _, p := range [][2]string{
+		{"departureAirportIataCode", "KRK"},
+		{"arrivalAirportIataCode", "BGY"},
+		{"outboundDepartureDateFrom", "2026-12-04"},
+		{"outboundDepartureDateTo", "2026-12-04"},
+		{"outboundDepartureTimeFrom", "05:50"},
+		{"outboundDepartureTimeTo", "05:50"},
+	} {
+		if got := q.Get(p[0]); got != p[1] {
+			t.Errorf("query %s = %q, want %q", p[0], got, p[1])
+		}
+	}
+}
+
+func TestFareAtReturnsNilWhenNothingIsOnSale(t *testing.T) {
+	rec := newRecording(t, "/api/farfnd/v4/oneWayFares",
+		http.StatusOK, payload(t, "one_way_fares_empty.json"))
+
+	fare, err := rec.client().FareAt(t.Context(), "KRK", "BGY", local("2026-12-04", "05:50"))
+
+	if err != nil {
+		t.Fatalf("FareAt: %v", err)
+	}
+	if fare != nil {
+		t.Errorf("fare = %v, want none", fare)
+	}
 }
 
 func TestTimetableReturnsLocalTimesAndAppliesTheOvernightRule(t *testing.T) {

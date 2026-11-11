@@ -1,0 +1,53 @@
+{
+  "arrivalAirportCategories": null,
+  "fares": [
+    {
+      "outbound": {
+        "departureAirport": {
+          "iataCode": "KRK",
+          "name": "Krakow",
+          "base": true,
+          "countryCode": "pl",
+          "city": {"code": "KRAKOW", "name": "Krakow"}
+        },
+        "arrivalAirport": {
+          "iataCode": "BGY",
+          "name": "Milan Bergamo",
+          "base": true,
+          "countryCode": "it",
+          "city": {"code": "MILAN", "name": "Milan"}
+        },
+        "departureDate": "2026-12-04T06:15:00",
+        "arrivalDate": "2026-12-04T08:05:00",
+        "price": {"value": 85.00, "currencyCode": "PLN", "valueMinorUnit": 8500},
+        "flightNumber": "FR1234",
+        "seatsLeft": 4
+      }
+    },
+    {
+      "outbound": {
+        "departureAirport": {
+          "iataCode": "KRK",
+          "name": "Krakow",
+          "base": true,
+          "countryCode": "pl",
+          "city": {"code": "KRAKOW", "name": "Krakow"}
+        },
+        "arrivalAirport": {
+          "iataCode": "BGY",
+          "name": "Milan Bergamo",
+          "base": true,
+          "countryCode": "it",
+          "city": {"code": "MILAN", "name": "Milan"}
+        },
+        "departureDate": "2026-12-04T05:50:00",
+        "arrivalDate": "2026-12-04T07:40:00",
+        "price": {"value": 70.27, "currencyCode": "PLN", "valueMinorUnit": 7027},
+        "flightNumber": "FR1235",
+        "seatsLeft": 9
+      }
+    }
+  ],
+  "nextPage": null,
+  "size": 2
+}
