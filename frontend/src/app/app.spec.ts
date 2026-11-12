@@ -105,7 +105,9 @@ describe('App', () => {
         .flush({ status: 'ok', version: '1', database: { status: 'ok' } });
       await fixture.whenStable();
       let root = fixture.nativeElement as HTMLElement;
-      const from = root.querySelector<HTMLInputElement>('input[formControlName="homeAirports"]')!;
+      const from = root.querySelector<HTMLInputElement>(
+        'app-place-chips[formControlName="homeAirports"] input',
+      )!;
       from.value = 'KRK';
       from.dispatchEvent(new Event('input'));
 
@@ -117,7 +119,9 @@ describe('App', () => {
         'Sortuj według',
       );
       expect(
-        root.querySelector<HTMLInputElement>('input[formControlName="homeAirports"]')!.value,
+        root.querySelector<HTMLInputElement>(
+          'app-place-chips[formControlName="homeAirports"] input',
+        )!.value,
       ).toBe('KRK');
       expect(languageButton(root, 'PL').getAttribute('aria-pressed')).toBe('true');
       fixture.destroy();

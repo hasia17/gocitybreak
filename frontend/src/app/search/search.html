@@ -32,34 +32,40 @@
     }
     <div class="composer">
       <div class="fields">
-        <label class="field codes" [class.invalid]="invalid('homeAirports')">
-          {{ t('search.from') }}
-          <input
-            formControlName="homeAirports"
-            [placeholder]="t('search.fromPlaceholder')"
-            autocomplete="off"
-            [attr.aria-invalid]="invalid('homeAirports')"
-          />
-        </label>
+        <app-place-chips
+          class="field"
+          formControlName="homeAirports"
+          field="homeAirports"
+          [catalogue]="catalogue()"
+          [language]="language() ?? 'en'"
+          [label]="t('search.from')"
+          [placeholder]="t('search.fromPlaceholder')"
+          [invalid]="invalid('homeAirports')"
+          [class.invalid]="invalid('homeAirports')"
+        />
         <span class="arrow" aria-hidden="true">→</span>
-        <label class="field names" [class.invalid]="invalid('destination')">
-          {{ t('search.to') }}
-          <input
-            formControlName="destination"
-            [placeholder]="t('search.toPlaceholder')"
-            autocomplete="off"
-            [attr.aria-invalid]="invalid('destination')"
-          />
-        </label>
-        <label class="field names" [class.invalid]="invalid('exclusions')">
-          {{ t('search.except') }}
-          <input
-            formControlName="exclusions"
-            [placeholder]="t('search.exceptPlaceholder')"
-            autocomplete="off"
-            [attr.aria-invalid]="invalid('exclusions')"
-          />
-        </label>
+        <app-place-chips
+          class="field"
+          formControlName="destination"
+          field="destination"
+          [catalogue]="catalogue()"
+          [language]="language() ?? 'en'"
+          [label]="t('search.to')"
+          [excluded]="places()?.exclusions ?? ''"
+          [placeholder]="t('search.toPlaceholder')"
+          [invalid]="invalid('destination')"
+          [class.invalid]="invalid('destination')"
+        />
+        <app-place-chips
+          class="field"
+          formControlName="exclusions"
+          field="exclusions"
+          [catalogue]="catalogue()"
+          [language]="language() ?? 'en'"
+          [label]="t('search.except')"
+          [placeholder]="t('search.exceptPlaceholder')"
+          [invalid]="invalid('exclusions')"
+        />
         <span class="divider" aria-hidden="true"></span>
         <label class="field" [class.invalid]="invalid('from')">
           {{ t(dateMode() === 'fixed' ? 'search.outboundDate' : 'search.earliest') }}
@@ -235,9 +241,6 @@
 
   @if (form.invalid && submitted()) {
     <p class="hint" role="alert">
-      @if (form.controls.homeAirports.hasError('unsupportedAirport')) {
-        {{ t('search.hint.unsupportedAirports', { airports: supportedAirportList() }) }}
-      }
       @if (fieldsInvalid()) {
         {{ t('search.hint.fields') }}
       }

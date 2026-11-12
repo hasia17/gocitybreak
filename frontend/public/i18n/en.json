@@ -64,7 +64,7 @@
     },
     "hint": {
       "unsupportedAirports": "Search from supported airports only: {{airports}}.",
-      "fields": "Enter 3-letter airport codes, a destination of airports, cities or countries (or anywhere), both dates and nights from the minimum up to the maximum.",
+      "fields": "Choose home airports and a destination from the suggestions, both dates and nights from the minimum up to the maximum.",
       "timeRanges": "In Filters, give each time range both ends, or leave both empty.",
       "noDepartureDay": "In Filters, leave at least one departure day ticked.",
       "fixedDateOrder": "The inbound date must not be before the outbound date."
@@ -112,5 +112,13 @@
       "other": "{{count}} leave days"
     },
     "noLeaveDays": "no leave days"
+  },
+  "places": {
+    "airport": "airport",
+    "city": "city",
+    "country": "country",
+    "airportCount": "{{count}} airports",
+    "remove": "Remove {{place}}",
+    "noMatches": "No matching places"
   }
 }

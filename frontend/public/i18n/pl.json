@@ -64,7 +64,7 @@
     },
     "hint": {
       "unsupportedAirports": "Szukaj tylko z obsługiwanych lotnisk: {{airports}}.",
-      "fields": "Podaj 3-literowe kody lotnisk, cel podróży (lotniska, miasta, kraje albo gdziekolwiek), obie daty i liczbę nocy od najmniejszej do największej.",
+      "fields": "Wybierz lotniska domowe i cel z listy, obie daty oraz minimalną i maksymalną liczbę nocy.",
       "timeRanges": "W filtrach podaj oba końce każdego przedziału godzin albo zostaw oba puste.",
       "noDepartureDay": "W filtrach zostaw zaznaczony co najmniej jeden dzień wylotu.",
       "fixedDateOrder": "Data powrotu nie może być wcześniejsza niż data wylotu."
@@ -122,5 +122,13 @@
       "other": "{{count}} dnia urlopu"
     },
     "noLeaveDays": "bez urlopu"
+  },
+  "places": {
+    "airport": "lotnisko",
+    "city": "miasto",
+    "country": "kraj",
+    "airportCount": "lotniska: {{count}}",
+    "remove": "Usuń {{place}}",
+    "noMatches": "Brak pasujących miejsc"
   }
 }
