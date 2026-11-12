@@ -31,7 +31,11 @@ describe('Fixed dates search', () => {
     return { fixture, root: fixture.nativeElement as HTMLElement };
   }
   function fill(root: HTMLElement, name: string, value: string) {
-    const labels: Record<string,string> = {homeAirports:"From",destination:"To",exclusions:"Except"};
+    const labels: Record<string, string> = {
+      homeAirports: 'From',
+      destination: 'To',
+      exclusions: 'Except',
+    };
     if (labels[name] && fillPlace(root, labels[name], value)) return;
     const el = root.querySelector<HTMLInputElement>(`input[formControlName="${name}"]`)!;
     el.value = value;

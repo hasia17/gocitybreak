@@ -62,9 +62,13 @@ describe('Search', () => {
 
   function fill(root: HTMLElement, label: string, value: string) {
     if (fillPlace(root, label, value)) return;
-    const input = Array.from(root.querySelectorAll<HTMLInputElement>('input')).find(i => i.getAttribute('aria-label') === label) ?? Array.from(root.querySelectorAll('label'))
-      .find((l) => l.textContent?.trim().startsWith(label))
-      ?.querySelector('input');
+    const input =
+      Array.from(root.querySelectorAll<HTMLInputElement>('input')).find(
+        (i) => i.getAttribute('aria-label') === label,
+      ) ??
+      Array.from(root.querySelectorAll('label'))
+        .find((l) => l.textContent?.trim().startsWith(label))
+        ?.querySelector('input');
     if (!input) throw new Error(`no input labelled ${label}`);
     input.value = value;
     input.dispatchEvent(new Event('input'));
@@ -254,7 +258,10 @@ describe('Search', () => {
     root = fixture.nativeElement as HTMLElement;
 
     const value = (label: string) =>
-      Array.from(root.querySelectorAll<HTMLInputElement>('input')).find(i => i.getAttribute('aria-label') === label) ?? Array.from(root.querySelectorAll('label'))
+      Array.from(root.querySelectorAll<HTMLInputElement>('input')).find(
+        (i) => i.getAttribute('aria-label') === label,
+      ) ??
+      Array.from(root.querySelectorAll('label'))
         .find((l) => l.textContent?.trim().startsWith(label))
         ?.querySelector('input')?.value;
     expect(value('Work start')).toBe('07:30');
@@ -294,7 +301,10 @@ describe('Search', () => {
     root.querySelector<HTMLInputElement>('input[type="radio"][value="roundTrip"]')!.click();
     await fixture.whenStable();
     const value = (label: string) =>
-      Array.from(root.querySelectorAll<HTMLInputElement>('input')).find(i => i.getAttribute('aria-label') === label) ?? Array.from(root.querySelectorAll('label'))
+      Array.from(root.querySelectorAll<HTMLInputElement>('input')).find(
+        (i) => i.getAttribute('aria-label') === label,
+      ) ??
+      Array.from(root.querySelectorAll('label'))
         .find((l) => l.textContent?.trim().startsWith(label))
         ?.querySelector('input')?.value;
     expect(value('Work start')).toBe('07:30');
@@ -652,7 +662,6 @@ describe('Search', () => {
     expect(request.request.body.homeAirports).toEqual(['KRK']);
     expect(root.querySelector('[data-place-chip="BGY"]')).toBeNull();
     expect(labelled<HTMLInputElement>(root, 'From').value).toBe('BGY');
-
   });
 
   describe('destination', () => {
@@ -690,11 +699,10 @@ describe('Search', () => {
       const root = await searchFrom('Milan, Atlantis', 'anywhere');
 
       const request = httpTesting.expectOne('/api/search');
-      expect(request.request.body.destination).toEqual({cities: ['MILAN']});
+      expect(request.request.body.destination).toEqual({ cities: ['MILAN'] });
       expect(request.request.body.exclusions).toBeUndefined();
       expect(root.querySelector('[data-place-chip="Atlantis"]')).toBeNull();
       expect(labelled<HTMLInputElement>(root, 'To').value).toBe('Atlantis');
-
     });
   });
 });

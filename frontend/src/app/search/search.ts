@@ -70,7 +70,7 @@ export class Search {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly transloco = inject(TranslocoService);
 
-  /** Airports, cities and countries to resolve typed names against; undefined until loaded. */
+  /** The only source of selectable airports, cities and countries; undefined until loaded. */
   protected readonly catalogue = signal<Catalogue | undefined>(undefined);
 
   protected readonly form = this.fb.group(
@@ -97,7 +97,9 @@ export class Search {
     },
     { validators: [noDepartureDay, fixedDateOrder] },
   );
-  protected readonly places = toSignal(this.form.valueChanges, { initialValue: this.form.getRawValue() });
+  protected readonly places = toSignal(this.form.valueChanges, {
+    initialValue: this.form.getRawValue(),
+  });
   protected readonly moments = moments;
   protected readonly weekdays = weekdays;
 
@@ -166,8 +168,7 @@ export class Search {
     this.form.controls.sort.valueChanges
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.visibleCount.set(20));
-    // Typed home airports, destination and exclusions are checked again once the catalogue arrives.
-    // Without it, any airport code is taken and the backend checks home airports.
+    // Restore known legacy names/codes only after the catalogue can validate their identities.
     this.http
       .get<Catalogue>('/api/catalogue')
       .pipe(takeUntilDestroyed())
@@ -175,7 +176,9 @@ export class Search {
         next: (catalogue) => {
           this.catalogue.set(catalogue);
           for (const field of ['homeAirports', 'destination', 'exclusions'] as const) {
-            this.form.controls[field].setValue(restorePlaces(this.form.controls[field].value, catalogue, field));
+            this.form.controls[field].setValue(
+              restorePlaces(this.form.controls[field].value, catalogue, field),
+            );
           }
         },
         error: () => {},

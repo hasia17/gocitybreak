@@ -34,9 +34,13 @@ describe('Search leave limit', () => {
 
   function findInput(root: HTMLElement, label: string): HTMLInputElement | undefined {
     return (
-      Array.from(root.querySelectorAll<HTMLInputElement>('input')).find(i => i.getAttribute('aria-label') === label) ?? Array.from(root.querySelectorAll('label'))
+      Array.from(root.querySelectorAll<HTMLInputElement>('input')).find(
+        (i) => i.getAttribute('aria-label') === label,
+      ) ??
+      Array.from(root.querySelectorAll('label'))
         .find((l) => l.textContent?.trim().startsWith(label))
-        ?.querySelector('input') ?? undefined
+        ?.querySelector('input') ??
+      undefined
     );
   }
 

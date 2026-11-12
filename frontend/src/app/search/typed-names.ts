@@ -39,11 +39,21 @@ export function readTypedNames(text: string, catalogue: Catalogue | undefined): 
       continue;
     }
     const canonical = raw.trim();
-    if (catalogue && canonical.startsWith('city:') && catalogue.cities.some(c => c.code === canonical.slice(5))) {
-      add('cities', canonical.slice(5)); continue;
+    if (
+      catalogue &&
+      canonical.startsWith('city:') &&
+      catalogue.cities.some((c) => c.code === canonical.slice(5))
+    ) {
+      add('cities', canonical.slice(5));
+      continue;
     }
-    if (catalogue && canonical.startsWith('country:') && catalogue.countries.some(c => c.code === canonical.slice(8))) {
-      add('countries', canonical.slice(8)); continue;
+    if (
+      catalogue &&
+      canonical.startsWith('country:') &&
+      catalogue.countries.some((c) => c.code === canonical.slice(8))
+    ) {
+      add('countries', canonical.slice(8));
+      continue;
     }
     const code = name.toUpperCase();
     if (

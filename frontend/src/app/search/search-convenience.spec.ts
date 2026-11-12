@@ -36,9 +36,13 @@ describe('Search conveniences', () => {
   }
 
   function input(root: HTMLElement, label: string): HTMLInputElement {
-    const found = Array.from(root.querySelectorAll<HTMLInputElement>('input')).find(i => i.getAttribute('aria-label') === label) ?? Array.from(root.querySelectorAll('label'))
-      .find((l) => l.textContent?.trim().startsWith(label))
-      ?.querySelector('input');
+    const found =
+      Array.from(root.querySelectorAll<HTMLInputElement>('input')).find(
+        (i) => i.getAttribute('aria-label') === label,
+      ) ??
+      Array.from(root.querySelectorAll('label'))
+        .find((l) => l.textContent?.trim().startsWith(label))
+        ?.querySelector('input');
     if (!found) throw new Error(`no input labelled ${label}`);
     return found;
   }
