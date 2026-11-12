@@ -79,6 +79,7 @@
     "inboundDate": "Inbound date"
   },
   "results": {
+    "showMore": "Show more",
     "emptyRoundTrip": "No offers match your search. Try loosening it: a wider travel window, more airports, more nights to choose from, more leave days, or fewer filters: wider time ranges, more weekdays.",
     "emptyOneWay": "No offers match your search. Try loosening it: a wider travel window, more airports, or fewer filters: wider time ranges, more weekdays.",
     "count": {
