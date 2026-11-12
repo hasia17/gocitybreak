@@ -188,11 +188,11 @@ describe('Search date validation and failures', () => {
     ],
     ['workStart must be a time in HH:MM format', 'Check your work start and work end times.'],
     [
-      'outboundDeparture.from must be a time in HH:MM format',
+      'filters.outboundDeparture.from must be a time in HH:MM format',
       'Check the departure and arrival time ranges.',
     ],
     [
-      'inboundDepartureWeekdays must list days as mon, tue, wed, thu, fri, sat or sun',
+      'filters.inboundDepartureWeekdays must list days as mon, tue, wed, thu, fri, sat or sun',
       'Check the departure days selected in Filters.',
     ],
     ['maxLeaveDays must not be negative', 'The leave limit must be zero or more.'],

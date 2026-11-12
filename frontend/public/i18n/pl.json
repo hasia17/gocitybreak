@@ -76,10 +76,10 @@
     "inboundDate": "Data powrotu",
     "errors": {
       "homeAirports": "Wybierz obsługiwane lotnisko wylotu z podpowiedzi.",
-      "destination": "Wybierz cel z podpowiedzi lub opcję Dokądkolwiek.",
+      "destination": "Wybierz cel z podpowiedzi lub opcję Gdziekolwiek.",
       "dateOrder": "Najpóźniejsza data nie może być wcześniejsza niż najwcześniejsza.",
-      "dates": "Sprawdź daty podróży i wybierz daty elastyczne albo konkretne.",
-      "stayLength": "Sprawdź minimalną i maksymalną liczbę nocy; konkretne daty nie wymagają długości pobytu.",
+      "dates": "Sprawdź daty podróży i wybierz daty elastyczne albo stałe.",
+      "stayLength": "Sprawdź minimalną i maksymalną liczbę nocy; stałe daty nie wymagają długości pobytu.",
       "workHours": "Sprawdź godziny rozpoczęcia i zakończenia pracy.",
       "timeRanges": "Sprawdź zakresy godzin wylotu i przylotu.",
       "weekdays": "Sprawdź dni wylotu wybrane w Filtrach.",
