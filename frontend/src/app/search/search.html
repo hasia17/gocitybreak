@@ -16,16 +16,22 @@
       >
     </div>
     <div class="toggle date-mode" role="radiogroup" [attr.aria-label]="t('search.dateMode.label')">
-      <label
-        ><input type="radio" formControlName="dateMode" value="flexible" />{{
-          t('search.dateMode.flexible')
-        }}</label
-      >
-      <label
-        ><input type="radio" formControlName="dateMode" value="fixed" />{{
-          t('search.dateMode.fixed')
-        }}</label
-      >
+      <span class="mode-choice">
+        <label
+          ><input type="radio" formControlName="dateMode" value="flexible" />{{
+            t('search.dateMode.flexible')
+          }}</label
+        >
+        <app-info-tip [label]="t('tips.flexible.label')" [text]="t('tips.flexible.text')" />
+      </span>
+      <span class="mode-choice">
+        <label
+          ><input type="radio" formControlName="dateMode" value="fixed" />{{
+            t('search.dateMode.fixed')
+          }}</label
+        >
+        <app-info-tip [label]="t('tips.fixed.label')" [text]="t('tips.fixed.text')" />
+      </span>
     </div>
     @if (invalidFixedDates()) {
       <p class="hint" role="alert">{{ t('search.hint.fixedDateOrder') }}</p>
@@ -77,7 +83,10 @@
             formGroupName="stayLength"
             [class.invalid]="invalid('stayLength')"
           >
-            {{ t('search.nights') }}
+            <span class="field-heading">
+              {{ t('search.nights') }}
+              <app-info-tip [label]="t('tips.nights.label')" [text]="t('tips.nights.text')" />
+            </span>
             <span class="range">
               <input
                 type="number"
@@ -118,32 +127,44 @@
             {{ t('search.ignoreLeave') }}
           </label>
           @if (!ignoreLeave()) {
-            <label class="field time" [class.invalid]="invalid('leave.workStart')">
-              {{ t('search.workStart') }}
-              <input
-                type="time"
-                formControlName="workStart"
-                [attr.aria-invalid]="invalid('leave.workStart')"
+            <div class="field-info">
+              <label class="field time" [class.invalid]="invalid('leave.workStart')">
+                {{ t('search.workStart') }}
+                <input
+                  type="time"
+                  formControlName="workStart"
+                  [attr.aria-invalid]="invalid('leave.workStart')"
+                />
+              </label>
+              <app-info-tip [label]="t('tips.workStart.label')" [text]="t('tips.workHours.text')" />
+            </div>
+            <div class="field-info">
+              <label class="field time" [class.invalid]="invalid('leave.workEnd')">
+                {{ t('search.workEnd') }}
+                <input
+                  type="time"
+                  formControlName="workEnd"
+                  [attr.aria-invalid]="invalid('leave.workEnd')"
+                />
+              </label>
+              <app-info-tip [label]="t('tips.workEnd.label')" [text]="t('tips.workHours.text')" />
+            </div>
+            <div class="field-info">
+              <label class="field leave" [class.invalid]="invalid('leave.maxLeaveDays')">
+                {{ t('search.maxLeaveDays') }}
+                <input
+                  type="number"
+                  min="0"
+                  formControlName="maxLeaveDays"
+                  [placeholder]="t('search.anyLeave')"
+                  [attr.aria-invalid]="invalid('leave.maxLeaveDays')"
+                />
+              </label>
+              <app-info-tip
+                [label]="t('tips.maxLeaveDays.label')"
+                [text]="t('tips.maxLeaveDays.text')"
               />
-            </label>
-            <label class="field time" [class.invalid]="invalid('leave.workEnd')">
-              {{ t('search.workEnd') }}
-              <input
-                type="time"
-                formControlName="workEnd"
-                [attr.aria-invalid]="invalid('leave.workEnd')"
-              />
-            </label>
-            <label class="field leave" [class.invalid]="invalid('leave.maxLeaveDays')">
-              {{ t('search.maxLeaveDays') }}
-              <input
-                type="number"
-                min="0"
-                formControlName="maxLeaveDays"
-                [placeholder]="t('search.anyLeave')"
-                [attr.aria-invalid]="invalid('leave.maxLeaveDays')"
-              />
-            </label>
+            </div>
           }
         </ng-container>
         <div class="field sort">
@@ -176,7 +197,13 @@
               @let rangeInvalid = invalid('filters.' + moment.name);
               @let label = t('search.moment.' + moment.name);
               <div class="time-range" [formGroupName]="moment.name" [class.invalid]="rangeInvalid">
-                <span>{{ label }}</span>
+                <span class="field-heading"
+                  >{{ label }}
+                  <app-info-tip
+                    [label]="t('tips.' + moment.name + '.label')"
+                    [text]="t('tips.localTimes.text')"
+                  />
+                </span>
                 <input
                   type="time"
                   formControlName="from"
@@ -292,23 +319,41 @@
                 }
               }
               @if (offer.nights; as nights) {
-                <span class="badge">{{ nights }}</span>
+                <span class="badge"
+                  >{{ nights }}
+                  <app-info-tip [label]="t('tips.nights.label')" [text]="t('tips.nights.text')" />
+                </span>
               }
               @if (offer.leaveDays; as leaveDays) {
                 <span class="badge" [class.free]="offer.freeLeave">{{ leaveDays }}</span>
               }
             </div>
             <div class="price">
-              <strong>{{ offer.price }}</strong>
+              <span class="price-heading">
+                <strong>{{ offer.price }}</strong>
+                @if (offer.approximatePrice) {
+                  <app-info-tip
+                    [label]="t('tips.approximatePrice.label')"
+                    [text]="t('tips.approximatePrice.text')"
+                  />
+                }
+              </span>
               <small>
                 @for (original of offer.foreignPrices; track $index) {
                   {{ original }} ·
                 }
                 {{ t('results.checked', { age: priceAge(offer.priceFetchedAt) }) }}
+                <app-info-tip [label]="t('tips.priceAge.label')" [text]="t('tips.priceAge.text')" />
               </small>
               @let tickets = offer.tickets;
               @if (offer.separateTickets; as separate) {
-                <small>{{ separate }}</small>
+                <small
+                  >{{ separate }}
+                  <app-info-tip
+                    [label]="t('tips.separateTickets.label')"
+                    [text]="t('tips.separateTickets.text')"
+                  />
+                </small>
               }
               @for (ticket of tickets; track ticket.url) {
                 <a [href]="ticket.url" target="_blank" rel="noopener">

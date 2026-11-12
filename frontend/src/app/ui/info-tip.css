@@ -33,12 +33,12 @@ svg {
 }
 
 [role='tooltip'] {
-  position: absolute;
-  top: calc(100% + 0.25rem);
-  left: -0.5rem;
+  position: fixed;
+  box-sizing: border-box;
   z-index: 10;
-  width: max-content;
-  max-width: min(18rem, 80vw);
+  width: min(18rem, calc(100vw - 1rem));
+  max-height: calc(100dvh - 1rem);
+  overflow: auto;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
