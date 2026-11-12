@@ -22,7 +22,7 @@ func TestSearchChecksQueryRules(t *testing.T) {
 		{"unsupported kind", changed(oneWay(), func(q *search.Query) { q.Kind = "multiCity" }),
 			`kind must be "roundTrip" or "oneWay"`},
 		{"unsupported sort", changed(roundTrip(), func(q *search.Query) { q.Sort = "airline" }),
-			`sort must be "price", "leaveDays" or "pricePerNight"`},
+			`sort must be "price" or "leaveDays"`},
 		{"round-trip sort on a one-way query", changed(oneWay(), func(q *search.Query) { q.Sort = search.ByLeaveDays }),
 			`sort "leaveDays" applies to round trips only`},
 		{"no home airports", changed(oneWay(), func(q *search.Query) { q.HomeAirports = nil }),

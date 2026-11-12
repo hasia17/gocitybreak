@@ -11,7 +11,7 @@ import {
 } from '@angular/forms';
 import { readTypedNames } from './typed-names';
 import { OfferView, offerView, priceAge } from './offer-view';
-import { Catalogue, OfferKind, SearchResponse, SortOrder } from './search-api';
+import { Catalogue, OfferKind, SearchResponse, SortOrder, sortOrders } from './search-api';
 import { filtersForm } from './search-filters';
 import { loadSearchSettings, saveSearchSettings } from './search-settings';
 import {
@@ -112,6 +112,10 @@ export class Search {
     });
     const settings = loadSearchSettings();
     if (settings) this.form.patchValue(settings);
+    // A sort remembered before it was removed (e.g. price per night) falls back to price.
+    if (!(sortOrders as readonly string[]).includes(this.form.controls.sort.value)) {
+      this.form.controls.sort.setValue('price');
+    }
   }
 
   protected submit() {

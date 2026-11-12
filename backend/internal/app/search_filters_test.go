@@ -1,7 +1,6 @@
 package app_test
 
 import (
-	"fmt"
 	"net/http"
 	"slices"
 	"strings"
@@ -204,60 +203,6 @@ func TestSearchDirectOnlyKeepsDirectOffers(t *testing.T) {
 	}
 	want := []string{"Fri 18:00 → Sun 20:00, 2 nights, 90.00 PLN"}
 	if got := roundTrips(t, body.Offers); !slices.Equal(got, want) {
-		t.Errorf("offers =\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
-	}
-}
-
-func TestSearchSortsRoundTripOffersByPricePerNight(t *testing.T) {
-	srv, url := startAPI(t, "test")
-	seed(t, url, polishAndItalianAirports, fixture{
-		rates: []fixtureRate{
-			{"EUR", "2026-11-10", 4.2512},
-		},
-		flights: []fixtureFlight{
-			{"KRK", "BGY", "2026-12-04", "18:00", "2026-12-04", "19:55", 6000, "PLN", "2026-11-10T08:00:00Z"},
-			// back the same evening: no hotel night, so no price per night
-			{"BGY", "KRK", "2026-12-04", "22:00", "2026-12-04", "23:50", 500, "PLN", "2026-11-10T08:00:00Z"},
-			{"BGY", "KRK", "2026-12-05", "20:00", "2026-12-05", "21:50", 1000, "PLN", "2026-11-10T08:00:00Z"},
-			{"BGY", "KRK", "2026-12-06", "20:00", "2026-12-06", "21:50", 2000, "PLN", "2026-11-10T08:00:00Z"},
-			// 7.29 EUR ≈ 30.99 PLN
-			{"BGY", "KRK", "2026-12-07", "20:00", "2026-12-07", "21:50", 729, "EUR", "2026-11-10T08:00:00Z"},
-		},
-	})
-
-	code, body := search(t, srv, `{
-		"kind": "roundTrip",
-		"homeAirports": ["KRK"],
-		"destination": {"airports": ["BGY"]},
-		"travelWindow": {"from": "2026-12-01", "to": "2026-12-10"},
-		"stayLength": {"min": 0, "max": 10},
-		"sort": "pricePerNight"
-	}`)
-
-	if code != http.StatusOK {
-		t.Fatalf("status code = %d, want %d", code, http.StatusOK)
-	}
-	var got []string
-	for _, o := range body.Offers {
-		line := fmt.Sprintf("%d nights, %.2f PLN", *o.Nights, o.Price.Amount)
-		if p := o.PricePerNight; p != nil {
-			approx := ""
-			if p.Approximate {
-				approx = "≈ "
-			}
-			line += fmt.Sprintf(", %s%.2f %s per night", approx, p.Amount, p.Currency)
-		}
-		got = append(got, line)
-	}
-	want := []string{
-		// 90.99 PLN / 3 = 30.33 PLN
-		"3 nights, 90.99 PLN, ≈ 30.33 PLN per night",
-		"2 nights, 80.00 PLN, 40.00 PLN per night",
-		"1 nights, 70.00 PLN, 70.00 PLN per night",
-		// the cheapest offer, but with no night it goes last
-		"0 nights, 65.00 PLN",
-	}
-	if !slices.Equal(got, want) {
 		t.Errorf("offers =\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
 	}
 }

@@ -52,9 +52,6 @@ export function offerView(offer: Offer, now: number) {
           ? 'no leave days'
           : `${offer.leaveDays} ${offer.leaveDays === 1 ? 'leave day' : 'leave days'}`,
     freeLeave: offer.leaveDays === 0,
-    pricePerNight: offer.pricePerNight
-      ? `${offer.pricePerNight.approximate ? '≈ ' : ''}${offer.pricePerNight.amount.toFixed(2)} ${offer.pricePerNight.currency} per night`
-      : undefined,
     ticketCount: words[tickets.length] ?? `${tickets.length}`,
     price: `${offer.price.approximate ? '≈ ' : ''}${offer.price.amount.toFixed(2)} ${offer.price.currency}`,
     foreignPrices: legs

@@ -120,7 +120,6 @@
           <select formControlName="sort" aria-label="Sort by">
             <option value="price">Price</option>
             <option value="leaveDays">Leave days</option>
-            <option value="pricePerNight">Price per night</option>
           </select>
         </label>
       </div>
@@ -238,9 +237,6 @@
             </div>
             <div class="price">
               <strong>{{ offer.price }}</strong>
-              @if (offer.pricePerNight; as perNight) {
-                <small class="per-night">{{ perNight }}</small>
-              }
               <small>
                 @for (original of offer.foreignPrices; track $index) {
                   {{ original }} ·

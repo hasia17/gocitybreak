@@ -41,8 +41,8 @@ func TestSearchPairsOutboundAndInboundFlightsIntoRoundTripOffer(t *testing.T) {
 	if offer.Kind != "roundTrip" || offer.Inbound == nil || offer.Nights == nil || *offer.Nights != 2 || offer.LeaveDays == nil || *offer.LeaveDays != 0 {
 		t.Errorf("round trip = %+v, want 2 nights and 0 leave days", offer)
 	}
-	if offer.Price != (priceBody{Amount: 173.98, Currency: "PLN", Approximate: true}) || offer.PricePerNight == nil || *offer.PricePerNight != (priceBody{Amount: 86.99, Currency: "PLN", Approximate: true}) {
-		t.Errorf("prices = %+v / %+v", offer.Price, offer.PricePerNight)
+	if offer.Price != (priceBody{Amount: 173.98, Currency: "PLN", Approximate: true}) {
+		t.Errorf("price = %+v", offer.Price)
 	}
 	if offer.PriceFetchedAt != "2026-11-09T07:00:00Z" {
 		t.Errorf("price fetched at = %s, want older flight's timestamp", offer.PriceFetchedAt)

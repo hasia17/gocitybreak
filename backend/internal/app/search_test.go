@@ -259,7 +259,6 @@ type offerBody struct {
 	Nights         *int       `json:"nights,omitempty"`
 	LeaveDays      *int       `json:"leaveDays,omitempty"`
 	Price          priceBody  `json:"price"`
-	PricePerNight  *priceBody `json:"pricePerNight,omitempty"`
 	PriceFetchedAt string     `json:"priceFetchedAt"`
 }
 

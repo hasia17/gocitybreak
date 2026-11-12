@@ -59,8 +59,6 @@ type offerJSON struct {
 	// Nights is set for round-trip offers only, where 0 is a valid number of nights.
 	Nights *int      `json:"nights,omitempty"`
 	Price  priceJSON `json:"price"`
-	// PricePerNight is set for round-trip offers of at least one night.
-	PricePerNight  *priceJSON `json:"pricePerNight,omitempty"`
 	PriceFetchedAt time.Time  `json:"priceFetchedAt"`
 	// LeaveDays is set for round-trip offers only, where 0 is a valid number of leave days.
 	LeaveDays *int `json:"leaveDays,omitempty"`
@@ -210,9 +208,6 @@ func toOfferJSON(o search.Offer) offerJSON {
 		offer.Inbound = new(toLegJSON(*o.Inbound))
 		offer.Nights = new(o.Nights)
 		offer.LeaveDays = new(o.LeaveDays)
-	}
-	if p, ok := o.PricePerNight(); ok {
-		offer.PricePerNight = new(toPriceJSON(p))
 	}
 	return offer
 }
