@@ -78,7 +78,7 @@ describe('App', () => {
       await fixture.whenStable();
       const root = fixture.nativeElement as HTMLElement;
 
-      expect(root.querySelector('h1')?.textContent).toBe('Dokąd w ten weekend?');
+      expect(root.querySelector('h1')?.textContent).toBe('Gdzie na weekend?');
       expect(root.textContent).toContain('Wersja: 1');
       expect(languageButton(root, 'PL').getAttribute('aria-pressed')).toBe('true');
       expect(document.documentElement.lang).toBe('pl');
@@ -112,7 +112,7 @@ describe('App', () => {
       languageButton(root, 'PL').click();
       await fixture.whenStable();
 
-      expect(root.querySelector('h1')?.textContent).toBe('Dokąd w ten weekend?');
+      expect(root.querySelector('h1')?.textContent).toBe('Gdzie na weekend?');
       expect(root.querySelector<HTMLSelectElement>('select')?.getAttribute('aria-label')).toBe(
         'Sortuj według',
       );
@@ -135,7 +135,7 @@ describe('App', () => {
         .flush({ status: 'ok', version: '1', database: { status: 'ok' } });
       await next.whenStable();
       root = next.nativeElement as HTMLElement;
-      expect(root.querySelector('h1')?.textContent).toBe('Dokąd w ten weekend?');
+      expect(root.querySelector('h1')?.textContent).toBe('Gdzie na weekend?');
     });
   });
 });
