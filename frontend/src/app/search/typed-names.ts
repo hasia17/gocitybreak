@@ -1,4 +1,5 @@
 import { Catalogue, CatalogueCodes } from './search-api';
+import { placeTokens, readPlaceValue } from './place-selection';
 
 /** Airports, cities and countries typed as text, separated by commas: what they name and what they fail to name. */
 export interface TypedNames {
@@ -9,11 +10,8 @@ export interface TypedNames {
   unknown: string[];
 }
 
-/** The word for anywhere in each language of the interface; any of them is understood in any language. */
-const anywhereWords = ['anywhere', 'gdziekolwiek'];
-
 /**
- * Reads airports, cities and countries typed as "Milan, Spain, OSL" or "anywhere" ("gdziekolwiek"). Each name is, in this order,
+ * Reads airports, cities and countries typed as "Milan, Spain, OSL" or canonical "anywhere". Each name is, in this order,
  * an airport code, a city, a country or an airport name, all case-insensitive. Without the catalogue only
  * airport codes are known.
  */
@@ -31,36 +29,29 @@ export function readTypedNames(text: string, catalogue: Catalogue | undefined): 
       [item.name, ...Object.values(item.names ?? {})].some((value) => value.toLowerCase() === name),
     );
 
-  for (const raw of text.split(',')) {
-    const name = raw.trim().toLowerCase();
-    if (!name) continue;
-    if (anywhereWords.includes(name)) {
+  for (const raw of placeTokens(text)) {
+    const name = raw.toLowerCase();
+    const selection = readPlaceValue(raw);
+    if (selection?.kind === 'anywhere') {
       typed.anywhere = true;
       continue;
     }
-    const canonical = raw.trim();
-    if (
-      catalogue &&
-      canonical.startsWith('city:') &&
-      catalogue.cities.some((c) => c.code === canonical.slice(5))
-    ) {
-      add('cities', canonical.slice(5));
+    if (selection?.kind === 'city' && catalogue?.cities.some((c) => c.code === selection.code)) {
+      add('cities', selection.code);
       continue;
     }
     if (
-      catalogue &&
-      canonical.startsWith('country:') &&
-      catalogue.countries.some((c) => c.code === canonical.slice(8))
+      selection?.kind === 'country' &&
+      catalogue?.countries.some((c) => c.code === selection.code)
     ) {
-      add('countries', canonical.slice(8));
+      add('countries', selection.code);
       continue;
     }
-    const code = name.toUpperCase();
     if (
-      /^[A-Z]{3}$/.test(code) &&
-      (!catalogue || catalogue.airports.some((a) => a.code === code))
+      selection?.kind === 'airport' &&
+      (!catalogue || catalogue.airports.some((a) => a.code === selection.code))
     ) {
-      add('airports', code);
+      add('airports', selection.code);
       continue;
     }
     const city = named(catalogue?.cities, name);

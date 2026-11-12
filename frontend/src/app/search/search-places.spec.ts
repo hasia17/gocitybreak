@@ -38,6 +38,62 @@ describe('Search place chips', () => {
     http = TestBed.inject(HttpTestingController);
   });
   afterEach(() => http.verify());
+  it.each(['server', 'network'])(
+    'recovers from a %s failure loading places without reloading',
+    async (failure) => {
+      localStorage.setItem(
+        'gocitybreak.searchSettings.v1',
+        JSON.stringify({
+          homeAirports: 'KRK, Atlantis',
+          destination: 'Mediolan',
+          from: '2026-12-01',
+          to: '2026-12-10',
+        }),
+      );
+      const fixture = TestBed.createComponent(Search);
+      const initial = http.expectOne('/api/catalogue');
+      await fixture.whenStable();
+      const root = fixture.nativeElement as HTMLElement;
+      const submit = () => root.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+      expect(submit().disabled).toBe(true);
+      expect(root.querySelector('[role="status"]')?.textContent).toContain('Loading places');
+      expect(root.querySelector<HTMLInputElement>('[aria-label="From"]')!.disabled).toBe(true);
+      root
+        .querySelector('form')!
+        .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      http.expectNone('/api/search');
+      if (failure === 'server') initial.flush({}, { status: 503, statusText: 'Unavailable' });
+      else initial.error(new ProgressEvent('error'));
+      await fixture.whenStable();
+      expect(root.querySelector('[role="alert"]')?.textContent).toContain('Could not load places');
+      expect(submit().disabled).toBe(true);
+      const retry = Array.from(root.querySelectorAll('button')).find(
+        (b) => b.textContent?.trim() === 'Retry',
+      )!;
+      expect(retry).toBeDefined();
+      retry.click();
+      retry.click();
+      const recovery = http.expectOne('/api/catalogue');
+      await fixture.whenStable();
+      expect(root.querySelector('[role="status"]')?.textContent).toContain('Loading places');
+      recovery.flush(catalogue);
+      await fixture.whenStable();
+      expect(root.querySelector('[data-place-chip="KRK"]')).not.toBeNull();
+      expect(root.querySelector('[data-place-chip="city:MILAN"]')).not.toBeNull();
+      expect(root.textContent).not.toContain('Atlantis');
+      expect(submit().disabled).toBe(false);
+      TestBed.inject(TranslocoService).setActiveLang('pl');
+      await fixture.whenStable();
+      http.expectNone('/api/catalogue');
+      submit().click();
+      const search = http.expectOne('/api/search');
+      expect(search.request.body).toMatchObject({
+        homeAirports: ['KRK'],
+        destination: { cities: ['MILAN'] },
+      });
+      search.flush({ offers: [] });
+    },
+  );
   it('selects listed places with the keyboard and submits stable codes', async () => {
     const fixture = TestBed.createComponent(Search);
     http.expectOne('/api/catalogue').flush(catalogue);
@@ -109,6 +165,41 @@ describe('Search place chips', () => {
     await fixture.whenStable();
     http.expectNone('/api/search');
     expect(to.getAttribute('aria-invalid')).toBe('true');
+  });
+  it('takes the Anywhere label and cross-language matches from the runtime dictionaries', async () => {
+    const translations = TestBed.inject(TranslocoService);
+    translations.setTranslation({ places: { anywhere: 'Every destination' } }, 'en', {
+      merge: true,
+    });
+    translations.setTranslation({ places: { anywhere: 'Wszystkie miejsca' } }, 'pl', {
+      merge: true,
+    });
+    const fixture = TestBed.createComponent(Search);
+    http.expectOne('/api/catalogue').flush(catalogue);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    for (const language of ['en', 'pl']) {
+      translations.setActiveLang(language);
+      await fixture.whenStable();
+      const to = root.querySelector<HTMLInputElement>(
+        'app-place-chips[field="destination"] input',
+      )!;
+      for (const text of ['Every', 'Wszystkie']) {
+        to.value = text;
+        to.dispatchEvent(new Event('input'));
+        await fixture.whenStable();
+        const options = root.querySelectorAll('[role="option"]');
+        expect(options).toHaveLength(1);
+        expect(options[0].textContent?.trim()).toBe(
+          language === 'en' ? 'Every destination' : 'Wszystkie miejsca',
+        );
+      }
+    }
+    root.querySelector<HTMLButtonElement>('[role="option"]')!.click();
+    await fixture.whenStable();
+    expect(root.querySelector('[data-place-chip="anywhere"]')?.textContent).toContain(
+      'Wszystkie miejsca',
+    );
   });
   it('replaces destination chips when Anywhere is chosen', async () => {
     const fixture = TestBed.createComponent(Search);

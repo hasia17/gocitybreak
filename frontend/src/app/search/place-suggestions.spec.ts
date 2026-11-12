@@ -1,5 +1,9 @@
 import { restorePlaces, suggestPlaces } from './place-suggestions';
 import { Catalogue } from './search-api';
+import en from '../../../public/i18n/en.json';
+import pl from '../../../public/i18n/pl.json';
+
+const anywhere = { name: en.places.anywhere, names: [en.places.anywhere, pl.places.anywhere] };
 
 const catalogue: Catalogue = {
   supportedAirports: [
@@ -60,7 +64,8 @@ describe('catalogue suggestion rules', () => {
     field: 'homeAirports' | 'destination' | 'exclusions' = 'destination',
     selected: string[] = [],
     excluded: string[] = [],
-  ) => suggestPlaces(text, catalogue, field, selected, excluded, 'en').map((p) => p.value);
+  ) =>
+    suggestPlaces(text, catalogue, field, selected, excluded, 'en', anywhere).map((p) => p.value);
   it('matches consecutive words, any name language, and code prefixes', () => {
     expect(values('london st')).toEqual(['STN']);
     expect(values('medi')).toEqual(['city:MILAN', 'BGY']);
@@ -93,6 +98,19 @@ describe('catalogue suggestion rules', () => {
     expect(values('', 'homeAirports')).toEqual(['country:pl', 'KTW', 'KRK']);
     expect(values('pol', 'homeAirports')).toEqual(['country:pl']);
     expect(values('', 'destination', ['anywhere'])).toEqual([]);
+  });
+  it.each(['en', 'pl'])('matches either dictionary name for Anywhere in %s', (language) => {
+    const label = {
+      ...anywhere,
+      name: language === 'pl' ? pl.places.anywhere : en.places.anywhere,
+    };
+    for (const text of ['Anywhere', 'Gdziekolwiek']) {
+      const matches = suggestPlaces(text, catalogue, 'destination', [], [], language, label);
+      expect(matches.map((p) => ({ value: p.value, name: p.name }))).toEqual([
+        { value: 'anywhere', name: label.name },
+      ]);
+    }
+    expect(restorePlaces('Gdziekolwiek', catalogue, 'destination', label)).toBe('anywhere');
   });
   it('returns every match without truncation', () => {
     const c: Catalogue = {

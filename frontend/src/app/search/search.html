@@ -2,6 +2,16 @@
   <h1>{{ t('search.title') }}</h1>
   <p class="lede">{{ t('search.lede') }}</p>
 
+  @if (catalogueStatus() === 'loading') {
+    <p role="status">{{ t('places.loading') }}</p>
+  }
+  @if (catalogueStatus() === 'error') {
+    <div class="error" role="alert">
+      <p>{{ t('places.loadError') }}</p>
+      <button type="button" (click)="loadCatalogue()">{{ t('places.retry') }}</button>
+    </div>
+  }
+
   <form [formGroup]="form" (ngSubmit)="submit()">
     <div class="toggle kind" role="radiogroup" [attr.aria-label]="t('search.kind.label')">
       <label
@@ -139,7 +149,7 @@
       <button
         class="send"
         type="submit"
-        [disabled]="loading()"
+        [disabled]="loading() || !catalogue()"
         [attr.aria-busy]="loading()"
         [attr.aria-label]="t('search.submit')"
       >

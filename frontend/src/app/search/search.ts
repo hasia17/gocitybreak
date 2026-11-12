@@ -1,5 +1,5 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
@@ -10,10 +10,11 @@ import {
   Validators,
 } from '@angular/forms';
 import { TranslocoService } from '@jsverse/transloco';
-import { map, merge, switchMap } from 'rxjs';
+import { combineLatest, map, merge, switchMap, take } from 'rxjs';
 import { Language, textsIn } from '../i18n/language';
 import { ago, plural } from '../i18n/texts';
 import { PlaceChips } from './place-chips';
+import { PlaceTranslations } from './place-translations';
 import { restorePlaces } from './place-suggestions';
 import { InfoTip } from '../ui/info-tip';
 import { offerView } from './offer-view';
@@ -37,6 +38,8 @@ import {
 } from './search-query';
 
 const nightCount = [Validators.required, Validators.pattern(/^\d+$/)];
+const workTime = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+const workHours = [Validators.required, Validators.pattern(workTime)];
 
 /** A stay length whose maximum is below its minimum. */
 function maxBelowMin(group: AbstractControl): ValidationErrors | null {
@@ -105,10 +108,13 @@ function rejectedSearchMessage(reason: string): string {
 export class Search {
   private readonly http = inject(HttpClient);
   private readonly fb = inject(NonNullableFormBuilder);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly transloco = inject(TranslocoService);
+  private readonly placeTranslations = inject(PlaceTranslations);
 
   /** The only source of selectable airports, cities and countries; undefined until loaded. */
   protected readonly catalogue = signal<Catalogue | undefined>(undefined);
+  protected readonly catalogueStatus = signal<'idle' | 'loading' | 'ready' | 'error'>('idle');
 
   protected readonly form = this.fb.group(
     {
@@ -125,8 +131,8 @@ export class Search {
       ),
       leave: this.fb.group({
         ignoreLeave: false,
-        workStart: [defaultWorkStart, Validators.required],
-        workEnd: [defaultWorkEnd, Validators.required],
+        workStart: [defaultWorkStart, workHours],
+        workEnd: [defaultWorkEnd, workHours],
         maxLeaveDays: this.fb.control<number | null>(null, Validators.pattern(/^\d+$/)),
       }),
       sort: this.fb.control<SortOrder>('price'),
@@ -137,6 +143,7 @@ export class Search {
   protected readonly places = toSignal(this.form.valueChanges, {
     initialValue: this.form.getRawValue(),
   });
+  private readonly lastWorkHours = { workStart: defaultWorkStart, workEnd: defaultWorkEnd };
   protected readonly moments = moments;
   protected readonly weekdays = weekdays;
 
@@ -207,26 +214,18 @@ export class Search {
     this.form.controls.sort.valueChanges
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.visibleCount.set(20));
-    // Restore known legacy names/codes only after the catalogue can validate their identities.
-    this.http
-      .get<Catalogue>('/api/catalogue')
-      .pipe(takeUntilDestroyed())
-      .subscribe({
-        next: (catalogue) => {
-          this.catalogue.set(catalogue);
-          for (const field of ['homeAirports', 'destination', 'exclusions'] as const) {
-            this.form.controls[field].setValue(
-              restorePlaces(this.form.controls[field].value, catalogue, field),
-            );
-          }
-        },
-        error: () => {},
-      });
     // Fields that do not apply to the kind of offer are disabled: a disabled control does not
     // affect the form's validity, and the raw value keeps it so remembered settings lose nothing.
     merge(this.form.controls.kind.valueChanges, this.form.controls.dateMode.valueChanges)
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.updateApplicableFields());
+    for (const name of ['workStart', 'workEnd'] as const) {
+      this.form.controls.leave.controls[name].valueChanges
+        .pipe(takeUntilDestroyed())
+        .subscribe((value) => {
+          if (workTime.test(value)) this.lastWorkHours[name] = value;
+        });
+    }
     this.form.controls.leave.controls.ignoreLeave.valueChanges
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.updateLeaveLimit());
@@ -253,6 +252,32 @@ export class Search {
     if (!(sortOrders as readonly string[]).includes(this.form.controls.sort.value)) {
       this.form.controls.sort.setValue('price');
     }
+    this.loadCatalogue();
+  }
+
+  /** Retry a failed load; only validated places may be selected or submitted. */
+  protected loadCatalogue() {
+    if (this.catalogueStatus() === 'loading') return;
+    this.catalogueStatus.set('loading');
+    combineLatest([this.http.get<Catalogue>('/api/catalogue'), this.placeTranslations.names$])
+      .pipe(take(1), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: ([catalogue]) => {
+          this.catalogue.set(catalogue);
+          for (const field of ['homeAirports', 'destination', 'exclusions'] as const) {
+            this.form.controls[field].setValue(
+              restorePlaces(
+                this.form.controls[field].value,
+                catalogue,
+                field,
+                this.placeTranslations.anywhere('en'),
+              ),
+            );
+          }
+          this.catalogueStatus.set('ready');
+        },
+        error: () => this.catalogueStatus.set('error'),
+      });
   }
 
   protected submit() {
@@ -313,9 +338,16 @@ export class Search {
     return [outboundDepartureWeekdays, inboundDepartureWeekdays];
   }
 
-  /** An ignored leave limit keeps its value but cannot invalidate the search. */
+  /** Hidden leave settings cannot block search; badges use the last valid work hours. */
   private updateLeaveLimit() {
     const leave = this.form.controls.leave.controls;
+    for (const name of ['workStart', 'workEnd'] as const) {
+      const control = leave[name];
+      if (leave.ignoreLeave.value) control.setValue(this.lastWorkHours[name], { emitEvent: false });
+      if (this.form.controls.kind.value === 'roundTrip' && !leave.ignoreLeave.value)
+        control.enable({ emitEvent: false });
+      else control.disable({ emitEvent: false });
+    }
     if (this.form.controls.kind.value === 'roundTrip' && !leave.ignoreLeave.value)
       leave.maxLeaveDays.enable({ emitEvent: false });
     else leave.maxLeaveDays.disable({ emitEvent: false });

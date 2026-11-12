@@ -136,6 +136,32 @@ describe('Search leave limit', () => {
     request.flush({ offers: [] });
   });
 
+  it('uses the last valid work hours when cleared fields are hidden and remembers them', async () => {
+    const first = await render();
+    fillTrip(first.root);
+    fill(first.root, 'Work start', '07:30');
+    fill(first.root, 'Work end', '15:30');
+    fill(first.root, 'Work start', '');
+    fill(first.root, 'Work end', '');
+    input(first.root, "I don't worry about leave").click();
+    await first.fixture.whenStable();
+    expect(findInput(first.root, 'Work start')).toBeUndefined();
+    const ignored = search(first.root);
+    expect(ignored.request.body).toMatchObject({ workStart: '07:30', workEnd: '15:30' });
+    expect(ignored.request.body).not.toHaveProperty('maxLeaveDays');
+    ignored.flush({ offers: [] });
+    first.fixture.destroy();
+
+    const { fixture, root } = await render();
+    input(root, "I don't worry about leave").click();
+    await fixture.whenStable();
+    expect(input(root, 'Work start').value).toBe('07:30');
+    expect(input(root, 'Work end').value).toBe('15:30');
+    fill(root, 'Work end', '16:00');
+    const restored = search(root);
+    expect(restored.request.body).toMatchObject({ workStart: '07:30', workEnd: '16:00' });
+    restored.flush({ offers: [] });
+  });
   it('remembers the switch and restores work hours and the leave limit when switched off', async () => {
     const first = await render();
     fillTrip(first.root);

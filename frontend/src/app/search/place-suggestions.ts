@@ -1,16 +1,27 @@
 import { catalogueName } from './catalogue-names';
 import { Catalogue } from './search-api';
+import {
+  PlaceSelection,
+  placeTokens,
+  placeValue,
+  readPlaceValue,
+  writePlaceSelections,
+} from './place-selection';
+
+/** Interface choice supplied by runtime translations, including names in every supported language. */
+export interface AnywhereLabel {
+  name: string;
+  names: readonly string[];
+}
 
 export type PlaceField = 'homeAirports' | 'destination' | 'exclusions';
-export interface PlaceSuggestion {
+export interface PlaceSuggestion extends PlaceSelection {
   /** Stable form/storage identity; display names never become query identifiers. */
   value: string;
-  kind: 'airport' | 'city' | 'country' | 'anywhere';
-  code: string;
   name: string;
   context: string;
   airports: string[];
-  names: string[];
+  names: readonly string[];
 }
 
 /** Fold Unicode accents and Polish ł, which does not decompose in Unicode normalization. */
@@ -23,6 +34,7 @@ export function cataloguePlaces(
   catalogue: Catalogue,
   field: PlaceField,
   language: string,
+  anywhere?: AnywhereLabel,
 ): PlaceSuggestion[] {
   const countryName = (code?: string) => {
     const country = catalogue.countries.find((c) => c.code === code);
@@ -37,7 +49,7 @@ export function cataloguePlaces(
       (a) => field !== 'homeAirports' || catalogue.supportedAirports.some((s) => s.code === a.code),
     )
     .map((a) => ({
-      value: a.code,
+      value: placeValue({ kind: 'airport', code: a.code }),
       kind: 'airport' as const,
       code: a.code,
       name: catalogueName(a, language),
@@ -55,7 +67,7 @@ export function cataloguePlaces(
     for (const a of catalogue.supportedAirports)
       if (!airports.some((p) => p.code === a.code))
         airports.push({
-          value: a.code,
+          value: placeValue({ kind: 'airport', code: a.code }),
           kind: 'airport',
           code: a.code,
           name: catalogueName(a, language),
@@ -71,7 +83,7 @@ export function cataloguePlaces(
     return [
       ...airports,
       {
-        value: 'country:pl',
+        value: placeValue({ kind: 'country', code: 'pl' }),
         kind: 'country',
         code: 'pl',
         name: catalogueName(poland, language),
@@ -84,7 +96,7 @@ export function cataloguePlaces(
   return [
     ...airports,
     ...catalogue.cities.map((c) => ({
-      value: `city:${c.code}`,
+      value: placeValue({ kind: 'city', code: c.code }),
       kind: 'city' as const,
       code: c.code,
       name: catalogueName(c, language),
@@ -93,7 +105,7 @@ export function cataloguePlaces(
       names: names(c),
     })),
     ...catalogue.countries.map((c) => ({
-      value: `country:${c.code}`,
+      value: placeValue({ kind: 'country', code: c.code }),
       kind: 'country' as const,
       code: c.code,
       name: catalogueName(c, language),
@@ -104,13 +116,13 @@ export function cataloguePlaces(
     ...(field === 'destination'
       ? [
           {
-            value: 'anywhere',
+            value: placeValue({ kind: 'anywhere', code: '' }),
             kind: 'anywhere' as const,
             code: '',
-            name: language === 'pl' ? 'Gdziekolwiek' : 'Anywhere',
+            name: anywhere?.name ?? '',
             context: '',
             airports: [],
-            names: ['Anywhere', 'Gdziekolwiek'],
+            names: anywhere?.names ?? [],
           },
         ]
       : []),
@@ -125,9 +137,10 @@ export function suggestPlaces(
   selected: readonly string[] = [],
   excluded: readonly string[] = [],
   language = 'en',
+  anywhere?: AnywhereLabel,
 ): PlaceSuggestion[] {
-  if (!catalogue || selected.includes('anywhere')) return [];
-  const all = cataloguePlaces(catalogue, field, language);
+  if (!catalogue || selected.some((value) => readPlaceValue(value)?.kind === 'anywhere')) return [];
+  const all = cataloguePlaces(catalogue, field, language, anywhere);
   const selectedAirports = new Set(
     all.filter((p) => selected.includes(p.value)).flatMap((p) => p.airports),
   );
@@ -166,22 +179,28 @@ export function suggestPlaces(
 }
 
 /** Restore exact legacy text names or canonical identities; silently discard stale/unknown places. */
-export function restorePlaces(value: unknown, catalogue: Catalogue, field: PlaceField): string {
+export function restorePlaces(
+  value: unknown,
+  catalogue: Catalogue,
+  field: PlaceField,
+  anywhere?: AnywhereLabel,
+): string {
   if (typeof value !== 'string') return '';
-  const all = cataloguePlaces(catalogue, field, 'en');
-  const restored: string[] = [];
-  for (const token of value
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)) {
+  const all = cataloguePlaces(catalogue, field, 'en', anywhere);
+  const restored: PlaceSelection[] = [];
+  for (const token of placeTokens(value)) {
+    const identity = readPlaceValue(token);
     const p =
-      all.find(
-        (p) => p.value === token || (p.kind === 'airport' && folded(p.code) === folded(token)),
-      ) ?? all.find((p) => p.names.some((n) => folded(n) === folded(token)));
+      all.find((p) => identity && p.value === placeValue(identity)) ??
+      all.find((p) => p.names.some((n) => folded(n) === folded(token)));
     if (!p) continue;
-    if (p.kind === 'anywhere') return field === 'destination' ? 'anywhere' : '';
-    const values = field === 'homeAirports' && p.kind === 'country' ? p.airports : [p.value];
-    for (const v of values) if (!restored.includes(v)) restored.push(v);
+    if (p.kind === 'anywhere') return writePlaceSelections([p]);
+    const places =
+      field === 'homeAirports' && p.kind === 'country'
+        ? p.airports.map((code): PlaceSelection => ({ kind: 'airport', code }))
+        : [p];
+    for (const place of places)
+      if (!restored.some((p) => placeValue(p) === placeValue(place))) restored.push(place);
   }
-  return restored.join(', ');
+  return writePlaceSelections(restored);
 }

@@ -18,9 +18,9 @@
     "from": "Skąd",
     "fromPlaceholder": "KRK, KTW",
     "to": "Dokąd",
-    "toPlaceholder": "Milan, Spain, gdziekolwiek",
+    "toPlaceholder": "Mediolan, Hiszpania, gdziekolwiek",
     "except": "Oprócz",
-    "exceptPlaceholder": "Norway, BGY",
+    "exceptPlaceholder": "Norwegia, BGY",
     "earliest": "Najwcześniej",
     "latest": "Najpóźniej",
     "nights": "Noce",
@@ -158,7 +158,11 @@
     "country": "kraj",
     "airportCount": "lotniska: {{count}}",
     "remove": "Usuń {{place}}",
-    "noMatches": "Brak pasujących miejsc"
+    "noMatches": "Brak pasujących miejsc",
+    "loading": "Wczytywanie miejsc…",
+    "loadError": "Nie udało się wczytać miejsc. Spróbuj ponownie.",
+    "retry": "Spróbuj ponownie",
+    "anywhere": "Gdziekolwiek"
   },
   "tips": {
     "flexible": {

@@ -148,7 +148,11 @@
     "country": "country",
     "airportCount": "{{count}} airports",
     "remove": "Remove {{place}}",
-    "noMatches": "No matching places"
+    "noMatches": "No matching places",
+    "loading": "Loading places…",
+    "loadError": "Could not load places. Please try again.",
+    "retry": "Retry",
+    "anywhere": "Anywhere"
   },
   "tips": {
     "flexible": {

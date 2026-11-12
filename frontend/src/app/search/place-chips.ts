@@ -18,6 +18,13 @@ import {
 } from '@angular/forms';
 import { TranslocoService } from '@jsverse/transloco';
 import { Catalogue } from './search-api';
+import {
+  PlaceSelection,
+  placeValue,
+  readPlaceSelections,
+  writePlaceSelections,
+} from './place-selection';
+import { PlaceTranslations } from './place-translations';
 import { cataloguePlaces, PlaceField, PlaceSuggestion, suggestPlaces } from './place-suggestions';
 
 /** Catalogue-backed multi-select following the editable combobox/listbox ARIA pattern. */
@@ -36,7 +43,7 @@ import { cataloguePlaces, PlaceField, PlaceSuggestion, suggestPlaces } from './p
           {{ shortLabel(place) }}
           <button
             type="button"
-            [disabled]="disabled()"
+            [disabled]="disabled() || !catalogue()"
             [attr.aria-label]="t('places.remove', { place: shortLabel(place) })"
             (click)="remove(place.value)"
           >
@@ -55,7 +62,7 @@ import { cataloguePlaces, PlaceField, PlaceSuggestion, suggestPlaces } from './p
         [attr.aria-activedescendant]="open() && active() >= 0 ? id + '-option-' + active() : null"
         [attr.aria-invalid]="invalid()"
         [attr.aria-describedby]="error() ? id + '-error' : null"
-        [disabled]="disabled()"
+        [disabled]="disabled() || !catalogue()"
         autocomplete="off"
         [placeholder]="placeholder()"
         [value]="text()"
@@ -101,19 +108,29 @@ export class PlaceChips implements ControlValueAccessor, Validator {
   readonly invalid = input(false);
   readonly error = input('');
   private readonly transloco = inject(TranslocoService);
+  private readonly placeTranslations = inject(PlaceTranslations);
   private readonly injector = inject(Injector);
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
-  protected readonly selected = signal<string[]>([]);
+  protected readonly selected = signal<PlaceSelection[]>([]);
   protected readonly text = signal('');
   protected readonly focused = signal(false);
   protected readonly active = signal(-1);
   protected readonly disabled = signal(false);
-  protected readonly open = computed(() => this.focused() && !this.disabled());
+  protected readonly open = computed(
+    () => this.focused() && !this.disabled() && !!this.catalogue(),
+  );
   protected readonly chosen = computed(() => {
     const catalogue = this.catalogue();
-    const all = catalogue ? cataloguePlaces(catalogue, this.field(), this.language()) : [];
+    const all = catalogue
+      ? cataloguePlaces(
+          catalogue,
+          this.field(),
+          this.language(),
+          this.placeTranslations.anywhere(this.language()),
+        )
+      : [];
     return this.selected()
-      .map((value) => all.find((p) => p.value === value))
+      .map((place) => all.find((p) => p.value === placeValue(place)))
       .filter((p) => p !== undefined);
   });
   protected readonly suggestions = computed(() =>
@@ -121,11 +138,10 @@ export class PlaceChips implements ControlValueAccessor, Validator {
       this.text(),
       this.catalogue(),
       this.field(),
-      this.selected(),
-      this.excluded()
-        .split(',')
-        .map((s) => s.trim()),
+      this.selected().map(placeValue),
+      readPlaceSelections(this.excluded()).map(placeValue),
       this.language(),
+      this.placeTranslations.anywhere(this.language()),
     ),
   );
   private onChange: (value: string) => void = () => {};
@@ -138,14 +154,7 @@ export class PlaceChips implements ControlValueAccessor, Validator {
     this.onValidatorChange = fn;
   }
   writeValue(value: unknown): void {
-    this.selected.set(
-      typeof value === 'string'
-        ? value
-            .split(',')
-            .map((s) => s.trim())
-            .filter(Boolean)
-        : [],
-    );
+    this.selected.set(readPlaceSelections(value));
   }
   registerOnChange(fn: (value: string) => void): void {
     this.onChange = fn;
@@ -181,27 +190,34 @@ export class PlaceChips implements ControlValueAccessor, Validator {
     this.onValidatorChange();
   }
   protected choose(place: PlaceSuggestion): void {
-    const values =
-      this.field() === 'homeAirports' && place.kind === 'country' ? place.airports : [place.value];
-    this.selected.set(
-      place.kind === 'anywhere' ? ['anywhere'] : [...new Set([...this.selected(), ...values])],
+    const places =
+      this.field() === 'homeAirports' && place.kind === 'country'
+        ? place.airports.map((code): PlaceSelection => ({ kind: 'airport', code }))
+        : [place];
+    this.selected.update((selected) =>
+      place.kind === 'anywhere'
+        ? [place]
+        : [
+            ...selected,
+            ...places.filter((place) => !selected.some((p) => placeValue(p) === placeValue(place))),
+          ],
     );
     this.text.set('');
-    this.onChange(this.selected().join(', '));
+    this.onChange(writePlaceSelections(this.selected()));
     this.onValidatorChange();
     this.active.set(-1);
     this.focused.set(false);
   }
   protected remove(value: string): void {
-    this.selected.update((values) => values.filter((v) => v !== value));
-    this.onChange(this.selected().join(', '));
+    this.selected.update((values) => values.filter((p) => placeValue(p) !== value));
+    this.onChange(writePlaceSelections(this.selected()));
   }
   protected key(event: KeyboardEvent): void {
     if (event.key === 'Backspace' && !this.text()) {
       const last = this.selected().at(-1);
       if (last) {
         event.preventDefault();
-        this.remove(last);
+        this.remove(placeValue(last));
       }
       return;
     }
