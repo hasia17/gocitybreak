@@ -27,9 +27,6 @@
         }}</label
       >
     </div>
-    @if (invalidFixedDates()) {
-      <p class="hint" role="alert">{{ t('search.hint.fixedDateOrder') }}</p>
-    }
     <div class="composer">
       <div class="fields">
         <app-place-chips
@@ -41,6 +38,7 @@
           [label]="t('search.from')"
           [placeholder]="t('search.fromPlaceholder')"
           [invalid]="invalid('homeAirports')"
+          [error]="validationMessage('homeAirports')"
           [class.invalid]="invalid('homeAirports')"
         />
         <span class="arrow" aria-hidden="true">→</span>
@@ -54,6 +52,7 @@
           [excluded]="places()?.exclusions ?? ''"
           [placeholder]="t('search.toPlaceholder')"
           [invalid]="invalid('destination')"
+          [error]="validationMessage('destination')"
           [class.invalid]="invalid('destination')"
         />
         <app-place-chips
@@ -65,16 +64,33 @@
           [label]="t('search.except')"
           [placeholder]="t('search.exceptPlaceholder')"
           [invalid]="invalid('exclusions')"
+          [error]="validationMessage('exclusions')"
         />
         <span class="divider" aria-hidden="true"></span>
         <label class="field" [class.invalid]="invalid('from')">
           {{ t(dateMode() === 'fixed' ? 'search.outboundDate' : 'search.earliest') }}
-          <input type="date" formControlName="from" [attr.aria-invalid]="invalid('from')" />
+          <input
+            type="date"
+            formControlName="from"
+            [attr.aria-invalid]="invalid('from')"
+            [attr.aria-describedby]="errorId('from')"
+          />
+          @if (validationMessage('from'); as message) {
+            <span class="field-error" [id]="errorId('from')" role="alert">{{ message }}</span>
+          }
         </label>
         @if (applies('to')) {
           <label class="field" [class.invalid]="invalid('to')">
             {{ t(dateMode() === 'fixed' ? 'search.inboundDate' : 'search.latest') }}
-            <input type="date" formControlName="to" [attr.aria-invalid]="invalid('to')" />
+            <input
+              type="date"
+              formControlName="to"
+              [attr.aria-invalid]="invalid('to')"
+              [attr.aria-describedby]="errorId('to')"
+            />
+            @if (validationMessage('to'); as message) {
+              <span class="field-error" [id]="errorId('to')" role="alert">{{ message }}</span>
+            }
           </label>
         }
         @if (applies('stayLength')) {
@@ -90,7 +106,8 @@
                 min="0"
                 formControlName="min"
                 [attr.aria-label]="t('search.minNights')"
-                [attr.aria-invalid]="invalid('stayLength')"
+                [attr.aria-invalid]="invalid('stayLength.min')"
+                [attr.aria-describedby]="errorId('stayLength.min')"
               />
               <span aria-hidden="true">–</span>
               <input
@@ -98,9 +115,15 @@
                 min="0"
                 formControlName="max"
                 [attr.aria-label]="t('search.maxNights')"
-                [attr.aria-invalid]="invalid('stayLength')"
+                [attr.aria-invalid]="invalid('stayLength.max')"
+                [attr.aria-describedby]="errorId('stayLength.max')"
               />
             </span>
+            @for (path of ['stayLength.min', 'stayLength.max']; track path) {
+              @if (validationMessage(path); as message) {
+                <span class="field-error" [id]="errorId(path)" role="alert">{{ message }}</span>
+              }
+            }
           </div>
         }
       </div>
@@ -130,7 +153,13 @@
                 type="time"
                 formControlName="workStart"
                 [attr.aria-invalid]="invalid('leave.workStart')"
+                [attr.aria-describedby]="errorId('leave.workStart')"
               />
+              @if (validationMessage('leave.workStart'); as message) {
+                <span class="field-error" [id]="errorId('leave.workStart')" role="alert">{{
+                  message
+                }}</span>
+              }
             </label>
             <label class="field time" [class.invalid]="invalid('leave.workEnd')">
               {{ t('search.workEnd') }}
@@ -138,7 +167,13 @@
                 type="time"
                 formControlName="workEnd"
                 [attr.aria-invalid]="invalid('leave.workEnd')"
+                [attr.aria-describedby]="errorId('leave.workEnd')"
               />
+              @if (validationMessage('leave.workEnd'); as message) {
+                <span class="field-error" [id]="errorId('leave.workEnd')" role="alert">{{
+                  message
+                }}</span>
+              }
             </label>
             <label class="field leave" [class.invalid]="invalid('leave.maxLeaveDays')">
               {{ t('search.maxLeaveDays') }}
@@ -148,7 +183,13 @@
                 formControlName="maxLeaveDays"
                 [placeholder]="t('search.anyLeave')"
                 [attr.aria-invalid]="invalid('leave.maxLeaveDays')"
+                [attr.aria-describedby]="errorId('leave.maxLeaveDays')"
               />
+              @if (validationMessage('leave.maxLeaveDays'); as message) {
+                <span class="field-error" [id]="errorId('leave.maxLeaveDays')" role="alert">{{
+                  message
+                }}</span>
+              }
             </label>
           }
         </ng-container>
@@ -188,6 +229,7 @@
                   formControlName="from"
                   [attr.aria-label]="t('search.rangeFrom', { moment: label })"
                   [attr.aria-invalid]="rangeInvalid"
+                  [attr.aria-describedby]="errorId('filters.' + moment.name)"
                 />
                 <span aria-hidden="true">–</span>
                 <input
@@ -195,7 +237,13 @@
                   formControlName="to"
                   [attr.aria-label]="t('search.rangeTo', { moment: label })"
                   [attr.aria-invalid]="rangeInvalid"
+                  [attr.aria-describedby]="errorId('filters.' + moment.name)"
                 />
+                @if (validationMessage('filters.' + moment.name); as message) {
+                  <span class="field-error" [id]="errorId('filters.' + moment.name)" role="alert">{{
+                    message
+                  }}</span>
+                }
               </div>
             }
           }
@@ -205,6 +253,7 @@
             class="days"
             formGroupName="outboundDepartureWeekdays"
             [class.invalid]="noDayLeft('outboundDepartureWeekdays')"
+            [attr.aria-describedby]="errorId('filters.outboundDepartureWeekdays')"
           >
             <legend>
               {{ t('search.outboundDays') }}
@@ -212,9 +261,29 @@
             </legend>
             @for (day of weekdays; track day.value) {
               <label
-                ><input type="checkbox" [formControlName]="day.value" />{{
-                  t('search.weekday.' + day.value)
-                }}</label
+                ><input
+                  type="checkbox"
+                  [formControlName]="day.value"
+                  [attr.aria-invalid]="
+                    noDayLeft('outboundDepartureWeekdays') &&
+                    !form.controls.filters.controls.outboundDepartureWeekdays.controls[day.value]
+                      .disabled
+                  "
+                  [attr.aria-describedby]="
+                    form.controls.filters.controls.outboundDepartureWeekdays.controls[day.value]
+                      .disabled
+                      ? null
+                      : errorId('filters.outboundDepartureWeekdays')
+                  "
+                />{{ t('search.weekday.' + day.value) }}</label
+              >
+            }
+            @if (validationMessage('filters.outboundDepartureWeekdays'); as message) {
+              <span
+                class="field-error"
+                [id]="errorId('filters.outboundDepartureWeekdays')"
+                role="alert"
+                >{{ message }}</span
               >
             }
           </fieldset>
@@ -224,13 +293,34 @@
             class="days"
             formGroupName="inboundDepartureWeekdays"
             [class.invalid]="noDayLeft('inboundDepartureWeekdays')"
+            [attr.aria-describedby]="errorId('filters.inboundDepartureWeekdays')"
           >
             <legend>{{ t('search.inboundDays') }}</legend>
             @for (day of weekdays; track day.value) {
               <label
-                ><input type="checkbox" [formControlName]="day.value" />{{
-                  t('search.weekday.' + day.value)
-                }}</label
+                ><input
+                  type="checkbox"
+                  [formControlName]="day.value"
+                  [attr.aria-invalid]="
+                    noDayLeft('inboundDepartureWeekdays') &&
+                    !form.controls.filters.controls.inboundDepartureWeekdays.controls[day.value]
+                      .disabled
+                  "
+                  [attr.aria-describedby]="
+                    form.controls.filters.controls.inboundDepartureWeekdays.controls[day.value]
+                      .disabled
+                      ? null
+                      : errorId('filters.inboundDepartureWeekdays')
+                  "
+                />{{ t('search.weekday.' + day.value) }}</label
+              >
+            }
+            @if (validationMessage('filters.inboundDepartureWeekdays'); as message) {
+              <span
+                class="field-error"
+                [id]="errorId('filters.inboundDepartureWeekdays')"
+                role="alert"
+                >{{ message }}</span
               >
             }
           </fieldset>
@@ -238,20 +328,6 @@
       </div>
     </details>
   </form>
-
-  @if (form.invalid && submitted()) {
-    <p class="hint" role="alert">
-      @if (fieldsInvalid()) {
-        {{ t('search.hint.fields') }}
-      }
-      @if (form.controls.filters.invalid) {
-        {{ t('search.hint.timeRanges') }}
-      }
-      @if (form.hasError('noDepartureDay')) {
-        {{ t('search.hint.noDepartureDay') }}
-      }
-    </p>
-  }
 </section>
 
 @if (error(); as message) {

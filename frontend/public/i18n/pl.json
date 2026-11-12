@@ -64,9 +64,6 @@
     },
     "hint": {
       "unsupportedAirports": "Szukaj tylko z obsługiwanych lotnisk: {{airports}}.",
-      "fields": "Wybierz lotniska domowe i cel z listy, obie daty oraz minimalną i maksymalną liczbę nocy.",
-      "timeRanges": "W filtrach podaj oba końce każdego przedziału godzin albo zostaw oba puste.",
-      "noDepartureDay": "W filtrach zostaw zaznaczony co najmniej jeden dzień wylotu.",
       "fixedDateOrder": "Data powrotu nie może być wcześniejsza niż data wylotu."
     },
     "failed": "Wyszukiwanie nie powiodło się. Sprawdź formularz i spróbuj ponownie.",
@@ -76,7 +73,20 @@
       "fixed": "Stałe daty"
     },
     "outboundDate": "Data wylotu",
-    "inboundDate": "Data powrotu"
+    "inboundDate": "Data powrotu",
+    "validation": {
+      "homeAirports": "Wybierz co najmniej jedno lotnisko domowe.",
+      "destination": "Wybierz cel podróży.",
+      "dateRequired": "Wybierz datę.",
+      "chooseSuggestion": "Wybierz podpowiedź albo usuń wpisany tekst.",
+      "nightCount": "Podaj liczbę całkowitą nocy, nie mniejszą niż zero.",
+      "nightOrder": "Maksymalna liczba nocy nie może być mniejsza od minimalnej.",
+      "workStart": "Podaj godzinę rozpoczęcia pracy.",
+      "workEnd": "Podaj godzinę zakończenia pracy.",
+      "leaveCount": "Podaj liczbę całkowitą dni urlopu, nie mniejszą niż zero.",
+      "timeRange": "Podaj oba końce przedziału godzin albo zostaw oba puste.",
+      "departureDay": "Zostaw zaznaczony co najmniej jeden możliwy dzień wylotu."
+    }
   },
   "results": {
     "showMore": "Pokaż więcej",

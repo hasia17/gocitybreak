@@ -427,7 +427,7 @@ describe('Search', () => {
 
     httpTesting.expectNone('/api/search');
     const alert = root.querySelector('[role="alert"]')?.textContent;
-    expect(alert).toContain('leave at least one departure day ticked');
+    expect(alert).toContain('Leave at least one possible departure day ticked');
     expect(alert).not.toContain('Choose home airports');
     const inbound = Array.from(root.querySelectorAll('fieldset')).find((f) =>
       f.querySelector('legend')?.textContent?.trim().startsWith('Inbound departure days'),
@@ -546,7 +546,7 @@ describe('Search', () => {
       (i) => i.getAttribute('aria-label') ?? i.closest('label')?.textContent?.trim().split(/\s/)[0],
     );
     expect(invalid).toEqual(['To', 'Earliest', 'Latest']);
-    expect(root.querySelector('[role="alert"]')?.textContent).toContain('Choose home airports');
+    expect(root.querySelector('[role="alert"]')?.textContent).toContain('Choose a suggestion');
   });
 
   it('shows the year only for dates outside the current year, and stops only for indirect legs', async () => {
@@ -658,10 +658,17 @@ describe('Search', () => {
     root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
     await fixture.whenStable();
 
+    httpTesting.expectNone('/api/search');
+    expect(root.querySelector('[data-place-chip="BGY"]')).toBeNull();
+    const from = labelled<HTMLInputElement>(root, 'From');
+    expect(from.value).toBe('BGY');
+    expect(from.getAttribute('aria-invalid')).toBe('true');
+    from.value = '';
+    from.dispatchEvent(new Event('input'));
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
     const request = httpTesting.expectOne('/api/search');
     expect(request.request.body.homeAirports).toEqual(['KRK']);
-    expect(root.querySelector('[data-place-chip="BGY"]')).toBeNull();
-    expect(labelled<HTMLInputElement>(root, 'From').value).toBe('BGY');
+    request.flush({ offers: [] });
   });
 
   describe('destination', () => {
@@ -698,11 +705,20 @@ describe('Search', () => {
     it('keeps unknown text and Anywhere exclusions out of the query', async () => {
       const root = await searchFrom('Milan, Atlantis', 'anywhere');
 
+      httpTesting.expectNone('/api/search');
+      expect(root.querySelector('[data-place-chip="Atlantis"]')).toBeNull();
+      expect(labelled<HTMLInputElement>(root, 'To').value).toBe('Atlantis');
+      for (const label of ['To', 'Except']) {
+        const control = labelled<HTMLInputElement>(root, label);
+        expect(control.getAttribute('aria-invalid')).toBe('true');
+        control.value = '';
+        control.dispatchEvent(new Event('input'));
+      }
+      root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
       const request = httpTesting.expectOne('/api/search');
       expect(request.request.body.destination).toEqual({ cities: ['MILAN'] });
       expect(request.request.body.exclusions).toBeUndefined();
-      expect(root.querySelector('[data-place-chip="Atlantis"]')).toBeNull();
-      expect(labelled<HTMLInputElement>(root, 'To').value).toBe('Atlantis');
+      request.flush({ offers: [] });
     });
   });
 });

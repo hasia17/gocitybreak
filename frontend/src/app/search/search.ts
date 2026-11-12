@@ -303,22 +303,49 @@ export class Search {
     return this.submitted() && !!missing?.includes(name);
   }
 
-  /** Whether a field outside the filters is invalid. */
-  protected fieldsInvalid(): boolean {
-    const { filters, ...fields } = this.form.controls;
-    return Object.values(fields).some((control) => control.invalid);
-  }
-
   /** Whether the form field named by its control path applies to the chosen kind of offer. */
   protected applies(path: string): boolean {
     return fieldApplies(path, this.kind(), this.dateMode());
+  }
+
+  /** A field's short validation message, shown only after a search attempt. */
+  protected validationMessage(path: string): string {
+    if (!this.invalid(path)) return '';
+    if (path.startsWith('filters.') && this.noDayLeft(path.slice(8) as DepartureDays))
+      return this.t('search.validation.departureDay');
+    if (path === 'to' && this.invalidFixedDates()) return this.t('search.hint.fixedDateOrder');
+    if (path.startsWith('stayLength.')) {
+      return this.t(
+        'search.validation.' + (this.form.get(path)?.invalid ? 'nightCount' : 'nightOrder'),
+      );
+    }
+    if (this.form.get(path)?.hasError('halfSet')) return this.t('search.validation.timeRange');
+    if (this.form.get(path)?.hasError('chooseSuggestion'))
+      return this.t('search.validation.chooseSuggestion');
+    const keys: Record<string, string> = {
+      homeAirports: 'homeAirports',
+      destination: 'destination',
+      from: 'dateRequired',
+      to: 'dateRequired',
+      'leave.workStart': 'workStart',
+      'leave.workEnd': 'workEnd',
+      'leave.maxLeaveDays': 'leaveCount',
+    };
+    return keys[path] ? this.t('search.validation.' + keys[path]) : '';
+  }
+
+  protected errorId(path: string): string | null {
+    return this.validationMessage(path) ? 'search-error-' + path.replaceAll('.', '-') : null;
   }
 
   /** Whether a field, named by its path like "leave.workStart", should be marked invalid: it is, and the user has tried to search. */
   protected invalid(path: string): boolean {
     return (
       this.submitted() &&
-      (!!this.form.get(path)?.invalid || (path === 'to' && this.invalidFixedDates()))
+      (!!this.form.get(path)?.invalid ||
+        (path.startsWith('filters.') && this.noDayLeft(path.slice(8) as DepartureDays)) ||
+        (path === 'to' && this.invalidFixedDates()) ||
+        (path === 'stayLength.max' && this.form.controls.stayLength.hasError('maxBelowMin')))
     );
   }
 }

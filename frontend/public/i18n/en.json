@@ -64,9 +64,6 @@
     },
     "hint": {
       "unsupportedAirports": "Search from supported airports only: {{airports}}.",
-      "fields": "Choose home airports and a destination from the suggestions, both dates and nights from the minimum up to the maximum.",
-      "timeRanges": "In Filters, give each time range both ends, or leave both empty.",
-      "noDepartureDay": "In Filters, leave at least one departure day ticked.",
       "fixedDateOrder": "The inbound date must not be before the outbound date."
     },
     "failed": "Search failed. Check the form and try again.",
@@ -76,7 +73,20 @@
       "fixed": "Fixed dates"
     },
     "outboundDate": "Outbound date",
-    "inboundDate": "Inbound date"
+    "inboundDate": "Inbound date",
+    "validation": {
+      "homeAirports": "Choose at least one home airport.",
+      "destination": "Choose a destination.",
+      "dateRequired": "Choose a date.",
+      "chooseSuggestion": "Choose a suggestion or clear the typed text.",
+      "nightCount": "Enter a whole number of nights, zero or more.",
+      "nightOrder": "Maximum nights must be at least the minimum.",
+      "workStart": "Enter your work start time.",
+      "workEnd": "Enter your work end time.",
+      "leaveCount": "Enter a whole number of leave days, zero or more.",
+      "timeRange": "Enter both ends of the time range or leave both empty.",
+      "departureDay": "Leave at least one possible departure day ticked."
+    }
   },
   "results": {
     "showMore": "Show more",
