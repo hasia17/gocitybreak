@@ -141,6 +141,13 @@ export class Search {
       ? sortOffers(found.offers, this.sort()).map((o) => offerView(o, found.at, texts))
       : undefined;
   });
+  protected readonly visibleCount = signal(20);
+  protected readonly visibleOffers = computed(() => this.offers()?.slice(0, this.visibleCount()));
+
+  protected showMore() {
+    this.visibleCount.update((count) => count + 20);
+  }
+
   protected readonly loading = signal(false);
   /** The translation key of the last search's failure. */
   protected readonly error = signal<string | undefined>(undefined);
@@ -148,6 +155,9 @@ export class Search {
   protected readonly submitted = signal(false);
 
   constructor() {
+    this.form.controls.sort.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.visibleCount.set(20));
     // Typed home airports, destination and exclusions are checked again once the catalogue arrives.
     // Without it, any airport code is taken and the backend checks home airports.
     this.http
@@ -209,6 +219,7 @@ export class Search {
     this.error.set(undefined);
     this.http.post<SearchResponse>('/api/search', buildSearchQuery(v, this.catalogue())).subscribe({
       next: (resp) => {
+        this.visibleCount.set(20);
         this.found.set({ offers: resp.offers, at: Date.now() });
         this.loading.set(false);
       },
