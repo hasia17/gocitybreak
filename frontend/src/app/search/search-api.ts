@@ -30,11 +30,13 @@ export interface SearchQuery {
   maxLeaveDays?: number;
   /** Absent filters restrict nothing; inbound ones apply to round trips only. */
   filters?: SearchFilters;
-  /** Price by default; price per night for round trips only. */
+  /** Price by default; leave days for round trips only. */
   sort?: SortOrder;
 }
 
-export type SortOrder = 'price' | 'leaveDays' | 'pricePerNight';
+export const sortOrders = ['price', 'leaveDays'] as const;
+
+export type SortOrder = (typeof sortOrders)[number];
 
 export type Weekday = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
 
@@ -72,8 +74,6 @@ export interface Offer {
   nights?: number;
   /** Offer price in PLN for one adult, cheapest fare, no cabin bag. */
   price: Price;
-  /** Offer price divided by the nights; round trips of at least one night only. */
-  pricePerNight?: Price;
   /** When the oldest stored price of the offer's flights was fetched (ISO 8601). */
   priceFetchedAt: string;
   /** Working days a round trip costs (GLOSSARY: Leave days). */

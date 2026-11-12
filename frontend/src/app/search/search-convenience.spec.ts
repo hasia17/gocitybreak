@@ -170,6 +170,25 @@ describe('Search conveniences', () => {
     );
   });
 
+  it('sorts by price when the remembered sort no longer exists', async () => {
+    // Price per night was removed (#33).
+    localStorage.setItem(
+      'gocitybreak.searchSettings.v1',
+      JSON.stringify({ homeAirports: 'KRK', sort: 'pricePerNight' }),
+    );
+    const { root } = await render();
+    expect(root.querySelector<HTMLSelectElement>('select[aria-label="Sort by"]')!.value).toBe(
+      'price',
+    );
+
+    fill(root, 'To', 'BGY');
+    fill(root, 'Earliest', '2026-12-01');
+    fill(root, 'Latest', '2026-12-10');
+    search(root);
+
+    expect(httpTesting.expectOne('/api/search').request.body.sort).toBe('price');
+  });
+
   it('ignores stored settings it cannot read', async () => {
     localStorage.setItem('gocitybreak.searchSettings.v1', '{not json');
     const { root } = await render();

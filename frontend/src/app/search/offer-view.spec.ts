@@ -57,7 +57,7 @@ describe('offerView', () => {
     expect(view(2, '2026-12-05T11:59:00Z').nights).toBe('0 nights');
   });
 
-  it('formats round-trip badges, per-night price and separate tickets', () => {
+  it('formats round-trip badges and separate tickets', () => {
     const view = offerView(
       {
         ...offer,
@@ -69,7 +69,6 @@ describe('offerView', () => {
         inbound: { isDirect: true, flights: [offer.outbound.flights[0]] },
         nights: 1,
         leaveDays: 0,
-        pricePerNight: { amount: 84.98, currency: 'PLN', approximate: true },
       },
       Date.parse('2027-01-01T12:00:00Z'),
     );
@@ -79,7 +78,6 @@ describe('offerView', () => {
     expect(view.nights).toBe('1 night');
     expect(view.leaveDays).toBe('no leave days');
     expect(view.freeLeave).toBe(true);
-    expect(view.pricePerNight).toBe('≈ 84.98 PLN per night');
     expect(view.priceAge).toBe('27 days ago');
     expect(view.ticketCount).toBe('three');
     expect(view.tickets).toHaveLength(3);

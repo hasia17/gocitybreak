@@ -60,9 +60,6 @@ const (
 	ByPrice SortOrder = "price"
 	// ByLeaveDays sorts round-trip offers by ascending leave days, then by price.
 	ByLeaveDays SortOrder = "leaveDays"
-	// ByPricePerNight sorts round-trip offers by ascending price per night, then by price;
-	// offers of 0 nights, which have no price per night, go last.
-	ByPricePerNight SortOrder = "pricePerNight"
 )
 
 // Destination is where the traveller wants to fly: any number of airports, cities and countries,
@@ -98,17 +95,6 @@ type Offer struct {
 	PriceFetchedAt time.Time
 	// LeaveDays is the number of leave days of a round-trip offer (GLOSSARY: Leave days); 0 for a one-way offer.
 	LeaveDays int
-}
-
-// PricePerNight is the offer price divided by the number of hotel nights (GLOSSARY: Price per night),
-// rounded to minor units; ok is false for an offer of 0 nights, including every one-way offer.
-func (o Offer) PricePerNight() (price Price, ok bool) {
-	if o.Nights <= 0 {
-		return Price{}, false
-	}
-	price = o.Price
-	price.Amount = (o.Price.Amount + int64(o.Nights)/2) / int64(o.Nights)
-	return price, true
 }
 
 // Leg is one-way travel made of one or more flights.
@@ -231,13 +217,13 @@ func (q Query) validate() error {
 	}
 	switch q.Sort {
 	case "", ByPrice:
-	case ByLeaveDays, ByPricePerNight:
-		// One-way offers have neither leave days nor nights.
+	case ByLeaveDays:
+		// One-way offers have no leave days.
 		if q.Kind != RoundTrip {
 			return &QueryError{fmt.Sprintf("sort %q applies to round trips only", q.Sort)}
 		}
 	default:
-		return &QueryError{fmt.Sprintf("sort must be %q, %q or %q", ByPrice, ByLeaveDays, ByPricePerNight)}
+		return &QueryError{fmt.Sprintf("sort must be %q or %q", ByPrice, ByLeaveDays)}
 	}
 	if len(q.HomeAirports) == 0 {
 		return &QueryError{"homeAirports must not be empty"}

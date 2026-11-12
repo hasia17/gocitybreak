@@ -89,9 +89,6 @@ abbr {
   color: inherit;
 }
 
-.price .per-night {
-  color: var(--text);
-}
 .badge.free {
   border-color: var(--text);
   color: var(--text);

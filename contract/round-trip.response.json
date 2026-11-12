@@ -56,11 +56,6 @@
         "currency": "PLN",
         "approximate": false
       },
-      "pricePerNight": {
-        "amount": 45,
-        "currency": "PLN",
-        "approximate": false
-      },
       "priceFetchedAt": "2026-11-09T07:00:00Z",
       "leaveDays": 0
     }
