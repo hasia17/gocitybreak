@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
@@ -58,6 +58,42 @@ function fixedDateOrder(form: AbstractControl): ValidationErrors | null {
     : null;
 }
 
+/** Compare ISO dates with the browser's local calendar, rather than the UTC date. */
+function pastDate(control: AbstractControl): ValidationErrors | null {
+  const now = new Date(Date.now());
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return control.value && control.value < today ? { pastDate: true } : null;
+}
+
+/** The latest flexible date cannot precede the earliest date, for either kind of offer. */
+function dateOrder(form: AbstractControl): ValidationErrors | null {
+  const v = (form as FormGroup).getRawValue() as SearchFormValue;
+  return v.dateMode === 'flexible' && v.from && v.to && v.to < v.from
+    ? { dateOrder: true }
+    : null;
+}
+
+/** Map the English API reasons to interface keys; unknown reasons never reach the page. */
+function rejectedSearchMessage(reason: string): string {
+  if (reason === 'travelWindow.to must not be before travelWindow.from')
+    return 'search.errors.dateOrder';
+  if (reason === 'fixedDates.inbound must not be before fixedDates.outbound')
+    return 'search.hint.fixedDateOrder';
+  const categories: [RegExp, string][] = [
+    [/^(homeAirports\b|home airport .* is not a supported airport$)/, 'homeAirports'],
+    [/^destination\b/, 'destination'],
+    [/^(travelWindow\.|fixedDates\.|exactly one of travelWindow or fixedDates is required$)/, 'dates'],
+    [/^stayLength\b/, 'stayLength'],
+    [/^(workStart|workEnd)\b/, 'workHours'],
+    [/^(outbound|inbound)(Departure|Arrival)\./, 'timeRanges'],
+    [/^(outbound|inbound)DepartureWeekdays\b/, 'weekdays'],
+    [/^maxLeaveDays\b/, 'leaveLimit'],
+    [/^sort\b/, 'sort'],
+    [/^kind\b/, 'kind'],
+  ];
+  return `search.errors.${categories.find(([pattern]) => pattern.test(reason))?.[1] ?? 'rejected'}`;
+}
+
 /** Search form for round-trip (default) or one-way offers, and the list of offers it finds. */
 @Component({
   selector: 'app-search',
@@ -80,8 +116,8 @@ export class Search {
       homeAirports: ['', Validators.required],
       destination: ['', Validators.required],
       exclusions: [''],
-      from: ['', Validators.required],
-      to: ['', Validators.required],
+      from: ['', [Validators.required, pastDate]],
+      to: ['', [Validators.required, pastDate]],
       stayLength: this.fb.group(
         { min: [2, nightCount], max: [3, nightCount] },
         { validators: maxBelowMin },
@@ -95,7 +131,7 @@ export class Search {
       sort: this.fb.control<SortOrder>('price'),
       filters: filtersForm(this.fb),
     },
-    { validators: [noDepartureDay, fixedDateOrder] },
+    { validators: [noDepartureDay, fixedDateOrder, dateOrder] },
   );
   protected readonly places = toSignal(this.form.valueChanges, {
     initialValue: this.form.getRawValue(),
@@ -220,6 +256,9 @@ export class Search {
 
   protected submit() {
     this.submitted.set(true);
+    // A form left open over local midnight must not submit yesterday's dates.
+    for (const date of [this.form.controls.from, this.form.controls.to])
+      date.updateValueAndValidity({ emitEvent: false });
     if (this.form.invalid || !this.catalogue()) return;
     const v = this.form.getRawValue();
     saveSearchSettings(v);
@@ -231,8 +270,11 @@ export class Search {
         this.found.set({ offers: resp.offers, at: Date.now() });
         this.loading.set(false);
       },
-      error: () => {
-        this.error.set('search.failed');
+      error: (error: HttpErrorResponse) => {
+        const reason = typeof error.error === 'string' ? error.error.trim() : '';
+        this.error.set(
+          error.status === 400 ? rejectedSearchMessage(reason) : 'search.errors.server',
+        );
         this.loading.set(false);
       },
     });
@@ -320,7 +362,7 @@ export class Search {
   protected invalid(path: string): boolean {
     return (
       this.submitted() &&
-      (!!this.form.get(path)?.invalid || (path === 'to' && this.invalidFixedDates()))
+      (!!this.form.get(path)?.invalid || (path === 'to' && (!!this.form.errors?.['dateOrder'] || this.invalidFixedDates())))
     );
   }
 }

@@ -76,7 +76,22 @@
       "fixed": "Fixed dates"
     },
     "outboundDate": "Outbound date",
-    "inboundDate": "Inbound date"
+    "inboundDate": "Inbound date",
+    "errors": {
+      "homeAirports": "Choose a supported home airport from the suggestions.",
+      "destination": "Choose a destination from the suggestions, or Anywhere.",
+      "dateOrder": "The latest date must not be before the earliest date.",
+      "dates": "Check your travel dates and choose either flexible or fixed dates.",
+      "stayLength": "Check the minimum and maximum nights; fixed dates do not use a stay length.",
+      "workHours": "Check your work start and work end times.",
+      "timeRanges": "Check the departure and arrival time ranges.",
+      "weekdays": "Check the departure days selected in Filters.",
+      "leaveLimit": "The leave limit must be zero or more.",
+      "sort": "Choose an available sort order for this kind of offer.",
+      "kind": "Choose round trip or one way.",
+      "rejected": "This search was rejected. Check your choices and try again.",
+      "server": "Something went wrong on our side. Please try again."
+    }
   },
   "results": {
     "showMore": "Show more",

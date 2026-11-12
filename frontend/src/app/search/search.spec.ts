@@ -47,6 +47,7 @@ describe('Search', () => {
 
   beforeEach(async () => {
     localStorage.clear(); // search remembers its settings; each test starts from the defaults
+    vi.spyOn(Date, 'now').mockReturnValue(new Date(2026, 10, 1, 12).getTime());
     await TestBed.configureTestingModule({
       imports: [Search],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideTestI18n()],
@@ -58,6 +59,7 @@ describe('Search', () => {
     // Tests that type only airport codes leave the catalogue request unanswered.
     httpTesting.match('/api/catalogue');
     httpTesting.verify();
+    vi.restoreAllMocks();
   });
 
   function fill(root: HTMLElement, label: string, value: string) {

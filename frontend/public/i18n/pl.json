@@ -76,7 +76,22 @@
       "fixed": "Stałe daty"
     },
     "outboundDate": "Data wylotu",
-    "inboundDate": "Data powrotu"
+    "inboundDate": "Data powrotu",
+    "errors": {
+      "homeAirports": "Wybierz obsługiwane lotnisko wylotu z podpowiedzi.",
+      "destination": "Wybierz cel z podpowiedzi lub opcję Dokądkolwiek.",
+      "dateOrder": "Najpóźniejsza data nie może być wcześniejsza niż najwcześniejsza.",
+      "dates": "Sprawdź daty podróży i wybierz daty elastyczne albo konkretne.",
+      "stayLength": "Sprawdź minimalną i maksymalną liczbę nocy; konkretne daty nie wymagają długości pobytu.",
+      "workHours": "Sprawdź godziny rozpoczęcia i zakończenia pracy.",
+      "timeRanges": "Sprawdź zakresy godzin wylotu i przylotu.",
+      "weekdays": "Sprawdź dni wylotu wybrane w Filtrach.",
+      "leaveLimit": "Limit urlopu musi wynosić zero lub więcej.",
+      "sort": "Wybierz dostępny sposób sortowania dla tego rodzaju oferty.",
+      "kind": "Wybierz podróż w obie strony albo w jedną stronę.",
+      "rejected": "Wyszukiwanie zostało odrzucone. Sprawdź wybrane opcje i spróbuj ponownie.",
+      "server": "Coś poszło nie tak po naszej stronie. Spróbuj ponownie."
+    }
   },
   "results": {
     "showMore": "Pokaż więcej",
