@@ -144,3 +144,8 @@ abbr {
     font-size: 0.85rem;
   }
 }
+
+.price-heading {
+  display: inline-flex;
+  align-items: center;
+}

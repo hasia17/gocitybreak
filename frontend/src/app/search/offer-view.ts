@@ -53,6 +53,7 @@ export function offerView(offer: Offer, now: number, texts: Texts, catalogue?: C
     separateTickets:
       tickets.length > 1 ? plural(texts, 'results.separateTickets', tickets.length) : undefined,
     price: money(texts, offer.price),
+    approximatePrice: !!offer.price.approximate,
     foreignPrices: legs
       .flatMap((leg) => leg.flights)
       .map((flight) => flight.originalPrice)

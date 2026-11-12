@@ -120,5 +120,59 @@
     "airportCount": "{{count}} airports",
     "remove": "Remove {{place}}",
     "noMatches": "No matching places"
+  },
+  "tips": {
+    "flexible": {
+      "label": "About flexible dates",
+      "text": "Find flights within a travel window, choosing a range of nights for a round trip."
+    },
+    "fixed": {
+      "label": "About fixed dates",
+      "text": "Choose exact local departure dates out and back (one date for one way). The number of nights follows from the flights."
+    },
+    "nights": {
+      "label": "About nights",
+      "text": "Counted like hotel nights. An arrival before 06:00 counts from the night before."
+    },
+    "workStart": {
+      "label": "About work start"
+    },
+    "workEnd": {
+      "label": "About work end"
+    },
+    "workHours": {
+      "text": "A departure after work end and a return before work start cost no leave day. These hours count leave days; they do not restrict flight times."
+    },
+    "maxLeaveDays": {
+      "label": "About max leave days",
+      "text": "Working days only, excluding weekends and Polish public holidays."
+    },
+    "localTimes": {
+      "text": "Local time at each airport, as on the ticket: departure at the departure airport, arrival at the arrival airport."
+    },
+    "outboundDeparture": {
+      "label": "About outbound departure time"
+    },
+    "outboundArrival": {
+      "label": "About outbound arrival time"
+    },
+    "inboundDeparture": {
+      "label": "About inbound departure time"
+    },
+    "inboundArrival": {
+      "label": "About inbound arrival time"
+    },
+    "approximatePrice": {
+      "label": "About approximate prices",
+      "text": "Converted into PLN at the NBP mid-market rate because a flight is priced in another currency."
+    },
+    "priceAge": {
+      "label": "About price age",
+      "text": "This is a stored price and may have changed. Check the current price on Ryanair’s site."
+    },
+    "separateTickets": {
+      "label": "About separate tickets",
+      "text": "A self-transfer is at your own risk. Nobody guarantees the next flight if the first is late."
+    }
   }
 }

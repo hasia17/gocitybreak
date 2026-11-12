@@ -130,5 +130,59 @@
     "airportCount": "lotniska: {{count}}",
     "remove": "Usuń {{place}}",
     "noMatches": "Brak pasujących miejsc"
+  },
+  "tips": {
+    "flexible": {
+      "label": "O elastycznych datach",
+      "text": "Szukaj lotów w oknie podróży, wybierając zakres nocy dla podróży tam i z powrotem."
+    },
+    "fixed": {
+      "label": "O stałych datach",
+      "text": "Wybierz dokładne lokalne daty wylotu tam i z powrotem (jedną datę dla lotu w jedną stronę). Liczba nocy wynika z lotów."
+    },
+    "nights": {
+      "label": "O nocach",
+      "text": "Liczone jak noce hotelowe. Przylot przed 06:00 liczy się od poprzedniej nocy."
+    },
+    "workStart": {
+      "label": "O początku pracy"
+    },
+    "workEnd": {
+      "label": "O końcu pracy"
+    },
+    "workHours": {
+      "text": "Wylot po końcu pracy i powrót przed początkiem pracy nie kosztują dnia urlopu. Te godziny służą do liczenia urlopu, nie ograniczają godzin lotów."
+    },
+    "maxLeaveDays": {
+      "label": "O maksymalnej liczbie dni urlopu",
+      "text": "Tylko dni robocze, bez weekendów i polskich świąt ustawowo wolnych od pracy."
+    },
+    "localTimes": {
+      "text": "Czas lokalny na każdym lotnisku, jak na bilecie: wylot według czasu lotniska wylotu, przylot według czasu lotniska przylotu."
+    },
+    "outboundDeparture": {
+      "label": "O godzinie wylotu tam"
+    },
+    "outboundArrival": {
+      "label": "O godzinie przylotu tam"
+    },
+    "inboundDeparture": {
+      "label": "O godzinie wylotu z powrotem"
+    },
+    "inboundArrival": {
+      "label": "O godzinie przylotu z powrotem"
+    },
+    "approximatePrice": {
+      "label": "O przybliżonej cenie",
+      "text": "Przeliczono na PLN po średnim kursie NBP, ponieważ lot jest wyceniony w innej walucie."
+    },
+    "priceAge": {
+      "label": "O czasie sprawdzenia ceny",
+      "text": "To zapisana cena, która mogła się zmienić. Aktualną cenę sprawdzisz na stronie Ryanair."
+    },
+    "separateTickets": {
+      "label": "O osobnych biletach",
+      "text": "Samodzielna przesiadka odbywa się na własne ryzyko. Nikt nie gwarantuje kolejnego lotu, jeśli pierwszy się spóźni."
+    }
   }
 }

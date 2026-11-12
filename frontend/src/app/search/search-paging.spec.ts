@@ -45,7 +45,7 @@ describe('Search offer paging', () => {
     }
     const search = () => root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
     const rows = () => Array.from(root.querySelectorAll<HTMLElement>('[data-testid="offer"]'));
-    const more = () => root.querySelector<HTMLButtonElement>('.results button');
+    const more = () => root.querySelector<HTMLButtonElement>('.results .show-more');
     return { fixture, root, search, rows, more };
   }
 
