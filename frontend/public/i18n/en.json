@@ -49,7 +49,7 @@
     "rangeFrom": "{{moment}} from",
     "rangeTo": "{{moment}} to",
     "daysInfo": "About departure days",
-    "daysNote": "Ticked days suit you; untick the ones that do not. Days outside the travel window are greyed out and do not count.",
+    "daysNote": "Untick the days you don't want to fly. Greyed-out days fall outside your travel dates.",
     "outboundDays": "Outbound departure days",
     "inboundDays": "Inbound departure days",
     "weekday": {
