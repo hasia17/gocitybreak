@@ -1,0 +1,64 @@
+{
+  "offers": [
+    {
+      "kind": "roundTrip",
+      "outbound": {
+        "isDirect": true,
+        "flights": [
+          {
+            "departureAirport": "KRK",
+            "arrivalAirport": "BGY",
+            "departure": {
+              "date": "2026-12-04",
+              "time": "23:00",
+              "timeZone": "Europe/Warsaw"
+            },
+            "arrival": {
+              "date": "2026-12-05",
+              "time": "02:00",
+              "timeZone": "Europe/Rome"
+            },
+            "originalPrice": {
+              "amount": 50,
+              "currency": "PLN"
+            },
+            "fetchedAt": "2026-11-10T08:00:00Z"
+          }
+        ]
+      },
+      "inbound": {
+        "isDirect": true,
+        "flights": [
+          {
+            "departureAirport": "BGY",
+            "arrivalAirport": "KRK",
+            "departure": {
+              "date": "2026-12-06",
+              "time": "23:00",
+              "timeZone": "Europe/Rome"
+            },
+            "arrival": {
+              "date": "2026-12-07",
+              "time": "01:00",
+              "timeZone": "Europe/Warsaw"
+            },
+            "originalPrice": {
+              "amount": 40,
+              "currency": "PLN"
+            },
+            "fetchedAt": "2026-11-09T07:00:00Z"
+          }
+        ]
+      },
+      "nights": 2,
+      "price": {
+        "amount": 90,
+        "currency": "PLN",
+        "approximate": false
+      },
+      "priceFetchedAt": "2026-11-09T07:00:00Z",
+      "leaveDays": 0
+    }
+  ]
+}
+

@@ -23,6 +23,7 @@ import { filtersForm } from './search-filters';
 import { loadSearchSettings, saveSearchSettings } from './search-settings';
 import {
   buildSearchQuery,
+  DateMode,
   DepartureDays,
   departureDaysWithoutChoice,
   SearchFormValue,
@@ -57,6 +58,14 @@ function noDepartureDay(form: AbstractControl): ValidationErrors | null {
   return missing.length > 0 ? { noDepartureDay: missing } : null;
 }
 
+/** Fixed dates require an inbound departure no earlier than the outbound departure. */
+function fixedDateOrder(form: AbstractControl): ValidationErrors | null {
+  const v = (form as FormGroup).getRawValue() as SearchFormValue;
+  return v.dateMode === 'fixed' && v.kind === 'roundTrip' && v.from && v.to && v.to < v.from
+    ? { fixedDateOrder: true }
+    : null;
+}
+
 /** Search form for round-trip (default) or one-way offers, and the list of offers it finds. */
 @Component({
   selector: 'app-search',
@@ -75,6 +84,7 @@ export class Search {
   protected readonly form = this.fb.group(
     {
       kind: this.fb.control<OfferKind>('roundTrip'),
+      dateMode: this.fb.control<DateMode>('flexible'),
       homeAirports: ['', [...airportCodes, this.supportedAirports()]],
       destination: ['', this.knownNames('destination')],
       exclusions: ['', this.knownNames('exclusions')],
@@ -93,7 +103,7 @@ export class Search {
       sort: this.fb.control<SortOrder>('price'),
       filters: filtersForm(this.fb),
     },
-    { validators: noDepartureDay },
+    { validators: [noDepartureDay, fixedDateOrder] },
   );
   protected readonly moments = moments;
   protected readonly weekdays = weekdays;
@@ -125,6 +135,10 @@ export class Search {
       initialValue: this.form.controls.leave.controls.ignoreLeave.value,
     },
   );
+
+  protected readonly dateMode = toSignal(this.form.controls.dateMode.valueChanges, {
+    initialValue: this.form.controls.dateMode.value,
+  });
 
   /** Offers of the last search and when they arrived; undefined before the first search. */
   private readonly found = signal<{ offers: Offer[]; at: number } | undefined>(undefined);
@@ -177,14 +191,9 @@ export class Search {
       });
     // Fields that do not apply to the kind of offer are disabled: a disabled control does not
     // affect the form's validity, and the raw value keeps it so remembered settings lose nothing.
-    this.form.controls.kind.valueChanges.pipe(takeUntilDestroyed()).subscribe((kind) => {
-      for (const path of roundTripOnlyFields) {
-        if (fieldApplies(path, kind)) this.form.get(path)?.enable();
-        else this.form.get(path)?.disable();
-      }
-      this.updateLeaveLimit();
-      this.greyOutImpossibleDays();
-    });
+    merge(this.form.controls.kind.valueChanges, this.form.controls.dateMode.valueChanges)
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.updateApplicableFields());
     this.form.controls.leave.controls.ignoreLeave.valueChanges
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.updateLeaveLimit());
@@ -206,7 +215,7 @@ export class Search {
           sun: true,
         });
     }
-    this.greyOutImpossibleDays();
+    this.updateApplicableFields();
     // A sort remembered before it was removed (e.g. price per night) falls back to price.
     if (!(sortOrders as readonly string[]).includes(this.form.controls.sort.value)) {
       this.form.controls.sort.setValue('price');
@@ -244,6 +253,20 @@ export class Search {
     return texts ? plural(texts, 'results.count', count) : '';
   }
 
+  private updateApplicableFields() {
+    const { kind, dateMode } = this.form.controls;
+    for (const path of [...roundTripOnlyFields, 'to', 'filters.outboundDepartureWeekdays']) {
+      if (fieldApplies(path, kind.value, dateMode.value)) this.form.get(path)?.enable();
+      else this.form.get(path)?.disable();
+    }
+    this.updateLeaveLimit();
+    this.greyOutImpossibleDays();
+  }
+
+  protected invalidFixedDates(): boolean {
+    return this.submitted() && !!this.form.errors?.['fixedDateOrder'];
+  }
+
   /** The departure-day groups of the filters. */
   private departureDays() {
     const { outboundDepartureWeekdays, inboundDepartureWeekdays } =
@@ -270,7 +293,7 @@ export class Search {
       ['outboundDepartureWeekdays', this.departureDays()[0]],
       ['inboundDepartureWeekdays', this.departureDays()[1]],
     ] as const) {
-      if (!fieldApplies(`filters.${name}`, kind)) continue;
+      if (!fieldApplies(`filters.${name}`, kind, this.form.controls.dateMode.value)) continue;
       for (const day of weekdays) {
         const control = days.controls[day.value];
         if (possible.has(day.value)) control.enable({ emitEvent: false });
@@ -294,7 +317,7 @@ export class Search {
 
   /** Whether the form field named by its control path applies to the chosen kind of offer. */
   protected applies(path: string): boolean {
-    return fieldApplies(path, this.kind());
+    return fieldApplies(path, this.kind(), this.dateMode());
   }
 
   /** A validator of home airports: each must be a supported airport of the catalogue, once it is loaded. */
@@ -331,6 +354,9 @@ export class Search {
 
   /** Whether a field, named by its path like "leave.workStart", should be marked invalid: it is, and the user has tried to search. */
   protected invalid(path: string): boolean {
-    return this.submitted() && !!this.form.get(path)?.invalid;
+    return (
+      this.submitted() &&
+      (!!this.form.get(path)?.invalid || (path === 'to' && this.invalidFixedDates()))
+    );
   }
 }
