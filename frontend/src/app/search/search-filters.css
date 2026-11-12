@@ -174,3 +174,12 @@
     grid-template-columns: 1fr auto auto auto;
   }
 }
+
+.time-range .field-error {
+  grid-column: 1 / -1;
+  max-width: none;
+}
+.days .field-error {
+  flex-basis: 100%;
+  max-width: none;
+}

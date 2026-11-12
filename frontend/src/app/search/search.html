@@ -33,9 +33,6 @@
         <app-info-tip [label]="t('tips.fixed.label')" [text]="t('tips.fixed.text')" />
       </span>
     </div>
-    @if (invalidFixedDates()) {
-      <p class="hint" role="alert">{{ t('search.hint.fixedDateOrder') }}</p>
-    }
     <div class="composer">
       <div class="fields">
         <app-place-chips
@@ -47,6 +44,7 @@
           [label]="t('search.from')"
           [placeholder]="t('search.fromPlaceholder')"
           [invalid]="invalid('homeAirports')"
+          [error]="validationMessage('homeAirports')"
           [class.invalid]="invalid('homeAirports')"
         />
         <span class="arrow" aria-hidden="true">→</span>
@@ -60,6 +58,7 @@
           [excluded]="places()?.exclusions ?? ''"
           [placeholder]="t('search.toPlaceholder')"
           [invalid]="invalid('destination')"
+          [error]="validationMessage('destination')"
           [class.invalid]="invalid('destination')"
         />
         <app-place-chips
@@ -71,16 +70,33 @@
           [label]="t('search.except')"
           [placeholder]="t('search.exceptPlaceholder')"
           [invalid]="invalid('exclusions')"
+          [error]="validationMessage('exclusions')"
         />
         <span class="divider" aria-hidden="true"></span>
         <label class="field" [class.invalid]="invalid('from')">
           {{ t(dateMode() === 'fixed' ? 'search.outboundDate' : 'search.earliest') }}
-          <input type="date" formControlName="from" [attr.aria-invalid]="invalid('from')" />
+          <input
+            type="date"
+            formControlName="from"
+            [attr.aria-invalid]="invalid('from')"
+            [attr.aria-describedby]="errorId('from')"
+          />
+          @if (validationMessage('from'); as message) {
+            <span class="field-error" [id]="errorId('from')" role="alert">{{ message }}</span>
+          }
         </label>
         @if (applies('to')) {
           <label class="field" [class.invalid]="invalid('to')">
             {{ t(dateMode() === 'fixed' ? 'search.inboundDate' : 'search.latest') }}
-            <input type="date" formControlName="to" [attr.aria-invalid]="invalid('to')" />
+            <input
+              type="date"
+              formControlName="to"
+              [attr.aria-invalid]="invalid('to')"
+              [attr.aria-describedby]="errorId('to')"
+            />
+            @if (validationMessage('to'); as message) {
+              <span class="field-error" [id]="errorId('to')" role="alert">{{ message }}</span>
+            }
           </label>
         }
         @if (applies('stayLength')) {
@@ -99,7 +115,8 @@
                 min="0"
                 formControlName="min"
                 [attr.aria-label]="t('search.minNights')"
-                [attr.aria-invalid]="invalid('stayLength')"
+                [attr.aria-invalid]="invalid('stayLength.min')"
+                [attr.aria-describedby]="errorId('stayLength.min')"
               />
               <span aria-hidden="true">–</span>
               <input
@@ -107,9 +124,15 @@
                 min="0"
                 formControlName="max"
                 [attr.aria-label]="t('search.maxNights')"
-                [attr.aria-invalid]="invalid('stayLength')"
+                [attr.aria-invalid]="invalid('stayLength.max')"
+                [attr.aria-describedby]="errorId('stayLength.max')"
               />
             </span>
+            @for (path of ['stayLength.min', 'stayLength.max']; track path) {
+              @if (validationMessage(path); as message) {
+                <span class="field-error" [id]="errorId(path)" role="alert">{{ message }}</span>
+              }
+            }
           </div>
         }
       </div>
@@ -140,7 +163,13 @@
                   type="time"
                   formControlName="workStart"
                   [attr.aria-invalid]="invalid('leave.workStart')"
+                  [attr.aria-describedby]="errorId('leave.workStart')"
                 />
+                @if (validationMessage('leave.workStart'); as message) {
+                  <span class="field-error" [id]="errorId('leave.workStart')" role="alert">{{
+                    message
+                  }}</span>
+                }
               </label>
               <app-info-tip [label]="t('tips.workStart.label')" [text]="t('tips.workHours.text')" />
             </div>
@@ -151,7 +180,13 @@
                   type="time"
                   formControlName="workEnd"
                   [attr.aria-invalid]="invalid('leave.workEnd')"
+                  [attr.aria-describedby]="errorId('leave.workEnd')"
                 />
+                @if (validationMessage('leave.workEnd'); as message) {
+                  <span class="field-error" [id]="errorId('leave.workEnd')" role="alert">{{
+                    message
+                  }}</span>
+                }
               </label>
               <app-info-tip [label]="t('tips.workEnd.label')" [text]="t('tips.workHours.text')" />
             </div>
@@ -164,7 +199,13 @@
                   formControlName="maxLeaveDays"
                   [placeholder]="t('search.anyLeave')"
                   [attr.aria-invalid]="invalid('leave.maxLeaveDays')"
+                  [attr.aria-describedby]="errorId('leave.maxLeaveDays')"
                 />
+                @if (validationMessage('leave.maxLeaveDays'); as message) {
+                  <span class="field-error" [id]="errorId('leave.maxLeaveDays')" role="alert">{{
+                    message
+                  }}</span>
+                }
               </label>
               <app-info-tip
                 [label]="t('tips.maxLeaveDays.label')"
@@ -215,6 +256,7 @@
                   formControlName="from"
                   [attr.aria-label]="t('search.rangeFrom', { moment: label })"
                   [attr.aria-invalid]="rangeInvalid"
+                  [attr.aria-describedby]="errorId('filters.' + moment.name)"
                 />
                 <span aria-hidden="true">–</span>
                 <input
@@ -222,7 +264,13 @@
                   formControlName="to"
                   [attr.aria-label]="t('search.rangeTo', { moment: label })"
                   [attr.aria-invalid]="rangeInvalid"
+                  [attr.aria-describedby]="errorId('filters.' + moment.name)"
                 />
+                @if (validationMessage('filters.' + moment.name); as message) {
+                  <span class="field-error" [id]="errorId('filters.' + moment.name)" role="alert">{{
+                    message
+                  }}</span>
+                }
               </div>
             }
           }
@@ -232,6 +280,7 @@
             class="days"
             formGroupName="outboundDepartureWeekdays"
             [class.invalid]="noDayLeft('outboundDepartureWeekdays')"
+            [attr.aria-describedby]="errorId('filters.outboundDepartureWeekdays')"
           >
             <legend>
               {{ t('search.outboundDays') }}
@@ -239,9 +288,29 @@
             </legend>
             @for (day of weekdays; track day.value) {
               <label
-                ><input type="checkbox" [formControlName]="day.value" />{{
-                  t('search.weekday.' + day.value)
-                }}</label
+                ><input
+                  type="checkbox"
+                  [formControlName]="day.value"
+                  [attr.aria-invalid]="
+                    noDayLeft('outboundDepartureWeekdays') &&
+                    !form.controls.filters.controls.outboundDepartureWeekdays.controls[day.value]
+                      .disabled
+                  "
+                  [attr.aria-describedby]="
+                    form.controls.filters.controls.outboundDepartureWeekdays.controls[day.value]
+                      .disabled
+                      ? null
+                      : errorId('filters.outboundDepartureWeekdays')
+                  "
+                />{{ t('search.weekday.' + day.value) }}</label
+              >
+            }
+            @if (validationMessage('filters.outboundDepartureWeekdays'); as message) {
+              <span
+                class="field-error"
+                [id]="errorId('filters.outboundDepartureWeekdays')"
+                role="alert"
+                >{{ message }}</span
               >
             }
           </fieldset>
@@ -251,13 +320,34 @@
             class="days"
             formGroupName="inboundDepartureWeekdays"
             [class.invalid]="noDayLeft('inboundDepartureWeekdays')"
+            [attr.aria-describedby]="errorId('filters.inboundDepartureWeekdays')"
           >
             <legend>{{ t('search.inboundDays') }}</legend>
             @for (day of weekdays; track day.value) {
               <label
-                ><input type="checkbox" [formControlName]="day.value" />{{
-                  t('search.weekday.' + day.value)
-                }}</label
+                ><input
+                  type="checkbox"
+                  [formControlName]="day.value"
+                  [attr.aria-invalid]="
+                    noDayLeft('inboundDepartureWeekdays') &&
+                    !form.controls.filters.controls.inboundDepartureWeekdays.controls[day.value]
+                      .disabled
+                  "
+                  [attr.aria-describedby]="
+                    form.controls.filters.controls.inboundDepartureWeekdays.controls[day.value]
+                      .disabled
+                      ? null
+                      : errorId('filters.inboundDepartureWeekdays')
+                  "
+                />{{ t('search.weekday.' + day.value) }}</label
+              >
+            }
+            @if (validationMessage('filters.inboundDepartureWeekdays'); as message) {
+              <span
+                class="field-error"
+                [id]="errorId('filters.inboundDepartureWeekdays')"
+                role="alert"
+                >{{ message }}</span
               >
             }
           </fieldset>
@@ -265,120 +355,119 @@
       </div>
     </details>
   </form>
-
-  @if (form.invalid && submitted()) {
-    <p class="hint" role="alert">
-      @if (fieldsInvalid()) {
-        {{ t('search.hint.fields') }}
-      }
-      @if (form.controls.filters.invalid) {
-        {{ t('search.hint.timeRanges') }}
-      }
-      @if (form.hasError('noDepartureDay')) {
-        {{ t('search.hint.noDepartureDay') }}
-      }
-    </p>
-  }
 </section>
 
 @if (error(); as message) {
   <p class="error" role="alert">{{ t(message) }}</p>
 }
 
-@if (offers(); as offers) {
-  <section class="results" data-testid="results" aria-live="polite">
-    @if (offers.length === 0) {
-      <p class="empty">
-        {{ t(kind() === 'roundTrip' ? 'results.emptyRoundTrip' : 'results.emptyOneWay') }}
-      </p>
-    } @else {
-      <header class="results-head">
-        <h2>{{ offerCount(offers.length) }}</h2>
-        <span>{{ t('results.perPerson') }}</span>
-      </header>
-      <ol class="offers">
-        @for (offer of visibleOffers(); track $index) {
-          <li class="offer" data-testid="offer">
-            <div class="legs">
-              @for (leg of offer.legs; track $index) {
-                <div class="leg" role="group" [attr.aria-label]="leg.label">
-                  <span class="leg-label">{{ leg.label }}</span>
-                  @for (flight of leg.flights; track $index) {
-                    <div class="flight">
-                      <time class="date" [attr.datetime]="flight.departureDate">
-                        {{ flight.day }}
-                      </time>
-                      <span class="times">
-                        {{ flight.departureTime }} – {{ flight.arrivalTime }}
-                        @if (flight.daysLater; as days) {
-                          <abbr [title]="t('results.arrives', { date: flight.arrivalDate })"
-                            >+{{ days }}</abbr
-                          >
-                        }
-                      </span>
-                      <span class="route">{{ flight.route }}</span>
-                    </div>
+<div class="results">
+  <!-- Keep progress outside the busy region so its live announcement is not deferred. -->
+  <p class="search-progress" role="status">{{ loading() ? t('results.loading') : '' }}</p>
+  <section
+    data-testid="results"
+    role="region"
+    [attr.aria-label]="t('results.label')"
+    [attr.aria-busy]="loading()"
+    aria-live="polite"
+  >
+    @if (offers(); as offers) {
+      @if (offers.length === 0) {
+        <p class="empty">
+          {{ t(kind() === 'roundTrip' ? 'results.emptyRoundTrip' : 'results.emptyOneWay') }}
+        </p>
+      } @else {
+        <header class="results-head">
+          <h2>{{ offerCount(offers.length) }}</h2>
+          <span>{{ t('results.perPerson') }}</span>
+        </header>
+        <ol class="offers">
+          @for (offer of visibleOffers(); track $index) {
+            <li class="offer" data-testid="offer">
+              <div class="legs">
+                @for (leg of offer.legs; track $index) {
+                  <div class="leg" role="group" [attr.aria-label]="leg.label">
+                    <span class="leg-label">{{ leg.label }}</span>
+                    @for (flight of leg.flights; track $index) {
+                      <div class="flight">
+                        <time class="date" [attr.datetime]="flight.departureDate">
+                          {{ flight.day }}
+                        </time>
+                        <span class="times">
+                          {{ flight.departureTime }} – {{ flight.arrivalTime }}
+                          @if (flight.daysLater; as days) {
+                            <abbr [title]="t('results.arrives', { date: flight.arrivalDate })"
+                              >+{{ days }}</abbr
+                            >
+                          }
+                        </span>
+                        <span class="route">{{ flight.route }}</span>
+                      </div>
+                    }
+                    @if (leg.stops; as stops) {
+                      <span class="badge">{{ stops }}</span>
+                    }
+                  </div>
+                }
+                @if (offer.nights; as nights) {
+                  <span class="badge"
+                    >{{ nights }}
+                    <app-info-tip [label]="t('tips.nights.label')" [text]="t('tips.nights.text')" />
+                  </span>
+                }
+                @if (offer.leaveDays; as leaveDays) {
+                  <span class="badge" [class.free]="offer.freeLeave">{{ leaveDays }}</span>
+                }
+              </div>
+              <div class="price">
+                <span class="price-heading">
+                  <strong>{{ offer.price }}</strong>
+                  @if (offer.approximatePrice) {
+                    <app-info-tip
+                      [label]="t('tips.approximatePrice.label')"
+                      [text]="t('tips.approximatePrice.text')"
+                    />
                   }
-                  @if (leg.stops; as stops) {
-                    <span class="badge">{{ stops }}</span>
-                  }
-                </div>
-              }
-              @if (offer.nights; as nights) {
-                <span class="badge"
-                  >{{ nights }}
-                  <app-info-tip [label]="t('tips.nights.label')" [text]="t('tips.nights.text')" />
                 </span>
-              }
-              @if (offer.leaveDays; as leaveDays) {
-                <span class="badge" [class.free]="offer.freeLeave">{{ leaveDays }}</span>
-              }
-            </div>
-            <div class="price">
-              <span class="price-heading">
-                <strong>{{ offer.price }}</strong>
-                @if (offer.approximatePrice) {
+                <small>
+                  @for (original of offer.foreignPrices; track $index) {
+                    {{ original }} ·
+                  }
+                  {{ t('results.checked', { age: priceAge(offer.priceFetchedAt) }) }}
                   <app-info-tip
-                    [label]="t('tips.approximatePrice.label')"
-                    [text]="t('tips.approximatePrice.text')"
-                  />
-                }
-              </span>
-              <small>
-                @for (original of offer.foreignPrices; track $index) {
-                  {{ original }} ·
-                }
-                {{ t('results.checked', { age: priceAge(offer.priceFetchedAt) }) }}
-                <app-info-tip [label]="t('tips.priceAge.label')" [text]="t('tips.priceAge.text')" />
-              </small>
-              @let tickets = offer.tickets;
-              @if (offer.separateTickets; as separate) {
-                <small
-                  >{{ separate }}
-                  <app-info-tip
-                    [label]="t('tips.separateTickets.label')"
-                    [text]="t('tips.separateTickets.text')"
+                    [label]="t('tips.priceAge.label')"
+                    [text]="t('tips.priceAge.text')"
                   />
                 </small>
-              }
-              @for (ticket of tickets; track ticket.url) {
-                <a [href]="ticket.url" target="_blank" rel="noopener">
-                  {{
-                    tickets.length > 1
-                      ? t('results.bookRoute', { route: ticket.route })
-                      : t('results.book')
-                  }}
-                </a>
-              }
-            </div>
-          </li>
+                @let tickets = offer.tickets;
+                @if (offer.separateTickets; as separate) {
+                  <small
+                    >{{ separate }}
+                    <app-info-tip
+                      [label]="t('tips.separateTickets.label')"
+                      [text]="t('tips.separateTickets.text')"
+                    />
+                  </small>
+                }
+                @for (ticket of tickets; track ticket.url) {
+                  <a [href]="ticket.url" target="_blank" rel="noopener">
+                    {{
+                      tickets.length > 1
+                        ? t('results.bookRoute', { route: ticket.route })
+                        : t('results.book')
+                    }}
+                  </a>
+                }
+              </div>
+            </li>
+          }
+        </ol>
+        @if (visibleCount() < offers.length) {
+          <button class="show-more" type="button" (click)="showMore()">
+            {{ t('results.showMore') }}
+          </button>
         }
-      </ol>
-      @if (visibleCount() < offers.length) {
-        <button class="show-more" type="button" (click)="showMore()">
-          {{ t('results.showMore') }}
-        </button>
       }
     }
   </section>
-}
+</div>

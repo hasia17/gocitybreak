@@ -64,9 +64,6 @@
     },
     "hint": {
       "unsupportedAirports": "Szukaj tylko z obsługiwanych lotnisk: {{airports}}.",
-      "fields": "Wybierz lotniska domowe i cel z listy, obie daty oraz minimalną i maksymalną liczbę nocy.",
-      "timeRanges": "W filtrach podaj oba końce każdego przedziału godzin albo zostaw oba puste.",
-      "noDepartureDay": "W filtrach zostaw zaznaczony co najmniej jeden dzień wylotu.",
       "fixedDateOrder": "Data powrotu nie może być wcześniejsza niż data wylotu."
     },
     "failed": "Wyszukiwanie nie powiodło się. Sprawdź formularz i spróbuj ponownie.",
@@ -91,9 +88,24 @@
       "kind": "Wybierz podróż w obie strony albo w jedną stronę.",
       "rejected": "Wyszukiwanie zostało odrzucone. Sprawdź wybrane opcje i spróbuj ponownie.",
       "server": "Coś poszło nie tak po naszej stronie. Spróbuj ponownie."
+    },
+    "validation": {
+      "homeAirports": "Wybierz co najmniej jedno lotnisko domowe.",
+      "destination": "Wybierz cel podróży.",
+      "dateRequired": "Wybierz datę.",
+      "chooseSuggestion": "Wybierz podpowiedź albo usuń wpisany tekst.",
+      "nightCount": "Podaj liczbę całkowitą nocy, nie mniejszą niż zero.",
+      "nightOrder": "Maksymalna liczba nocy nie może być mniejsza od minimalnej.",
+      "workStart": "Podaj godzinę rozpoczęcia pracy.",
+      "workEnd": "Podaj godzinę zakończenia pracy.",
+      "leaveCount": "Podaj liczbę całkowitą dni urlopu, nie mniejszą niż zero.",
+      "timeRange": "Podaj oba końce przedziału godzin albo zostaw oba puste.",
+      "departureDay": "Zostaw zaznaczony co najmniej jeden możliwy dzień wylotu."
     }
   },
   "results": {
+    "label": "Wyniki wyszukiwania",
+    "loading": "Szukamy ofert…",
     "showMore": "Pokaż więcej",
     "emptyRoundTrip": "Żadna oferta nie pasuje do wyszukiwania. Spróbuj je poluzować: szersze okno podróży, więcej lotnisk, większy zakres nocy, więcej dni urlopu albo mniej filtrów: szersze przedziały godzin, więcej dni tygodnia.",
     "emptyOneWay": "Żadna oferta nie pasuje do wyszukiwania. Spróbuj je poluzować: szersze okno podróży, więcej lotnisk albo mniej filtrów: szersze przedziały godzin, więcej dni tygodnia.",

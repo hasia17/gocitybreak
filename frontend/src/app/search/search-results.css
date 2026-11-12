@@ -3,6 +3,35 @@
   max-width: 44rem;
   margin: 0 auto;
 }
+.search-progress {
+  margin: 0;
+}
+.search-progress:not(:empty) {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 0.75rem;
+}
+.search-progress:not(:empty)::before {
+  content: '';
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+  border: 2px solid var(--line);
+  border-top-color: var(--text);
+  border-radius: 50%;
+  animation: search-spin 0.8s linear infinite;
+}
+@keyframes search-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .search-progress::before {
+    animation: none;
+  }
+}
 .results-head {
   display: flex;
   flex-wrap: wrap;

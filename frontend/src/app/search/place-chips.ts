@@ -9,7 +9,13 @@ import {
   input,
   signal,
 } from '@angular/core';
-import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+import {
+  ControlValueAccessor,
+  NG_VALUE_ACCESSOR,
+  NG_VALIDATORS,
+  ValidationErrors,
+  Validator,
+} from '@angular/forms';
 import { TranslocoService } from '@jsverse/transloco';
 import { Catalogue } from './search-api';
 import { cataloguePlaces, PlaceField, PlaceSuggestion, suggestPlaces } from './place-suggestions';
@@ -19,6 +25,7 @@ import { cataloguePlaces, PlaceField, PlaceSuggestion, suggestPlaces } from './p
   selector: 'app-place-chips',
   providers: [
     { provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => PlaceChips), multi: true },
+    { provide: NG_VALIDATORS, useExisting: forwardRef(() => PlaceChips), multi: true },
   ],
   styleUrl: './place-chips.css',
   template: `
@@ -47,6 +54,7 @@ import { cataloguePlaces, PlaceField, PlaceSuggestion, suggestPlaces } from './p
         [attr.aria-expanded]="open()"
         [attr.aria-activedescendant]="open() && active() >= 0 ? id + '-option-' + active() : null"
         [attr.aria-invalid]="invalid()"
+        [attr.aria-describedby]="error() ? id + '-error' : null"
         [disabled]="disabled()"
         autocomplete="off"
         [placeholder]="placeholder()"
@@ -57,6 +65,9 @@ import { cataloguePlaces, PlaceField, PlaceSuggestion, suggestPlaces } from './p
         (keydown)="key($event)"
       />
     </div>
+    @if (error()) {
+      <span class="field-error" [id]="id + '-error'" role="alert">{{ error() }}</span>
+    }
     @if (open()) {
       <div role="listbox" [id]="id + '-list'" [attr.aria-label]="label()" class="suggestions">
         @for (place of suggestions(); track place.value; let i = $index) {
@@ -78,7 +89,7 @@ import { cataloguePlaces, PlaceField, PlaceSuggestion, suggestPlaces } from './p
     }
   `,
 })
-export class PlaceChips implements ControlValueAccessor {
+export class PlaceChips implements ControlValueAccessor, Validator {
   private static nextId = 0;
   protected readonly id = `places-${PlaceChips.nextId++}`;
   readonly catalogue = input<Catalogue>();
@@ -88,6 +99,7 @@ export class PlaceChips implements ControlValueAccessor {
   readonly language = input('en');
   readonly excluded = input('');
   readonly invalid = input(false);
+  readonly error = input('');
   private readonly transloco = inject(TranslocoService);
   private readonly injector = inject(Injector);
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -118,6 +130,13 @@ export class PlaceChips implements ControlValueAccessor {
   );
   private onChange: (value: string) => void = () => {};
   private onTouched: () => void = () => {};
+  private onValidatorChange: () => void = () => {};
+  validate(): ValidationErrors | null {
+    return this.text().trim() ? { chooseSuggestion: true } : null;
+  }
+  registerOnValidatorChange(fn: () => void): void {
+    this.onValidatorChange = fn;
+  }
   writeValue(value: unknown): void {
     this.selected.set(
       typeof value === 'string'
@@ -153,11 +172,13 @@ export class PlaceChips implements ControlValueAccessor {
     this.text.set((event.target as HTMLInputElement).value);
     this.focused.set(true);
     this.active.set(-1);
+    this.onValidatorChange();
   }
   protected blur(): void {
     this.focused.set(false);
     this.active.set(-1);
     this.onTouched();
+    this.onValidatorChange();
   }
   protected choose(place: PlaceSuggestion): void {
     const values =
@@ -165,8 +186,9 @@ export class PlaceChips implements ControlValueAccessor {
     this.selected.set(
       place.kind === 'anywhere' ? ['anywhere'] : [...new Set([...this.selected(), ...values])],
     );
-    this.onChange(this.selected().join(', '));
     this.text.set('');
+    this.onChange(this.selected().join(', '));
+    this.onValidatorChange();
     this.active.set(-1);
     this.focused.set(false);
   }

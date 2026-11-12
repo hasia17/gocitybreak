@@ -165,6 +165,6 @@ describe('Fixed dates search', () => {
     );
     submit(root);
     http.expectNone('/api/search');
-    expect(root.textContent).toContain('leave at least one departure day ticked');
+    expect(root.textContent).toContain('Leave at least one possible departure day ticked');
   });
 });
