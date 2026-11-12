@@ -77,40 +77,54 @@
   border: 0;
 }
 .days legend {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
   margin-bottom: 0.25rem;
   padding: 0;
   color: var(--muted);
 }
 .days label {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  min-height: 2.75rem;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.25rem;
   padding: 0 0.6rem;
   border: 1px solid var(--line);
   border-radius: 9999px;
+  /* An unticked day is excluded from the search: crossed out. */
+  color: var(--muted);
+  text-decoration: line-through;
   cursor: pointer;
 }
+.days label:hover {
+  border-color: var(--faint);
+}
 .days label:has(input:checked) {
-  background: var(--text);
-  color: var(--page);
+  border-color: transparent;
+  background: var(--subtle);
+  color: var(--text);
+  text-decoration: none;
 }
 .days input {
+  position: absolute;
+  inset: 0;
   margin: 0;
+  opacity: 0;
+  cursor: inherit;
 }
-.days-note {
-  width: 100%;
-  margin-bottom: -0.5rem;
+.days label:has(input:focus-visible) {
+  box-shadow: 0 0 0 2px var(--ring);
 }
 /* A day outside the travel window: neither ticked nor unticked counts, so it shows neither. */
 .days label:has(input:disabled) {
+  border: 1px dashed var(--line);
   background: none;
-  border-style: dashed;
   color: var(--faint);
+  text-decoration: none;
   cursor: not-allowed;
-}
-.days label:has(input:disabled) input {
-  opacity: 0.4;
 }
 .days.invalid legend {
   color: var(--danger);

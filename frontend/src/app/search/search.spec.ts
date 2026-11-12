@@ -72,8 +72,8 @@ describe('Search', () => {
 
   /** The checkbox of a weekday, e.g. "Fri" among the "Outbound departure days". */
   function dayBox(root: HTMLElement, days: string, weekday: string): HTMLInputElement {
-    const fieldset = Array.from(root.querySelectorAll('fieldset')).find(
-      (f) => f.querySelector('legend')?.textContent?.trim() === days,
+    const fieldset = Array.from(root.querySelectorAll('fieldset')).find((f) =>
+      f.querySelector('legend')?.textContent?.trim().startsWith(days),
     );
     const box = Array.from(fieldset?.querySelectorAll('label') ?? [])
       .find((l) => l.textContent?.trim() === weekday)
@@ -304,6 +304,7 @@ describe('Search', () => {
     const enabled = (days: string) => all.filter((d) => !dayBox(root, days, d).disabled);
 
     expect(all.every((d) => dayBox(root, 'Outbound departure days', d).checked)).toBe(true);
+    expect(root.querySelector('legend [aria-label="About departure days"]')).not.toBeNull();
     expect(enabled('Outbound departure days')).toEqual(all);
 
     // Wed 11 Nov 2026 – Fri 13 Nov 2026
@@ -337,8 +338,8 @@ describe('Search', () => {
     const alert = root.querySelector('[role="alert"]')?.textContent;
     expect(alert).toContain('leave at least one departure day ticked');
     expect(alert).not.toContain('3-letter airport codes');
-    const inbound = Array.from(root.querySelectorAll('fieldset')).find(
-      (f) => f.querySelector('legend')?.textContent?.trim() === 'Inbound departure days',
+    const inbound = Array.from(root.querySelectorAll('fieldset')).find((f) =>
+      f.querySelector('legend')?.textContent?.trim().startsWith('Inbound departure days'),
     );
     expect(inbound?.classList).toContain('invalid');
 

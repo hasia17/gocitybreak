@@ -15,6 +15,7 @@ import { map, merge, switchMap } from 'rxjs';
 import { Language, textsIn } from '../i18n/language';
 import { ago, plural } from '../i18n/texts';
 import { readTypedNames } from './typed-names';
+import { InfoTip } from '../ui/info-tip';
 import { offerView } from './offer-view';
 import { Catalogue, Offer, OfferKind, SearchResponse, SortOrder, sortOrders } from './search-api';
 import { filtersForm } from './search-filters';
@@ -57,7 +58,7 @@ function noDepartureDay(form: AbstractControl): ValidationErrors | null {
 /** Search form for round-trip (default) or one-way offers, and the list of offers it finds. */
 @Component({
   selector: 'app-search',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, InfoTip],
   styleUrls: ['./search.css', './search-filters.css', './search-results.css'],
   templateUrl: './search.html',
 })

@@ -171,13 +171,15 @@
             }
           }
         </div>
-        <p class="note days-note">{{ t('search.daysNote') }}</p>
         <fieldset
           class="days"
           formGroupName="outboundDepartureWeekdays"
           [class.invalid]="noDayLeft('outboundDepartureWeekdays')"
         >
-          <legend>{{ t('search.outboundDays') }}</legend>
+          <legend>
+            {{ t('search.outboundDays') }}
+            <app-info-tip [label]="t('search.daysInfo')" [text]="t('search.daysNote')" />
+          </legend>
           @for (day of weekdays; track day.value) {
             <label
               ><input type="checkbox" [formControlName]="day.value" />{{

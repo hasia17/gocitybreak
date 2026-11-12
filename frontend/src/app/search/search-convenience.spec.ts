@@ -195,7 +195,7 @@ describe('Search conveniences', () => {
     const { root } = await render();
     const ticked = (legend: string) =>
       Array.from(root.querySelectorAll('fieldset'))
-        .find((f) => f.querySelector('legend')?.textContent?.trim() === legend)!
+        .find((f) => f.querySelector('legend')?.textContent?.trim().startsWith(legend))!
         .querySelectorAll<HTMLInputElement>('input:checked').length;
 
     expect(ticked('Outbound departure days')).toBe(7);

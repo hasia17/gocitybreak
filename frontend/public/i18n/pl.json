@@ -48,7 +48,8 @@
     },
     "rangeFrom": "{{moment}} od",
     "rangeTo": "{{moment}} do",
-    "daysNote": "Odznacz dni, które ci nie pasują; dni spoza okna podróży są wyszarzone.",
+    "daysInfo": "O dniach wylotu",
+    "daysNote": "Zaznaczone dni ci pasują; odznacz te, które nie. Dni spoza okna podróży są wyszarzone i się nie liczą.",
     "outboundDays": "Dni wylotu tam",
     "inboundDays": "Dni wylotu z powrotem",
     "weekday": {
