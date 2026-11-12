@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { TranslocoService } from '@jsverse/transloco';
 import { provideTestI18n } from '../i18n/testing';
 import { Search } from './search';
+import { flushCatalogue } from './place-testing';
 
 describe('Search explanations', () => {
   let http: HttpTestingController;
@@ -43,6 +44,7 @@ describe('Search explanations', () => {
 
   it('explains date modes, hotel nights, local hours and leave rules next to the fields in both languages', async () => {
     const fixture = TestBed.createComponent(Search);
+    flushCatalogue();
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
     root.querySelector('details')!.open = true;
@@ -84,6 +86,7 @@ describe('Search explanations', () => {
   });
   it('explains approximate PLN prices, stored price age and separate-ticket risk in both languages', async () => {
     const fixture = TestBed.createComponent(Search);
+    flushCatalogue();
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
     root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();

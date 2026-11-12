@@ -1,3 +1,4 @@
+import { fillPlace, flushCatalogue } from './place-testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
@@ -27,6 +28,7 @@ describe('Search offer paging', () => {
 
   async function renderSearch() {
     const fixture = TestBed.createComponent(Search);
+    flushCatalogue();
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
     for (const [name, value] of Object.entries({
@@ -35,6 +37,8 @@ describe('Search offer paging', () => {
       from: '2026-12-01',
       to: '2026-12-10',
     })) {
+      const labels: Record<string, string> = { homeAirports: 'From', destination: 'To' };
+      if (labels[name] && fillPlace(root, labels[name], value)) continue;
       const input = root.querySelector<HTMLInputElement>(`input[formControlName="${name}"]`)!;
       input.value = value;
       input.dispatchEvent(new Event('input'));

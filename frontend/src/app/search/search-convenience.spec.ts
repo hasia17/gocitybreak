@@ -1,3 +1,4 @@
+import { fillPlace, flushCatalogue } from './place-testing';
 import { provideTestI18n } from '../i18n/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -29,19 +30,25 @@ describe('Search conveniences', () => {
 
   async function render() {
     const fixture = TestBed.createComponent(Search);
+    flushCatalogue();
     await fixture.whenStable();
     return { fixture, root: fixture.nativeElement as HTMLElement };
   }
 
   function input(root: HTMLElement, label: string): HTMLInputElement {
-    const found = Array.from(root.querySelectorAll('label'))
-      .find((l) => l.textContent?.trim().startsWith(label))
-      ?.querySelector('input');
+    const found =
+      Array.from(root.querySelectorAll<HTMLInputElement>('input')).find(
+        (i) => i.getAttribute('aria-label') === label,
+      ) ??
+      Array.from(root.querySelectorAll('label'))
+        .find((l) => l.textContent?.trim().startsWith(label))
+        ?.querySelector('input');
     if (!found) throw new Error(`no input labelled ${label}`);
     return found;
   }
 
   function fill(root: HTMLElement, label: string, value: string) {
+    if (fillPlace(root, label, value)) return;
     const el = input(root, label);
     el.value = value;
     el.dispatchEvent(new Event('input'));
@@ -112,8 +119,9 @@ describe('Search conveniences', () => {
 
     const { root } = await render();
 
-    expect(input(root, 'From').value).toBe('KRK, KTW');
-    expect(input(root, 'To').value).toBe('BGY');
+    expect(root.querySelector('[data-place-chip="KRK"]')).not.toBeNull();
+    expect(root.querySelector('[data-place-chip="KTW"]')).not.toBeNull();
+    expect(root.querySelector('[data-place-chip="BGY"]')).not.toBeNull();
     expect(input(root, 'Earliest').value).toBe('2026-12-01');
     expect(input(root, 'Latest').value).toBe('2026-12-10');
     expect(nights(root, 'Minimum')!.value).toBe('2');
@@ -135,7 +143,7 @@ describe('Search conveniences', () => {
 
     expect(root.querySelector<HTMLInputElement>('input[value="oneWay"]')!.checked).toBe(true);
     expect(nights(root, 'Minimum')).toBeNull();
-    expect(input(root, 'From').value).toBe('BGY');
+    expect(root.querySelector('[data-place-chip="BGY"]')).not.toBeNull();
   });
 
   it('starts from the defaults and still searches when browser storage is unavailable', async () => {
@@ -166,7 +174,7 @@ describe('Search conveniences', () => {
     );
     const { root } = await render();
 
-    expect(input(root, 'From').value).toBe('KTW');
+    expect(root.querySelector('[data-place-chip="KTW"]')).not.toBeNull();
     expect(input(root, 'Work start').value).toBe('07:30');
     expect(
       root.querySelector<HTMLInputElement>('[aria-label="Sort by"] input:checked')!.value,

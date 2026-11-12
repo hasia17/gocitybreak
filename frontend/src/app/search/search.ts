@@ -1,4 +1,3 @@
-import { catalogueName } from './catalogue-names';
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
@@ -8,14 +7,14 @@ import {
   ReactiveFormsModule,
   ValidationErrors,
   FormGroup,
-  ValidatorFn,
   Validators,
 } from '@angular/forms';
 import { TranslocoService } from '@jsverse/transloco';
 import { map, merge, switchMap } from 'rxjs';
 import { Language, textsIn } from '../i18n/language';
 import { ago, plural } from '../i18n/texts';
-import { readTypedNames } from './typed-names';
+import { PlaceChips } from './place-chips';
+import { restorePlaces } from './place-suggestions';
 import { InfoTip } from '../ui/info-tip';
 import { offerView } from './offer-view';
 import { Catalogue, Offer, OfferKind, SearchResponse, SortOrder, sortOrders } from './search-api';
@@ -34,15 +33,8 @@ import {
   fieldApplies,
   moments,
   roundTripOnlyFields,
-  typedCodes,
   weekdays,
 } from './search-query';
-
-/** One or more airport codes separated by commas or spaces, e.g. "KRK, KTW". */
-const airportCodes = [
-  Validators.required,
-  Validators.pattern(/^[\s,]*[A-Za-z]{3}(?:[\s,]+[A-Za-z]{3})*[\s,]*$/),
-];
 
 const nightCount = [Validators.required, Validators.pattern(/^\d+$/)];
 
@@ -69,7 +61,7 @@ function fixedDateOrder(form: AbstractControl): ValidationErrors | null {
 /** Search form for round-trip (default) or one-way offers, and the list of offers it finds. */
 @Component({
   selector: 'app-search',
-  imports: [ReactiveFormsModule, InfoTip],
+  imports: [ReactiveFormsModule, InfoTip, PlaceChips],
   styleUrls: ['./search.css', './search-filters.css', './search-results.css'],
   templateUrl: './search.html',
 })
@@ -78,16 +70,16 @@ export class Search {
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly transloco = inject(TranslocoService);
 
-  /** Airports, cities and countries to resolve typed names against; undefined until loaded. */
-  private readonly catalogue = signal<Catalogue | undefined>(undefined);
+  /** The only source of selectable airports, cities and countries; undefined until loaded. */
+  protected readonly catalogue = signal<Catalogue | undefined>(undefined);
 
   protected readonly form = this.fb.group(
     {
       kind: this.fb.control<OfferKind>('roundTrip'),
       dateMode: this.fb.control<DateMode>('flexible'),
-      homeAirports: ['', [...airportCodes, this.supportedAirports()]],
-      destination: ['', this.knownNames('destination')],
-      exclusions: ['', this.knownNames('exclusions')],
+      homeAirports: ['', Validators.required],
+      destination: ['', Validators.required],
+      exclusions: [''],
       from: ['', Validators.required],
       to: ['', Validators.required],
       stayLength: this.fb.group(
@@ -105,11 +97,14 @@ export class Search {
     },
     { validators: [noDepartureDay, fixedDateOrder] },
   );
+  protected readonly places = toSignal(this.form.valueChanges, {
+    initialValue: this.form.getRawValue(),
+  });
   protected readonly moments = moments;
   protected readonly weekdays = weekdays;
 
   /** The interface language, once its texts have loaded. */
-  private readonly language = toSignal(
+  protected readonly language = toSignal(
     this.transloco.langChanges$.pipe(
       switchMap((language) =>
         this.transloco.selectTranslation(language).pipe(map(() => language as Language)),
@@ -173,17 +168,18 @@ export class Search {
     this.form.controls.sort.valueChanges
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.visibleCount.set(20));
-    // Typed home airports, destination and exclusions are checked again once the catalogue arrives.
-    // Without it, any airport code is taken and the backend checks home airports.
+    // Restore known legacy names/codes only after the catalogue can validate their identities.
     this.http
       .get<Catalogue>('/api/catalogue')
       .pipe(takeUntilDestroyed())
       .subscribe({
         next: (catalogue) => {
           this.catalogue.set(catalogue);
-          this.form.controls.homeAirports.updateValueAndValidity();
-          this.form.controls.destination.updateValueAndValidity();
-          this.form.controls.exclusions.updateValueAndValidity();
+          for (const field of ['homeAirports', 'destination', 'exclusions'] as const) {
+            this.form.controls[field].setValue(
+              restorePlaces(this.form.controls[field].value, catalogue, field),
+            );
+          }
         },
         error: () => {},
       });
@@ -222,7 +218,7 @@ export class Search {
 
   protected submit() {
     this.submitted.set(true);
-    if (this.form.invalid) return;
+    if (this.form.invalid || !this.catalogue()) return;
     const v = this.form.getRawValue();
     saveSearchSettings(v);
     this.loading.set(true);
@@ -316,38 +312,6 @@ export class Search {
   /** Whether the form field named by its control path applies to the chosen kind of offer. */
   protected applies(path: string): boolean {
     return fieldApplies(path, this.kind(), this.dateMode());
-  }
-
-  /** A validator of home airports: each must be a supported airport of the catalogue, once it is loaded. */
-  private supportedAirports(): ValidatorFn {
-    return (control) => {
-      const supported = this.catalogue()?.supportedAirports;
-      if (!supported) return null;
-      const unsupported = typedCodes(control.value as string).filter(
-        (code) => !supported.some((a) => a.code === code),
-      );
-      return unsupported.length > 0 ? { unsupportedAirport: unsupported } : null;
-    };
-  }
-
-  /** The supported airports, like "KRK (Kraków), KTW (Katowice)". */
-  protected supportedAirportList(): string {
-    return (this.catalogue()?.supportedAirports ?? [])
-      .map((a) => `${a.code} (${catalogueName(a, this.language() ?? 'en')})`)
-      .join(', ');
-  }
-
-  /**
-   * A validator of airports, cities and countries typed as text: each must name a known one; only a destination
-   * may be anywhere, and a destination needs at least one name.
-   */
-  private knownNames(field: 'destination' | 'exclusions'): ValidatorFn {
-    return (control) => {
-      const typed = readTypedNames(control.value as string, this.catalogue());
-      if (typed.unknown.length > 0) return { unknownName: typed.unknown };
-      if (field === 'exclusions') return typed.anywhere ? { anywhereExcluded: true } : null;
-      return typed.anywhere || Object.keys(typed.codes).length > 0 ? null : { required: true };
-    };
   }
 
   /** Whether a field, named by its path like "leave.workStart", should be marked invalid: it is, and the user has tried to search. */

@@ -1,3 +1,4 @@
+import { fillPlace, flushCatalogue } from './place-testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
@@ -25,10 +26,17 @@ describe('Fixed dates search', () => {
   });
   async function render() {
     const fixture = TestBed.createComponent(Search);
+    flushCatalogue();
     await fixture.whenStable();
     return { fixture, root: fixture.nativeElement as HTMLElement };
   }
   function fill(root: HTMLElement, name: string, value: string) {
+    const labels: Record<string, string> = {
+      homeAirports: 'From',
+      destination: 'To',
+      exclusions: 'Except',
+    };
+    if (labels[name] && fillPlace(root, labels[name], value)) return;
     const el = root.querySelector<HTMLInputElement>(`input[formControlName="${name}"]`)!;
     el.value = value;
     el.dispatchEvent(new Event('input'));
