@@ -2,7 +2,7 @@ import roundTripRequest from '../../../../contract/round-trip.request.json';
 import oneWayRequest from '../../../../contract/one-way.request.json';
 import foreignCurrencyRequest from '../../../../contract/foreign-currency.request.json';
 import queryErrorRequest from '../../../../contract/query-error.request.json';
-import { Catalogue, SearchQuery, Weekday } from './search-api';
+import { Catalogue, Offer, SearchQuery, Weekday } from './search-api';
 import {
   buildSearchQuery,
   defaultWorkEnd,
@@ -10,6 +10,7 @@ import {
   departureDaysWithoutChoice,
   fieldApplies,
   SearchFormValue,
+  sortOffers,
   windowWeekdays,
 } from './search-query';
 
@@ -314,5 +315,20 @@ describe('departure days', () => {
 
     v.filters.outboundDepartureWeekdays.thu = true;
     expect(departureDaysWithoutChoice(v)).toEqual([]);
+  });
+});
+
+/** How found offers are reordered when the user switches the sort. */
+describe('sortOffers', () => {
+  const offer = (amount: number, leaveDays?: number) =>
+    ({ price: { amount, currency: 'PLN', approximate: false }, leaveDays }) as Offer;
+  const shown = (offers: Offer[]) => offers.map((o) => `${o.price.amount}/${o.leaveDays}`);
+
+  it('orders by price, or by leave days and then by price, leaving the input alone', () => {
+    const found = [offer(300, 0), offer(100, 2), offer(200, 0), offer(150, 2)];
+
+    expect(shown(sortOffers(found, 'price'))).toEqual(['100/2', '150/2', '200/0', '300/0']);
+    expect(shown(sortOffers(found, 'leaveDays'))).toEqual(['200/0', '300/0', '100/2', '150/2']);
+    expect(shown(found)).toEqual(['300/0', '100/2', '200/0', '150/2']);
   });
 });

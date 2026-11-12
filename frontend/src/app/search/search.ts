@@ -25,6 +25,7 @@ import {
   DepartureDays,
   departureDaysWithoutChoice,
   SearchFormValue,
+  sortOffers,
   windowWeekdays,
   defaultWorkEnd,
   defaultWorkStart,
@@ -126,11 +127,19 @@ export class Search {
 
   /** Offers of the last search and when they arrived; undefined before the first search. */
   private readonly found = signal<{ offers: Offer[]; at: number } | undefined>(undefined);
-  /** Offers of the last search, shown in the interface language; undefined before the first search. */
+  private readonly sort = toSignal(this.form.controls.sort.valueChanges, {
+    initialValue: this.form.controls.sort.value,
+  });
+  /**
+   * Offers of the last search in the chosen order, shown in the interface language; undefined
+   * before the first search. Switching the sort reorders them at once.
+   */
   protected readonly offers = computed(() => {
     const found = this.found();
     const texts = this.texts();
-    return found && texts ? found.offers.map((o) => offerView(o, found.at, texts)) : undefined;
+    return found && texts
+      ? sortOffers(found.offers, this.sort()).map((o) => offerView(o, found.at, texts))
+      : undefined;
   });
   protected readonly loading = signal(false);
   /** The translation key of the last search's failure. */
