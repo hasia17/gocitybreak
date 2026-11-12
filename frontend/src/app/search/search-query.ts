@@ -26,6 +26,48 @@ export const weekdays: { value: Weekday }[] = [
   { value: 'sun' },
 ];
 
+const byDay: Weekday[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
+/**
+ * The weekdays the travel window contains, both ends included: every weekday for a window of
+ * 7 days or more, and also while the window is incomplete or ends before it starts (the form
+ * reports that on its own).
+ */
+export function windowWeekdays(from: string, to: string): Set<Weekday> {
+  const all = new Set(weekdays.map((d) => d.value));
+  const start = Date.parse(from);
+  const end = Date.parse(to);
+  if (Number.isNaN(start) || Number.isNaN(end) || end < start) return all;
+  const days = Math.round((end - start) / 86_400_000) + 1;
+  if (days >= 7) return all;
+  return new Set(
+    Array.from({ length: days }, (_, i) => byDay[new Date(start + i * 86_400_000).getUTCDay()]),
+  );
+}
+
+/** The two sets of departure days of the filters. */
+export type DepartureDays = 'outboundDepartureWeekdays' | 'inboundDepartureWeekdays';
+
+/**
+ * The ticked weekdays among the possible ones: a ticked day suits the traveller, and a day
+ * outside the travel window is ignored whether ticked or not.
+ */
+function chosenDays(days: Record<Weekday, boolean>, possible: Set<Weekday>): Weekday[] {
+  return weekdays.map((d) => d.value).filter((d) => possible.has(d) && days[d]);
+}
+
+/**
+ * The departure days that apply to the kind of offer and have none of their possible weekdays
+ * ticked: a search would find nothing, so the form asks to leave at least one ticked.
+ */
+export function departureDaysWithoutChoice(v: SearchFormValue): DepartureDays[] {
+  const possible = windowWeekdays(v.from, v.to);
+  return (['outboundDepartureWeekdays', 'inboundDepartureWeekdays'] as const).filter(
+    (name) =>
+      fieldApplies(`filters.${name}`, v.kind) && chosenDays(v.filters[name], possible).length === 0,
+  );
+}
+
 /**
  * The form fields that apply to round trips only, by their control path like "leave" or
  * "filters.inboundDeparture"; every other field applies to both kinds of offer. The component
@@ -91,8 +133,8 @@ export interface SearchFormValue {
 /**
  * Builds the search request: typed home airports, destination and exclusions resolved against
  * the catalogue (airport codes are known without it), and every field that does not apply to
- * the kind of offer left out. Fields that restrict nothing (leave maximum, filters) are left
- * out as well.
+ * the kind of offer left out. Fields that restrict nothing (leave maximum, filters, departure
+ * days with every possible day ticked) are left out as well.
  */
 export function buildSearchQuery(
   v: SearchFormValue,
@@ -122,13 +164,17 @@ export function buildSearchQuery(
     const { from, to } = v.filters[m.name];
     if (from && to && fieldApplies(`filters.${m.name}`, v.kind)) filters[m.name] = { from, to };
   }
-  const chosen = (days: Record<Weekday, boolean>) =>
-    weekdays.map((d) => d.value).filter((d) => days[d]);
-  const outbound = chosen(v.filters.outboundDepartureWeekdays);
-  if (outbound.length) filters.outboundDepartureWeekdays = outbound;
-  const inbound = chosen(v.filters.inboundDepartureWeekdays);
-  if (inbound.length && fieldApplies('filters.inboundDepartureWeekdays', v.kind))
-    filters.inboundDepartureWeekdays = inbound;
+  // Departure days restrict the search only when some possible day is unticked.
+  const possible = windowWeekdays(v.from, v.to);
+  for (const name of ['outboundDepartureWeekdays', 'inboundDepartureWeekdays'] as const) {
+    const chosen = chosenDays(v.filters[name], possible);
+    if (
+      fieldApplies(`filters.${name}`, v.kind) &&
+      chosen.length > 0 &&
+      chosen.length < possible.size
+    )
+      filters[name] = chosen;
+  }
   if (Object.keys(filters).length > 0) query.filters = filters;
   return query;
 }

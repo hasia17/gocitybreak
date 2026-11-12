@@ -168,9 +168,38 @@ describe('Search conveniences', () => {
 
     expect(input(root, 'From').value).toBe('KTW');
     expect(input(root, 'Work start').value).toBe('07:30');
-    expect(root.querySelector<HTMLSelectElement>('select[aria-label="Sort by"]')!.value).toBe(
-      'price',
+    expect(
+      root.querySelector<HTMLInputElement>('[aria-label="Sort by"] input:checked')!.value,
+    ).toBe('price');
+  });
+
+  it('ticks every departure day of settings remembered when no tick meant any day', async () => {
+    const none = {
+      mon: false,
+      tue: false,
+      wed: false,
+      thu: false,
+      fri: false,
+      sat: false,
+      sun: false,
+    };
+    localStorage.setItem(
+      'gocitybreak.searchSettings.v1',
+      JSON.stringify({
+        filters: {
+          outboundDepartureWeekdays: none,
+          inboundDepartureWeekdays: { ...none, sun: true, mon: true },
+        },
+      }),
     );
+    const { root } = await render();
+    const ticked = (legend: string) =>
+      Array.from(root.querySelectorAll('fieldset'))
+        .find((f) => f.querySelector('legend')?.textContent?.trim().startsWith(legend))!
+        .querySelectorAll<HTMLInputElement>('input:checked').length;
+
+    expect(ticked('Outbound departure days')).toBe(7);
+    expect(ticked('Inbound departure days')).toBe(2);
   });
 
   it('sorts by price when the remembered sort no longer exists', async () => {
@@ -180,9 +209,9 @@ describe('Search conveniences', () => {
       JSON.stringify({ homeAirports: 'KRK', sort: 'pricePerNight' }),
     );
     const { root } = await render();
-    expect(root.querySelector<HTMLSelectElement>('select[aria-label="Sort by"]')!.value).toBe(
-      'price',
-    );
+    expect(
+      root.querySelector<HTMLInputElement>('[aria-label="Sort by"] input:checked')!.value,
+    ).toBe('price');
 
     fill(root, 'To', 'BGY');
     fill(root, 'Earliest', '2026-12-01');

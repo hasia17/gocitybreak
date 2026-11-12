@@ -6,18 +6,18 @@ function halfSet(range: AbstractControl): ValidationErrors | null {
   return !from !== !to ? { halfSet: true } : null;
 }
 
-/** Form controls of the filters; their initial values restrict nothing. */
+/** Form controls of the filters; their initial values restrict nothing: every departure day is ticked. */
 export function filtersForm(fb: NonNullableFormBuilder) {
   const timeRange = () => fb.group({ from: '', to: '' }, { validators: halfSet });
   const days = () =>
     fb.group({
-      mon: false,
-      tue: false,
-      wed: false,
-      thu: false,
-      fri: false,
-      sat: false,
-      sun: false,
+      mon: true,
+      tue: true,
+      wed: true,
+      thu: true,
+      fri: true,
+      sat: true,
+      sun: true,
     });
   return fb.group({
     directOnly: false,
