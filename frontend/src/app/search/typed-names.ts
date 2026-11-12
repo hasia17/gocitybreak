@@ -23,8 +23,13 @@ export function readTypedNames(text: string, catalogue: Catalogue | undefined): 
     const codes = (typed.codes[kind] ??= []);
     if (!codes.includes(code)) codes.push(code);
   };
-  const named = <T extends { name: string }>(items: T[] | undefined, name: string) =>
-    items?.find((item) => item.name.toLowerCase() === name);
+  const named = <T extends { name: string; names?: Record<string, string> }>(
+    items: T[] | undefined,
+    name: string,
+  ) =>
+    items?.find((item) =>
+      [item.name, ...Object.values(item.names ?? {})].some((value) => value.toLowerCase() === name),
+    );
 
   for (const raw of text.split(',')) {
     const name = raw.trim().toLowerCase();

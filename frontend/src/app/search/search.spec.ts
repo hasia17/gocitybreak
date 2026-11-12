@@ -4,12 +4,19 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import { Search } from './search';
+import { TranslocoService } from '@jsverse/transloco';
 import { Catalogue } from './search-api';
 
 const catalogue: Catalogue = {
-  supportedAirports: [{ code: 'KRK', name: 'Kraków' }],
+  supportedAirports: [{ code: 'KRK', name: 'Kraków', names: { en: 'Krakow', pl: 'Kraków' } }],
   airports: [
-    { code: 'BGY', name: 'Milan Bergamo', cities: ['BERGAMO', 'MILAN'], country: 'it' },
+    {
+      code: 'BGY',
+      name: 'Milan Bergamo',
+      names: { en: 'Milan Bergamo', pl: 'Mediolan-Bergamo' },
+      cities: ['BERGAMO', 'MILAN'],
+      country: 'it',
+    },
     { code: 'KRK', name: 'Kraków', cities: ['KRAKOW'], country: 'pl' },
     { code: 'MXP', name: 'Milan Malpensa', cities: ['MILAN'], country: 'it' },
     { code: 'OSL', name: 'Oslo', cities: ['OSLO'], country: 'no' },
@@ -17,14 +24,20 @@ const catalogue: Catalogue = {
   cities: [
     { code: 'BERGAMO', name: 'Bergamo', country: 'it', airports: ['BGY'] },
     { code: 'KRAKOW', name: 'Kraków', country: 'pl', airports: ['KRK'] },
-    { code: 'MILAN', name: 'Milan', country: 'it', airports: ['BGY', 'MXP'] },
+    {
+      code: 'MILAN',
+      name: 'Milan',
+      names: { en: 'Milan', pl: 'Mediolan' },
+      country: 'it',
+      airports: ['BGY', 'MXP'],
+    },
     { code: 'OSLO', name: 'Oslo', country: 'no', airports: ['OSL'] },
   ],
   countries: [
     { code: 'it', name: 'Italy' },
     { code: 'no', name: 'Norway' },
     { code: 'pl', name: 'Poland' },
-    { code: 'es', name: 'Spain' },
+    { code: 'es', name: 'Spain', names: { en: 'Spain', pl: 'Hiszpania' } },
   ],
 };
 
@@ -635,6 +648,9 @@ describe('Search', () => {
 
     httpTesting.expectNone('/api/search');
     expect(labelled<HTMLInputElement>(root, 'From').getAttribute('aria-invalid')).toBe('true');
+    expect(root.querySelector('[role="alert"]')?.textContent).toContain('KRK (Krakow)');
+    TestBed.inject(TranslocoService).setActiveLang('pl');
+    await fixture.whenStable();
     expect(root.querySelector('[role="alert"]')?.textContent).toContain('KRK (Kraków)');
   });
 
@@ -654,6 +670,20 @@ describe('Search', () => {
       await fixture.whenStable();
       return root;
     }
+
+    it.each([
+      ['Milan', { cities: ['MILAN'] }],
+      ['Mediolan', { cities: ['MILAN'] }],
+      ['Spain', { countries: ['es'] }],
+      ['Hiszpania', { countries: ['es'] }],
+      ['Milan Bergamo', { airports: ['BGY'] }],
+      ['Mediolan-Bergamo', { airports: ['BGY'] }],
+    ])('resolves %s from either catalogue language', async (name, destination) => {
+      await searchFrom(name as string);
+      const req = httpTesting.expectOne('/api/search');
+      expect(req.request.body.destination).toEqual(destination);
+      req.flush({ offers: [] });
+    });
 
     it('marks an airport, city or country it does not know', async () => {
       const root = await searchFrom('Milan, Atlantis', 'anywhere');

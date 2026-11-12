@@ -2,6 +2,9 @@ package app_test
 
 import (
 	"encoding/json"
+	"github.com/hasia17/gocitybreak/backend/internal/pricestore"
+	"github.com/hasia17/gocitybreak/backend/internal/ryanair"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"net/http"
 	"reflect"
 	"slices"
@@ -98,4 +101,51 @@ type cityBody struct {
 type countryBody struct {
 	Code string `json:"code"`
 	Name string `json:"name"`
+}
+
+func TestCatalogueReturnsStoredNamesInEveryLanguage(t *testing.T) {
+	server, url := startAPI(t, "test")
+	pool, err := pgxpool.New(t.Context(), url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	store := pricestore.New(pool)
+	airport := ryanair.Airport{Code: "KRK", Name: "Krakow", TimeZone: "Europe/Warsaw", CityCode: "KRAKOW", CityName: "Krakow", CountryCode: "pl", CountryName: "Poland",
+		Names: map[string]string{"en": "Krakow", "pl": "Kraków"}, CityNames: map[string]string{"en": "Krakow", "pl": "Kraków"}, CountryNames: map[string]string{"en": "Poland", "pl": "Polska"}}
+	for _, polish := range []string{"Kraków", "Kraków Airport"} {
+		airport.Names["pl"] = polish
+		if err := store.UpsertAirports(t.Context(), []ryanair.Airport{airport}); err != nil {
+			t.Fatal(err)
+		}
+		resp, err := http.Get(server.URL + "/api/catalogue")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var body map[string][]struct {
+			Code  string
+			Name  string
+			Names map[string]string
+		}
+		err = json.NewDecoder(resp.Body).Decode(&body)
+		resp.Body.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, kind := range []string{"airports", "supportedAirports", "cities", "countries"} {
+			want := map[string]string{"en": "Krakow", "pl": polish}
+			if kind == "cities" {
+				want["pl"] = "Kraków"
+			}
+			if kind == "countries" {
+				want = map[string]string{"en": "Poland", "pl": "Polska"}
+			}
+			if len(body[kind]) != 1 {
+				t.Fatalf("%s = %+v", kind, body[kind])
+			}
+			if !reflect.DeepEqual(body[kind][0].Names, want) {
+				t.Errorf("%s names = %v, want %v", kind, body[kind][0].Names, want)
+			}
+		}
+	}
 }

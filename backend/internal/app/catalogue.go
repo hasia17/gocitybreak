@@ -17,27 +17,31 @@ type catalogueResponse struct {
 }
 
 type supportedAirportJSON struct {
-	Code string `json:"code"`
-	Name string `json:"name"`
+	Names map[string]string `json:"names"`
+	Code  string            `json:"code"`
+	Name  string            `json:"name"`
 }
 
 type airportJSON struct {
-	Code    string   `json:"code"`
-	Name    string   `json:"name"`
-	Cities  []string `json:"cities"`
-	Country string   `json:"country,omitempty"`
+	Names   map[string]string `json:"names"`
+	Code    string            `json:"code"`
+	Name    string            `json:"name"`
+	Cities  []string          `json:"cities"`
+	Country string            `json:"country,omitempty"`
 }
 
 type cityJSON struct {
-	Code     string   `json:"code"`
-	Name     string   `json:"name"`
-	Country  string   `json:"country,omitempty"`
-	Airports []string `json:"airports"`
+	Names    map[string]string `json:"names"`
+	Code     string            `json:"code"`
+	Name     string            `json:"name"`
+	Country  string            `json:"country,omitempty"`
+	Airports []string          `json:"airports"`
 }
 
 type countryJSON struct {
-	Code string `json:"code"`
-	Name string `json:"name"`
+	Names map[string]string `json:"names"`
+	Code  string            `json:"code"`
+	Name  string            `json:"name"`
 }
 
 func (a *App) catalogue(w http.ResponseWriter, r *http.Request) {
@@ -56,22 +60,23 @@ func (a *App) catalogue(w http.ResponseWriter, r *http.Request) {
 	for _, airport := range c.Airports {
 		if airport.Supported {
 			resp.SupportedAirports = append(resp.SupportedAirports,
-				supportedAirportJSON{Code: airport.Code, Name: airport.Name})
+				supportedAirportJSON{Code: airport.Code, Name: airport.Name, Names: airport.Names})
 		}
 		resp.Airports = append(resp.Airports, airportJSON{
 			Code:    airport.Code,
 			Name:    airport.Name,
+			Names:   airport.Names,
 			Cities:  nonNil(airport.Cities),
 			Country: airport.Country,
 		})
 	}
 	for _, city := range c.Cities {
 		resp.Cities = append(resp.Cities, cityJSON{
-			Code: city.Code, Name: city.Name, Country: city.Country, Airports: city.Airports,
+			Code: city.Code, Name: city.Name, Names: city.Names, Country: city.Country, Airports: city.Airports,
 		})
 	}
 	for _, country := range c.Countries {
-		resp.Countries = append(resp.Countries, countryJSON{Code: country.Code, Name: country.Name})
+		resp.Countries = append(resp.Countries, countryJSON{Code: country.Code, Name: country.Name, Names: country.Names})
 	}
 	writeJSON(w, http.StatusOK, resp)
 }

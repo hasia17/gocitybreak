@@ -1,0 +1,56 @@
+[
+  {
+    "code": "BGY",
+    "name": "Mediolan-Bergamo",
+    "timeZone": "Europe/Rome",
+    "base": true,
+    "priority": 49,
+    "city": {
+      "code": "MILAN",
+      "name": "Mediolan"
+    },
+    "country": {
+      "code": "it",
+      "name": "Włochy",
+      "currency": "EUR",
+      "currencySymbol": "€",
+      "sepa": true
+    }
+  },
+  {
+    "code": "KRK",
+    "name": "Kraków",
+    "timeZone": "Europe/Warsaw",
+    "base": true,
+    "priority": 51,
+    "city": {
+      "code": "KRAKOW",
+      "name": "Kraków"
+    },
+    "country": {
+      "code": "pl",
+      "name": "Polska",
+      "currency": "PLN",
+      "currencySymbol": "zł",
+      "sepa": true
+    }
+  },
+  {
+    "code": "RAK",
+    "name": "Marrakesz-Menara",
+    "timeZone": "Africa/Casablanca",
+    "base": true,
+    "priority": 53,
+    "city": {
+      "code": "MARRAKESH",
+      "name": "Marrakesz"
+    },
+    "country": {
+      "code": "ma",
+      "name": "Maroko",
+      "currency": "MAD",
+      "currencySymbol": "DH",
+      "sepa": false
+    }
+  }
+]
