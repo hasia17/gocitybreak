@@ -83,6 +83,7 @@ export class Search {
         { validators: maxBelowMin },
       ),
       leave: this.fb.group({
+        ignoreLeave: false,
         workStart: [defaultWorkStart, Validators.required],
         workEnd: [defaultWorkEnd, Validators.required],
         maxLeaveDays: this.fb.control<number | null>(null, Validators.pattern(/^\d+$/)),
@@ -116,6 +117,12 @@ export class Search {
   protected readonly kind = toSignal(this.form.controls.kind.valueChanges, {
     initialValue: this.form.controls.kind.value,
   });
+  protected readonly ignoreLeave = toSignal(
+    this.form.controls.leave.controls.ignoreLeave.valueChanges,
+    {
+      initialValue: this.form.controls.leave.controls.ignoreLeave.value,
+    },
+  );
 
   /** Offers of the last search and when they arrived; undefined before the first search. */
   private readonly found = signal<{ offers: Offer[]; at: number } | undefined>(undefined);
@@ -153,8 +160,12 @@ export class Search {
         if (fieldApplies(path, kind)) this.form.get(path)?.enable();
         else this.form.get(path)?.disable();
       }
+      this.updateLeaveLimit();
       this.greyOutImpossibleDays();
     });
+    this.form.controls.leave.controls.ignoreLeave.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.updateLeaveLimit());
     merge(this.form.controls.from.valueChanges, this.form.controls.to.valueChanges)
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.greyOutImpossibleDays());
@@ -215,6 +226,14 @@ export class Search {
     const { outboundDepartureWeekdays, inboundDepartureWeekdays } =
       this.form.controls.filters.controls;
     return [outboundDepartureWeekdays, inboundDepartureWeekdays];
+  }
+
+  /** An ignored leave limit keeps its value but cannot invalidate the search. */
+  private updateLeaveLimit() {
+    const leave = this.form.controls.leave.controls;
+    if (this.form.controls.kind.value === 'roundTrip' && !leave.ignoreLeave.value)
+      leave.maxLeaveDays.enable({ emitEvent: false });
+    else leave.maxLeaveDays.disable({ emitEvent: false });
   }
 
   /**

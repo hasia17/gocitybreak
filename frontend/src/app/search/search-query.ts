@@ -125,7 +125,13 @@ export interface SearchFormValue {
   from: string;
   to: string;
   stayLength: { min: number; max: number };
-  leave: { workStart: string; workEnd: string; maxLeaveDays: number | null };
+  leave: {
+    /** Absent in older remembered settings; false means the leave limit still applies. */
+    ignoreLeave?: boolean;
+    workStart: string;
+    workEnd: string;
+    maxLeaveDays: number | null;
+  };
   sort: SortOrder;
   filters: FiltersValue;
 }
@@ -155,7 +161,8 @@ export function buildSearchQuery(
   if (fieldApplies('leave', v.kind)) {
     query.workStart = v.leave.workStart;
     query.workEnd = v.leave.workEnd;
-    if (v.leave.maxLeaveDays != null) query.maxLeaveDays = Number(v.leave.maxLeaveDays);
+    if (!v.leave.ignoreLeave && v.leave.maxLeaveDays != null)
+      query.maxLeaveDays = Number(v.leave.maxLeaveDays);
   }
   if (fieldApplies('sort', v.kind)) query.sort = v.sort;
   const filters: SearchFilters = {};
