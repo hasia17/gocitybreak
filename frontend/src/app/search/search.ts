@@ -22,6 +22,7 @@ import { filtersForm } from './search-filters';
 import { loadSearchSettings, saveSearchSettings } from './search-settings';
 import {
   buildSearchQuery,
+  DateMode,
   DepartureDays,
   departureDaysWithoutChoice,
   SearchFormValue,
@@ -49,6 +50,14 @@ function noDepartureDay(form: AbstractControl): ValidationErrors | null {
   return missing.length > 0 ? { noDepartureDay: missing } : null;
 }
 
+/** Fixed dates require an inbound departure no earlier than the outbound departure. */
+function fixedDateOrder(form: AbstractControl): ValidationErrors | null {
+  const v = (form as FormGroup).getRawValue() as SearchFormValue;
+  return v.dateMode === 'fixed' && v.kind === 'roundTrip' && v.from && v.to && v.to < v.from
+    ? { fixedDateOrder: true }
+    : null;
+}
+
 /** Search form for round-trip (default) or one-way offers, and the list of offers it finds. */
 @Component({
   selector: 'app-search',
@@ -67,6 +76,7 @@ export class Search {
   protected readonly form = this.fb.group(
     {
       kind: this.fb.control<OfferKind>('roundTrip'),
+      dateMode: this.fb.control<DateMode>('flexible'),
       homeAirports: ['', Validators.required],
       destination: ['', Validators.required],
       exclusions: [''],
@@ -85,7 +95,7 @@ export class Search {
       sort: this.fb.control<SortOrder>('price'),
       filters: filtersForm(this.fb),
     },
-    { validators: noDepartureDay },
+    { validators: [noDepartureDay, fixedDateOrder] },
   );
   protected readonly places = toSignal(this.form.valueChanges, { initialValue: this.form.getRawValue() });
   protected readonly moments = moments;
@@ -119,6 +129,10 @@ export class Search {
     },
   );
 
+  protected readonly dateMode = toSignal(this.form.controls.dateMode.valueChanges, {
+    initialValue: this.form.controls.dateMode.value,
+  });
+
   /** Offers of the last search and when they arrived; undefined before the first search. */
   private readonly found = signal<{ offers: Offer[]; at: number } | undefined>(undefined);
   private readonly sort = toSignal(this.form.controls.sort.valueChanges, {
@@ -135,6 +149,13 @@ export class Search {
       ? sortOffers(found.offers, this.sort()).map((o) => offerView(o, found.at, texts))
       : undefined;
   });
+  protected readonly visibleCount = signal(20);
+  protected readonly visibleOffers = computed(() => this.offers()?.slice(0, this.visibleCount()));
+
+  protected showMore() {
+    this.visibleCount.update((count) => count + 20);
+  }
+
   protected readonly loading = signal(false);
   /** The translation key of the last search's failure. */
   protected readonly error = signal<string | undefined>(undefined);
@@ -142,6 +163,9 @@ export class Search {
   protected readonly submitted = signal(false);
 
   constructor() {
+    this.form.controls.sort.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.visibleCount.set(20));
     // Typed home airports, destination and exclusions are checked again once the catalogue arrives.
     // Without it, any airport code is taken and the backend checks home airports.
     this.http
@@ -158,14 +182,9 @@ export class Search {
       });
     // Fields that do not apply to the kind of offer are disabled: a disabled control does not
     // affect the form's validity, and the raw value keeps it so remembered settings lose nothing.
-    this.form.controls.kind.valueChanges.pipe(takeUntilDestroyed()).subscribe((kind) => {
-      for (const path of roundTripOnlyFields) {
-        if (fieldApplies(path, kind)) this.form.get(path)?.enable();
-        else this.form.get(path)?.disable();
-      }
-      this.updateLeaveLimit();
-      this.greyOutImpossibleDays();
-    });
+    merge(this.form.controls.kind.valueChanges, this.form.controls.dateMode.valueChanges)
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.updateApplicableFields());
     this.form.controls.leave.controls.ignoreLeave.valueChanges
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.updateLeaveLimit());
@@ -187,7 +206,7 @@ export class Search {
           sun: true,
         });
     }
-    this.greyOutImpossibleDays();
+    this.updateApplicableFields();
     // A sort remembered before it was removed (e.g. price per night) falls back to price.
     if (!(sortOrders as readonly string[]).includes(this.form.controls.sort.value)) {
       this.form.controls.sort.setValue('price');
@@ -203,6 +222,7 @@ export class Search {
     this.error.set(undefined);
     this.http.post<SearchResponse>('/api/search', buildSearchQuery(v, this.catalogue())).subscribe({
       next: (resp) => {
+        this.visibleCount.set(20);
         this.found.set({ offers: resp.offers, at: Date.now() });
         this.loading.set(false);
       },
@@ -222,6 +242,20 @@ export class Search {
   protected offerCount(count: number): string {
     const texts = this.texts();
     return texts ? plural(texts, 'results.count', count) : '';
+  }
+
+  private updateApplicableFields() {
+    const { kind, dateMode } = this.form.controls;
+    for (const path of [...roundTripOnlyFields, 'to', 'filters.outboundDepartureWeekdays']) {
+      if (fieldApplies(path, kind.value, dateMode.value)) this.form.get(path)?.enable();
+      else this.form.get(path)?.disable();
+    }
+    this.updateLeaveLimit();
+    this.greyOutImpossibleDays();
+  }
+
+  protected invalidFixedDates(): boolean {
+    return this.submitted() && !!this.form.errors?.['fixedDateOrder'];
   }
 
   /** The departure-day groups of the filters. */
@@ -250,7 +284,7 @@ export class Search {
       ['outboundDepartureWeekdays', this.departureDays()[0]],
       ['inboundDepartureWeekdays', this.departureDays()[1]],
     ] as const) {
-      if (!fieldApplies(`filters.${name}`, kind)) continue;
+      if (!fieldApplies(`filters.${name}`, kind, this.form.controls.dateMode.value)) continue;
       for (const day of weekdays) {
         const control = days.controls[day.value];
         if (possible.has(day.value)) control.enable({ emitEvent: false });
@@ -274,11 +308,14 @@ export class Search {
 
   /** Whether the form field named by its control path applies to the chosen kind of offer. */
   protected applies(path: string): boolean {
-    return fieldApplies(path, this.kind());
+    return fieldApplies(path, this.kind(), this.dateMode());
   }
 
   /** Whether a field, named by its path like "leave.workStart", should be marked invalid: it is, and the user has tried to search. */
   protected invalid(path: string): boolean {
-    return this.submitted() && !!this.form.get(path)?.invalid;
+    return (
+      this.submitted() &&
+      (!!this.form.get(path)?.invalid || (path === 'to' && this.invalidFixedDates()))
+    );
   }
 }

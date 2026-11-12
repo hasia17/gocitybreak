@@ -31,6 +31,21 @@
   padding: 0;
   list-style: none;
 }
+.show-more {
+  display: block;
+  min-height: 2.75rem;
+  margin: 1rem auto;
+  padding: 0.5rem 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 9999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.show-more:hover {
+  background: var(--subtle);
+}
 .offer {
   display: flex;
   align-items: center;

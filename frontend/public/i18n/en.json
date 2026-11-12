@@ -66,11 +66,20 @@
       "unsupportedAirports": "Search from supported airports only: {{airports}}.",
       "fields": "Choose home airports and a destination from the suggestions, both dates and nights from the minimum up to the maximum.",
       "timeRanges": "In Filters, give each time range both ends, or leave both empty.",
-      "noDepartureDay": "In Filters, leave at least one departure day ticked."
+      "noDepartureDay": "In Filters, leave at least one departure day ticked.",
+      "fixedDateOrder": "The inbound date must not be before the outbound date."
     },
-    "failed": "Search failed. Check the form and try again."
+    "failed": "Search failed. Check the form and try again.",
+    "dateMode": {
+      "label": "Dates",
+      "flexible": "Flexible dates",
+      "fixed": "Fixed dates"
+    },
+    "outboundDate": "Outbound date",
+    "inboundDate": "Inbound date"
   },
   "results": {
+    "showMore": "Show more",
     "emptyRoundTrip": "No offers match your search. Try loosening it: a wider travel window, more airports, more nights to choose from, more leave days, or fewer filters: wider time ranges, more weekdays.",
     "emptyOneWay": "No offers match your search. Try loosening it: a wider travel window, more airports, or fewer filters: wider time ranges, more weekdays.",
     "count": {

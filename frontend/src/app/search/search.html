@@ -15,6 +15,21 @@
         }}</label
       >
     </div>
+    <div class="toggle date-mode" role="radiogroup" [attr.aria-label]="t('search.dateMode.label')">
+      <label
+        ><input type="radio" formControlName="dateMode" value="flexible" />{{
+          t('search.dateMode.flexible')
+        }}</label
+      >
+      <label
+        ><input type="radio" formControlName="dateMode" value="fixed" />{{
+          t('search.dateMode.fixed')
+        }}</label
+      >
+    </div>
+    @if (invalidFixedDates()) {
+      <p class="hint" role="alert">{{ t('search.hint.fixedDateOrder') }}</p>
+    }
     <div class="composer">
       <div class="fields">
         <app-place-chips class="field" formControlName="homeAirports" field="homeAirports"
@@ -29,13 +44,15 @@
           [placeholder]="t('search.exceptPlaceholder')" [invalid]="invalid('exclusions')" />
         <span class="divider" aria-hidden="true"></span>
         <label class="field" [class.invalid]="invalid('from')">
-          {{ t('search.earliest') }}
+          {{ t(dateMode() === 'fixed' ? 'search.outboundDate' : 'search.earliest') }}
           <input type="date" formControlName="from" [attr.aria-invalid]="invalid('from')" />
         </label>
-        <label class="field" [class.invalid]="invalid('to')">
-          {{ t('search.latest') }}
-          <input type="date" formControlName="to" [attr.aria-invalid]="invalid('to')" />
-        </label>
+        @if (applies('to')) {
+          <label class="field" [class.invalid]="invalid('to')">
+            {{ t(dateMode() === 'fixed' ? 'search.inboundDate' : 'search.latest') }}
+            <input type="date" formControlName="to" [attr.aria-invalid]="invalid('to')" />
+          </label>
+        }
         @if (applies('stayLength')) {
           <div
             class="field nights"
@@ -159,23 +176,25 @@
             }
           }
         </div>
-        <fieldset
-          class="days"
-          formGroupName="outboundDepartureWeekdays"
-          [class.invalid]="noDayLeft('outboundDepartureWeekdays')"
-        >
-          <legend>
-            {{ t('search.outboundDays') }}
-            <app-info-tip [label]="t('search.daysInfo')" [text]="t('search.daysNote')" />
-          </legend>
-          @for (day of weekdays; track day.value) {
-            <label
-              ><input type="checkbox" [formControlName]="day.value" />{{
-                t('search.weekday.' + day.value)
-              }}</label
-            >
-          }
-        </fieldset>
+        @if (applies('filters.outboundDepartureWeekdays')) {
+          <fieldset
+            class="days"
+            formGroupName="outboundDepartureWeekdays"
+            [class.invalid]="noDayLeft('outboundDepartureWeekdays')"
+          >
+            <legend>
+              {{ t('search.outboundDays') }}
+              <app-info-tip [label]="t('search.daysInfo')" [text]="t('search.daysNote')" />
+            </legend>
+            @for (day of weekdays; track day.value) {
+              <label
+                ><input type="checkbox" [formControlName]="day.value" />{{
+                  t('search.weekday.' + day.value)
+                }}</label
+              >
+            }
+          </fieldset>
+        }
         @if (applies('filters.inboundDepartureWeekdays')) {
           <fieldset
             class="days"
@@ -228,7 +247,7 @@
         <span>{{ t('results.perPerson') }}</span>
       </header>
       <ol class="offers">
-        @for (offer of offers; track $index) {
+        @for (offer of visibleOffers(); track $index) {
           <li class="offer" data-testid="offer">
             <div class="legs">
               @for (leg of offer.legs; track $index) {
@@ -284,6 +303,11 @@
           </li>
         }
       </ol>
+      @if (visibleCount() < offers.length) {
+        <button class="show-more" type="button" (click)="showMore()">
+          {{ t('results.showMore') }}
+        </button>
+      }
     }
   </section>
 }
