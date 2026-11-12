@@ -1,3 +1,4 @@
+import { catalogueName } from './catalogue-names';
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
@@ -270,7 +271,7 @@ export class Search {
   /** The supported airports, like "KRK (Kraków), KTW (Katowice)". */
   protected supportedAirportList(): string {
     return (this.catalogue()?.supportedAirports ?? [])
-      .map((a) => `${a.code} (${a.name})`)
+      .map((a) => `${a.code} (${catalogueName(a, this.language() ?? 'en')})`)
       .join(', ');
   }
 

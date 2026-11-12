@@ -34,8 +34,10 @@ type Catalogue struct {
 
 // Airport is an airport with the cities and the country it belongs to.
 type Airport struct {
-	Code string
-	Name string
+	// Names contains the name in each interface language.
+	Names map[string]string
+	Code  string
+	Name  string
 	// Supported is true for a supported airport: one whose routes we fetch into the price database.
 	Supported bool
 	// Cities are the codes of the cities the airport belongs to: Ryanair's city first, then our additions.
@@ -46,6 +48,8 @@ type Airport struct {
 
 // City is a group of airports under one city name; an airport may belong to several cities.
 type City struct {
+	// Names contains the name in each interface language.
+	Names map[string]string
 	// Code is Ryanair's city code, e.g. "MILAN".
 	Code    string
 	Name    string
@@ -56,6 +60,8 @@ type City struct {
 
 // Country is a country with at least one airport.
 type Country struct {
+	// Names contains the name in each interface language.
+	Names map[string]string
 	// Code is a lower-case ISO 3166-1 alpha-2 code, e.g. "it".
 	Code string
 	Name string
@@ -107,10 +113,14 @@ func Load(ctx context.Context, db *pgxpool.Pool) (*Catalogue, error) {
 		Code, Name                                   string
 		Supported                                    bool
 		CityCode, CityName, CountryCode, CountryName string
+		Names, CityNames, CountryNames               map[string]string
 	}
 	rows, err := db.Query(ctx, `
 		SELECT code, name, supported,
-			coalesce(city_code, ''), coalesce(city_name, ''), coalesce(country_code, ''), coalesce(country_name, '')
+			coalesce(city_code, ''), coalesce(city_name, ''), coalesce(country_code, ''), coalesce(country_name, ''),
+			jsonb_build_object('en', name) || names,
+			jsonb_build_object('en', coalesce(city_name, '')) || city_names,
+			jsonb_build_object('en', coalesce(country_name, '')) || country_names
 		FROM airports
 		ORDER BY code`)
 	if err != nil {
@@ -126,17 +136,17 @@ func Load(ctx context.Context, db *pgxpool.Pool) (*Catalogue, error) {
 	for _, r := range airportRows {
 		if r.CityCode != "" {
 			if _, ok := cities[r.CityCode]; !ok {
-				cities[r.CityCode] = &City{Code: r.CityCode, Name: r.CityName, Country: r.CountryCode}
+				cities[r.CityCode] = &City{Code: r.CityCode, Name: r.CityName, Names: r.CityNames, Country: r.CountryCode}
 			}
 		}
 		if r.CountryCode != "" {
-			countries[r.CountryCode] = Country{Code: r.CountryCode, Name: r.CountryName}
+			countries[r.CountryCode] = Country{Code: r.CountryCode, Name: r.CountryName, Names: r.CountryNames}
 		}
 	}
 
 	c := &Catalogue{Airports: make([]Airport, 0, len(airportRows))}
 	for _, r := range airportRows {
-		a := Airport{Code: r.Code, Name: r.Name, Supported: r.Supported, Country: r.CountryCode}
+		a := Airport{Code: r.Code, Name: r.Name, Names: r.Names, Supported: r.Supported, Country: r.CountryCode}
 		if r.CityCode != "" {
 			a.Cities = append(a.Cities, r.CityCode)
 		}

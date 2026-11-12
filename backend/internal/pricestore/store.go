@@ -5,6 +5,7 @@ package pricestore
 import (
 	"context"
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/hasia17/gocitybreak/backend/internal/nbp"
@@ -33,8 +34,8 @@ func (s *Store) UpsertAirports(ctx context.Context, airports []ryanair.Airport) 
 	b := &pgx.Batch{}
 	for _, a := range airports {
 		b.Queue(`INSERT INTO airports
-    (code, name, time_zone, supported, city_code, city_name, country_code, country_name)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    (code, name, time_zone, supported, city_code, city_name, country_code, country_name, names, city_names, country_names)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 ON CONFLICT (code) DO UPDATE SET
     name = EXCLUDED.name,
     time_zone = EXCLUDED.time_zone,
@@ -42,7 +43,9 @@ ON CONFLICT (code) DO UPDATE SET
     city_code = EXCLUDED.city_code,
     city_name = EXCLUDED.city_name,
     country_code = EXCLUDED.country_code,
-    country_name = EXCLUDED.country_name`, a.Code, a.Name, a.TimeZone, a.CountryCode == "pl", a.CityCode, a.CityName, a.CountryCode, a.CountryName)
+    country_name = EXCLUDED.country_name,
+    names = EXCLUDED.names, city_names = EXCLUDED.city_names, country_names = EXCLUDED.country_names`, a.Code, a.Name, a.TimeZone, a.CountryCode == "pl", a.CityCode, a.CityName, a.CountryCode, a.CountryName,
+			englishNames(a.Names, a.Name), englishNames(a.CityNames, a.CityName), englishNames(a.CountryNames, a.CountryName))
 	}
 	if err := s.pool.SendBatch(ctx, b).Close(); err != nil {
 		return fmt.Errorf("store airports: %w", err)
@@ -188,4 +191,16 @@ WHERE month < $1`, month); err != nil {
 }
 func dateOf(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
+}
+
+// englishNames preserves the original English name for callers supplying the older catalogue shape.
+func englishNames(names map[string]string, name string) map[string]string {
+	result := maps.Clone(names)
+	if result == nil {
+		result = map[string]string{}
+	}
+	if name != "" && result["en"] == "" {
+		result["en"] = name
+	}
+	return result
 }
