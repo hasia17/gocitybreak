@@ -70,8 +70,8 @@ describe('Search', () => {
     input.dispatchEvent(new Event('input'));
   }
 
-  /** Ticks a weekday checkbox, e.g. "Fri" among the "Outbound departure days". */
-  function day(root: HTMLElement, days: string, weekday: string) {
+  /** The checkbox of a weekday, e.g. "Fri" among the "Outbound departure days". */
+  function dayBox(root: HTMLElement, days: string, weekday: string): HTMLInputElement {
     const fieldset = Array.from(root.querySelectorAll('fieldset')).find(
       (f) => f.querySelector('legend')?.textContent?.trim() === days,
     );
@@ -79,7 +79,12 @@ describe('Search', () => {
       .find((l) => l.textContent?.trim() === weekday)
       ?.querySelector('input');
     if (!box) throw new Error(`no ${weekday} among ${days}`);
-    box.click();
+    return box;
+  }
+
+  /** Ticks or unticks a weekday checkbox. */
+  function day(root: HTMLElement, days: string, weekday: string) {
+    dayBox(root, days, weekday).click();
   }
 
   function nights(root: HTMLElement, which: 'Minimum' | 'Maximum') {
@@ -287,10 +292,61 @@ describe('Search', () => {
     root = fixture.nativeElement as HTMLElement;
 
     expect(labelled<HTMLInputElement>(root, 'Outbound departure from').value).toBe('06:00');
-    const friday = Array.from(root.querySelectorAll('fieldset'))
-      .find((f) => f.querySelector('legend')?.textContent?.trim() === 'Outbound departure days')
-      ?.querySelectorAll('input')[4];
-    expect(friday?.checked).toBe(true);
+    expect(dayBox(root, 'Outbound departure days', 'Fri').checked).toBe(false);
+    expect(dayBox(root, 'Outbound departure days', 'Thu').checked).toBe(true);
+  });
+
+  it('ticks every departure day by default and greys out the days outside the travel window, live', async () => {
+    const fixture = TestBed.createComponent(Search);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    const all = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const enabled = (days: string) => all.filter((d) => !dayBox(root, days, d).disabled);
+
+    expect(all.every((d) => dayBox(root, 'Outbound departure days', d).checked)).toBe(true);
+    expect(enabled('Outbound departure days')).toEqual(all);
+
+    // Wed 11 Nov 2026 – Fri 13 Nov 2026
+    fill(root, 'Earliest', '2026-11-11');
+    fill(root, 'Latest', '2026-11-13');
+    await fixture.whenStable();
+    expect(enabled('Outbound departure days')).toEqual(['Wed', 'Thu', 'Fri']);
+    expect(enabled('Inbound departure days')).toEqual(['Wed', 'Thu', 'Fri']);
+    // A greyed-out day keeps its tick for when the window covers it again.
+    expect(dayBox(root, 'Outbound departure days', 'Mon').checked).toBe(true);
+
+    fill(root, 'Latest', '2026-11-20');
+    await fixture.whenStable();
+    expect(enabled('Outbound departure days')).toEqual(all);
+  });
+
+  it('asks to leave a departure day ticked instead of searching when no possible day is', async () => {
+    const fixture = TestBed.createComponent(Search);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    fill(root, 'From', 'KRK');
+    fill(root, 'To', 'BGY');
+    fill(root, 'Earliest', '2026-11-11');
+    fill(root, 'Latest', '2026-11-13');
+    await fixture.whenStable();
+    for (const d of ['Wed', 'Thu', 'Fri']) day(root, 'Inbound departure days', d);
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+    await fixture.whenStable();
+
+    httpTesting.expectNone('/api/search');
+    const alert = root.querySelector('[role="alert"]')?.textContent;
+    expect(alert).toContain('leave at least one departure day ticked');
+    expect(alert).not.toContain('3-letter airport codes');
+    const inbound = Array.from(root.querySelectorAll('fieldset')).find(
+      (f) => f.querySelector('legend')?.textContent?.trim() === 'Inbound departure days',
+    );
+    expect(inbound?.classList).toContain('invalid');
+
+    // A one-way search has no inbound flight, so the inbound days do not block it.
+    root.querySelector<HTMLInputElement>('input[type="radio"][value="oneWay"]')!.click();
+    await fixture.whenStable();
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+    expect(httpTesting.expectOne('/api/search').request.body.filters).toBeUndefined();
   });
 
   it('marks the nights invalid when the maximum is below the minimum', async () => {

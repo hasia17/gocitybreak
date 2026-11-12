@@ -171,7 +171,12 @@
             }
           }
         </div>
-        <fieldset class="days" formGroupName="outboundDepartureWeekdays">
+        <p class="note days-note">{{ t('search.daysNote') }}</p>
+        <fieldset
+          class="days"
+          formGroupName="outboundDepartureWeekdays"
+          [class.invalid]="noDayLeft('outboundDepartureWeekdays')"
+        >
           <legend>{{ t('search.outboundDays') }}</legend>
           @for (day of weekdays; track day.value) {
             <label
@@ -182,7 +187,11 @@
           }
         </fieldset>
         @if (applies('filters.inboundDepartureWeekdays')) {
-          <fieldset class="days" formGroupName="inboundDepartureWeekdays">
+          <fieldset
+            class="days"
+            formGroupName="inboundDepartureWeekdays"
+            [class.invalid]="noDayLeft('inboundDepartureWeekdays')"
+          >
             <legend>{{ t('search.inboundDays') }}</legend>
             @for (day of weekdays; track day.value) {
               <label
@@ -202,9 +211,14 @@
       @if (form.controls.homeAirports.hasError('unsupportedAirport')) {
         {{ t('search.hint.unsupportedAirports', { airports: supportedAirportList() }) }}
       }
-      {{ t('search.hint.fields') }}
+      @if (fieldsInvalid()) {
+        {{ t('search.hint.fields') }}
+      }
       @if (form.controls.filters.invalid) {
         {{ t('search.hint.timeRanges') }}
+      }
+      @if (form.hasError('noDepartureDay')) {
+        {{ t('search.hint.noDepartureDay') }}
       }
     </p>
   }

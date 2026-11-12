@@ -98,6 +98,26 @@
 .days input {
   margin: 0;
 }
+.days-note {
+  width: 100%;
+  margin-bottom: -0.5rem;
+}
+/* A day outside the travel window: neither ticked nor unticked counts, so it shows neither. */
+.days label:has(input:disabled) {
+  background: none;
+  border-style: dashed;
+  color: var(--faint);
+  cursor: not-allowed;
+}
+.days label:has(input:disabled) input {
+  opacity: 0.4;
+}
+.days.invalid legend {
+  color: var(--danger);
+}
+.days.invalid label:has(input:enabled) {
+  border-color: var(--danger);
+}
 
 @media (max-width: 640px) {
   .time-range {

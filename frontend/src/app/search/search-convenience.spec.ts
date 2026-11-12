@@ -173,6 +173,35 @@ describe('Search conveniences', () => {
     ).toBe('price');
   });
 
+  it('ticks every departure day of settings remembered when no tick meant any day', async () => {
+    const none = {
+      mon: false,
+      tue: false,
+      wed: false,
+      thu: false,
+      fri: false,
+      sat: false,
+      sun: false,
+    };
+    localStorage.setItem(
+      'gocitybreak.searchSettings.v1',
+      JSON.stringify({
+        filters: {
+          outboundDepartureWeekdays: none,
+          inboundDepartureWeekdays: { ...none, sun: true, mon: true },
+        },
+      }),
+    );
+    const { root } = await render();
+    const ticked = (legend: string) =>
+      Array.from(root.querySelectorAll('fieldset'))
+        .find((f) => f.querySelector('legend')?.textContent?.trim() === legend)!
+        .querySelectorAll<HTMLInputElement>('input:checked').length;
+
+    expect(ticked('Outbound departure days')).toBe(7);
+    expect(ticked('Inbound departure days')).toBe(2);
+  });
+
   it('sorts by price when the remembered sort no longer exists', async () => {
     // Price per night was removed (#33).
     localStorage.setItem(

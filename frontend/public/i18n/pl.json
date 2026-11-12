@@ -48,6 +48,7 @@
     },
     "rangeFrom": "{{moment}} od",
     "rangeTo": "{{moment}} do",
+    "daysNote": "Odznacz dni, które ci nie pasują; dni spoza okna podróży są wyszarzone.",
     "outboundDays": "Dni wylotu tam",
     "inboundDays": "Dni wylotu z powrotem",
     "weekday": {
@@ -62,7 +63,8 @@
     "hint": {
       "unsupportedAirports": "Szukaj tylko z obsługiwanych lotnisk: {{airports}}.",
       "fields": "Podaj 3-literowe kody lotnisk, cel podróży (lotniska, miasta, kraje albo gdziekolwiek), obie daty i liczbę nocy od najmniejszej do największej.",
-      "timeRanges": "W filtrach podaj oba końce każdego przedziału godzin albo zostaw oba puste."
+      "timeRanges": "W filtrach podaj oba końce każdego przedziału godzin albo zostaw oba puste.",
+      "noDepartureDay": "W filtrach zostaw zaznaczony co najmniej jeden dzień wylotu."
     },
     "failed": "Wyszukiwanie nie powiodło się. Sprawdź formularz i spróbuj ponownie."
   },

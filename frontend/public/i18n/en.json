@@ -48,6 +48,7 @@
     },
     "rangeFrom": "{{moment}} from",
     "rangeTo": "{{moment}} to",
+    "daysNote": "Untick the days that do not suit you; days outside the travel window are greyed out.",
     "outboundDays": "Outbound departure days",
     "inboundDays": "Inbound departure days",
     "weekday": {
@@ -62,7 +63,8 @@
     "hint": {
       "unsupportedAirports": "Search from supported airports only: {{airports}}.",
       "fields": "Enter 3-letter airport codes, a destination of airports, cities or countries (or anywhere), both dates and nights from the minimum up to the maximum.",
-      "timeRanges": "In Filters, give each time range both ends, or leave both empty."
+      "timeRanges": "In Filters, give each time range both ends, or leave both empty.",
+      "noDepartureDay": "In Filters, leave at least one departure day ticked."
     },
     "failed": "Search failed. Check the form and try again."
   },

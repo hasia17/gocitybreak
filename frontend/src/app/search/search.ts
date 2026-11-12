@@ -6,11 +6,12 @@ import {
   NonNullableFormBuilder,
   ReactiveFormsModule,
   ValidationErrors,
+  FormGroup,
   ValidatorFn,
   Validators,
 } from '@angular/forms';
 import { TranslocoService } from '@jsverse/transloco';
-import { map, switchMap } from 'rxjs';
+import { map, merge, switchMap } from 'rxjs';
 import { Language, textsIn } from '../i18n/language';
 import { ago, plural } from '../i18n/texts';
 import { readTypedNames } from './typed-names';
@@ -20,6 +21,10 @@ import { filtersForm } from './search-filters';
 import { loadSearchSettings, saveSearchSettings } from './search-settings';
 import {
   buildSearchQuery,
+  DepartureDays,
+  departureDaysWithoutChoice,
+  SearchFormValue,
+  windowWeekdays,
   defaultWorkEnd,
   defaultWorkStart,
   fieldApplies,
@@ -43,6 +48,12 @@ function maxBelowMin(group: AbstractControl): ValidationErrors | null {
   return min != null && max != null && max < min ? { maxBelowMin: true } : null;
 }
 
+/** A search form with departure days of which no possible one is ticked. */
+function noDepartureDay(form: AbstractControl): ValidationErrors | null {
+  const missing = departureDaysWithoutChoice((form as FormGroup).getRawValue() as SearchFormValue);
+  return missing.length > 0 ? { noDepartureDay: missing } : null;
+}
+
 /** Search form for round-trip (default) or one-way offers, and the list of offers it finds. */
 @Component({
   selector: 'app-search',
@@ -58,25 +69,28 @@ export class Search {
   /** Airports, cities and countries to resolve typed names against; undefined until loaded. */
   private readonly catalogue = signal<Catalogue | undefined>(undefined);
 
-  protected readonly form = this.fb.group({
-    kind: this.fb.control<OfferKind>('roundTrip'),
-    homeAirports: ['', [...airportCodes, this.supportedAirports()]],
-    destination: ['', this.knownNames('destination')],
-    exclusions: ['', this.knownNames('exclusions')],
-    from: ['', Validators.required],
-    to: ['', Validators.required],
-    stayLength: this.fb.group(
-      { min: [2, nightCount], max: [3, nightCount] },
-      { validators: maxBelowMin },
-    ),
-    leave: this.fb.group({
-      workStart: [defaultWorkStart, Validators.required],
-      workEnd: [defaultWorkEnd, Validators.required],
-      maxLeaveDays: this.fb.control<number | null>(null, Validators.pattern(/^\d+$/)),
-    }),
-    sort: this.fb.control<SortOrder>('price'),
-    filters: filtersForm(this.fb),
-  });
+  protected readonly form = this.fb.group(
+    {
+      kind: this.fb.control<OfferKind>('roundTrip'),
+      homeAirports: ['', [...airportCodes, this.supportedAirports()]],
+      destination: ['', this.knownNames('destination')],
+      exclusions: ['', this.knownNames('exclusions')],
+      from: ['', Validators.required],
+      to: ['', Validators.required],
+      stayLength: this.fb.group(
+        { min: [2, nightCount], max: [3, nightCount] },
+        { validators: maxBelowMin },
+      ),
+      leave: this.fb.group({
+        workStart: [defaultWorkStart, Validators.required],
+        workEnd: [defaultWorkEnd, Validators.required],
+        maxLeaveDays: this.fb.control<number | null>(null, Validators.pattern(/^\d+$/)),
+      }),
+      sort: this.fb.control<SortOrder>('price'),
+      filters: filtersForm(this.fb),
+    },
+    { validators: noDepartureDay },
+  );
   protected readonly moments = moments;
   protected readonly weekdays = weekdays;
 
@@ -138,9 +152,27 @@ export class Search {
         if (fieldApplies(path, kind)) this.form.get(path)?.enable();
         else this.form.get(path)?.disable();
       }
+      this.greyOutImpossibleDays();
     });
+    merge(this.form.controls.from.valueChanges, this.form.controls.to.valueChanges)
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.greyOutImpossibleDays());
     const settings = loadSearchSettings();
     if (settings) this.form.patchValue(settings);
+    // Departure days used to be all unticked for "any day"; now every ticked day suits.
+    for (const days of this.departureDays()) {
+      if (Object.values(days.getRawValue()).every((ticked) => !ticked))
+        days.setValue({
+          mon: true,
+          tue: true,
+          wed: true,
+          thu: true,
+          fri: true,
+          sat: true,
+          sun: true,
+        });
+    }
+    this.greyOutImpossibleDays();
     // A sort remembered before it was removed (e.g. price per night) falls back to price.
     if (!(sortOrders as readonly string[]).includes(this.form.controls.sort.value)) {
       this.form.controls.sort.setValue('price');
@@ -175,6 +207,46 @@ export class Search {
   protected offerCount(count: number): string {
     const texts = this.texts();
     return texts ? plural(texts, 'results.count', count) : '';
+  }
+
+  /** The departure-day groups of the filters. */
+  private departureDays() {
+    const { outboundDepartureWeekdays, inboundDepartureWeekdays } =
+      this.form.controls.filters.controls;
+    return [outboundDepartureWeekdays, inboundDepartureWeekdays];
+  }
+
+  /**
+   * Disables the departure days the travel window does not contain; a disabled day keeps its tick
+   * for when the window covers it again. Days that do not apply to the kind of offer stay disabled.
+   */
+  private greyOutImpossibleDays() {
+    const possible = windowWeekdays(this.form.controls.from.value, this.form.controls.to.value);
+    const kind = this.form.controls.kind.value;
+    for (const [name, days] of [
+      ['outboundDepartureWeekdays', this.departureDays()[0]],
+      ['inboundDepartureWeekdays', this.departureDays()[1]],
+    ] as const) {
+      if (!fieldApplies(`filters.${name}`, kind)) continue;
+      for (const day of weekdays) {
+        const control = days.controls[day.value];
+        if (possible.has(day.value)) control.enable({ emitEvent: false });
+        else control.disable({ emitEvent: false });
+      }
+    }
+    this.form.updateValueAndValidity({ emitEvent: false });
+  }
+
+  /** Whether the departure days named should be marked invalid: no possible day is ticked, and the user has tried to search. */
+  protected noDayLeft(name: DepartureDays): boolean {
+    const missing = this.form.errors?.['noDepartureDay'] as DepartureDays[] | undefined;
+    return this.submitted() && !!missing?.includes(name);
+  }
+
+  /** Whether a field outside the filters is invalid. */
+  protected fieldsInvalid(): boolean {
+    const { filters, ...fields } = this.form.controls;
+    return Object.values(fields).some((control) => control.invalid);
   }
 
   /** Whether the form field named by its control path applies to the chosen kind of offer. */

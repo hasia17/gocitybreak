@@ -2,14 +2,22 @@ import roundTripRequest from '../../../../contract/round-trip.request.json';
 import oneWayRequest from '../../../../contract/one-way.request.json';
 import foreignCurrencyRequest from '../../../../contract/foreign-currency.request.json';
 import queryErrorRequest from '../../../../contract/query-error.request.json';
-import { Catalogue, SearchQuery } from './search-api';
+import { Catalogue, SearchQuery, Weekday } from './search-api';
 import {
   buildSearchQuery,
   defaultWorkEnd,
   defaultWorkStart,
+  departureDaysWithoutChoice,
   fieldApplies,
   SearchFormValue,
+  windowWeekdays,
 } from './search-query';
+
+/** Departure days with only the given weekdays ticked. */
+function only(...ticked: Weekday[]): Record<Weekday, boolean> {
+  const all: Weekday[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+  return Object.fromEntries(all.map((d) => [d, ticked.includes(d)])) as Record<Weekday, boolean>;
+}
 
 /** Airports, cities and countries to resolve typed names against. */
 const catalogue: Catalogue = {
@@ -53,22 +61,22 @@ function rawValue(): SearchFormValue {
       inboundDeparture: { from: '', to: '' },
       inboundArrival: { from: '', to: '' },
       outboundDepartureWeekdays: {
-        mon: false,
-        tue: false,
-        wed: false,
-        thu: false,
-        fri: false,
-        sat: false,
-        sun: false,
+        mon: true,
+        tue: true,
+        wed: true,
+        thu: true,
+        fri: true,
+        sat: true,
+        sun: true,
       },
       inboundDepartureWeekdays: {
-        mon: false,
-        tue: false,
-        wed: false,
-        thu: false,
-        fri: false,
-        sat: false,
-        sun: false,
+        mon: true,
+        tue: true,
+        wed: true,
+        thu: true,
+        fri: true,
+        sat: true,
+        sun: true,
       },
     },
   };
@@ -121,7 +129,7 @@ describe('buildSearchQuery', () => {
     v.leave = { workStart: '08:00', workEnd: '16:00', maxLeaveDays: 2 };
     v.sort = 'leaveDays';
     v.filters.inboundDeparture = { from: '14:00', to: '' }; // left over from a round-trip search
-    v.filters.inboundDepartureWeekdays.sun = true;
+    v.filters.inboundDepartureWeekdays = only('sun');
     v.filters.outboundArrival = { from: '06:00', to: '10:00' };
 
     expect(buildSearchQuery(v, catalogue)).toEqual<SearchQuery>({
@@ -157,9 +165,8 @@ describe('buildSearchQuery', () => {
     v.filters.outboundDeparture = { from: '06:00', to: '12:00' };
     v.filters.outboundArrival = { from: '09:00', to: '23:59' };
     v.filters.inboundArrival = { from: '00:00', to: '22:00' };
-    v.filters.outboundDepartureWeekdays.thu = true;
-    v.filters.outboundDepartureWeekdays.fri = true;
-    v.filters.inboundDepartureWeekdays.sun = true;
+    v.filters.outboundDepartureWeekdays = only('thu', 'fri');
+    v.filters.inboundDepartureWeekdays = only('sun');
 
     expect(buildSearchQuery(v, catalogue).filters).toEqual({
       directOnly: true,
@@ -238,5 +245,59 @@ describe('field applicability', () => {
     for (const kind of ['roundTrip', 'oneWay'] as const) {
       for (const field of both) expect(fieldApplies(field, kind)).toBe(true);
     }
+  });
+});
+
+/** Which departure days the travel window allows, and which ticked ones the search sends. */
+describe('departure days', () => {
+  it('finds the weekdays a travel window contains', () => {
+    // Wed 11 Nov 2026 – Fri 13 Nov 2026
+    expect([...windowWeekdays('2026-11-11', '2026-11-13')]).toEqual(['wed', 'thu', 'fri']);
+    expect([...windowWeekdays('2026-11-14', '2026-11-16')]).toEqual(['sat', 'sun', 'mon']);
+    expect(windowWeekdays('2026-11-11', '2026-11-17').size).toBe(7);
+    // Incomplete or reversed windows grey out nothing; the form reports them on its own.
+    expect(windowWeekdays('', '2026-11-13').size).toBe(7);
+    expect(windowWeekdays('2026-11-13', '2026-11-11').size).toBe(7);
+  });
+
+  it('sends no weekday filter while every possible day is ticked, whatever days outside the window say', () => {
+    const v = rawValue();
+    v.from = '2026-11-11';
+    v.to = '2026-11-13';
+    v.filters.outboundDepartureWeekdays = only('wed', 'thu', 'fri');
+    v.filters.inboundDepartureWeekdays.mon = false;
+
+    expect(buildSearchQuery(v, catalogue).filters).toBeUndefined();
+  });
+
+  it('sends the possible days left ticked once one of them is unticked', () => {
+    const v = rawValue();
+    v.from = '2026-11-11';
+    v.to = '2026-11-13';
+    v.filters.outboundDepartureWeekdays.thu = false;
+    v.filters.inboundDepartureWeekdays = only('fri', 'sun');
+
+    expect(buildSearchQuery(v, catalogue).filters).toEqual({
+      outboundDepartureWeekdays: ['wed', 'fri'],
+      inboundDepartureWeekdays: ['fri'],
+    });
+  });
+
+  it('reports departure days with no possible day ticked, inbound ones for round trips only', () => {
+    const v = rawValue();
+    v.from = '2026-11-11';
+    v.to = '2026-11-13';
+    v.filters.outboundDepartureWeekdays = only('sat', 'sun');
+    v.filters.inboundDepartureWeekdays = only();
+    expect(departureDaysWithoutChoice(v)).toEqual([
+      'outboundDepartureWeekdays',
+      'inboundDepartureWeekdays',
+    ]);
+
+    v.kind = 'oneWay';
+    expect(departureDaysWithoutChoice(v)).toEqual(['outboundDepartureWeekdays']);
+
+    v.filters.outboundDepartureWeekdays.thu = true;
+    expect(departureDaysWithoutChoice(v)).toEqual([]);
   });
 });
