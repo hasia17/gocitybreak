@@ -20,7 +20,9 @@ export interface SearchQuery {
   destination: Destination;
   /** Airports, cities and countries removed from the destination. */
   exclusions?: CatalogueCodes;
-  travelWindow: { from: string; to: string };
+  travelWindow?: { from: string; to: string };
+  /** Exact local departure dates, instead of travelWindow and stayLength. */
+  fixedDates?: { outbound: string; inbound?: string };
   /** Range of hotel nights, both ends inclusive; round trips only. */
   stayLength?: { min: number; max: number };
   /** Work start and work end as HH:MM in the home airport's local time; round trips only. */

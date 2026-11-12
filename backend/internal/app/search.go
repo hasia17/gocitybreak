@@ -24,10 +24,14 @@ type searchRequest struct {
 		Anywhere bool `json:"anywhere"`
 	} `json:"destination"`
 	Exclusions   codesJSON `json:"exclusions"`
-	TravelWindow struct {
+	TravelWindow *struct {
 		From string `json:"from"`
 		To   string `json:"to"`
 	} `json:"travelWindow"`
+	FixedDates *struct {
+		Outbound string `json:"outbound"`
+		Inbound  string `json:"inbound"`
+	} `json:"fixedDates"`
 	StayLength *stayLengthJSON `json:"stayLength"`
 	WorkStart  workHourJSON    `json:"workStart"`
 	WorkEnd    workHourJSON    `json:"workEnd"`
@@ -57,9 +61,9 @@ type offerJSON struct {
 	Outbound legJSON  `json:"outbound"`
 	Inbound  *legJSON `json:"inbound,omitempty"`
 	// Nights is set for round-trip offers only, where 0 is a valid number of nights.
-	Nights *int      `json:"nights,omitempty"`
-	Price  priceJSON `json:"price"`
-	PriceFetchedAt time.Time  `json:"priceFetchedAt"`
+	Nights         *int      `json:"nights,omitempty"`
+	Price          priceJSON `json:"price"`
+	PriceFetchedAt time.Time `json:"priceFetchedAt"`
 	// LeaveDays is set for round-trip offers only, where 0 is a valid number of leave days.
 	LeaveDays *int `json:"leaveDays,omitempty"`
 }
@@ -127,14 +131,6 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return search.Query{}, errors.New("search query is not valid JSON")
 	}
-	from, err := time.Parse(time.DateOnly, req.TravelWindow.From)
-	if err != nil {
-		return search.Query{}, errors.New("travelWindow.from must be a date in YYYY-MM-DD format")
-	}
-	to, err := time.Parse(time.DateOnly, req.TravelWindow.To)
-	if err != nil {
-		return search.Query{}, errors.New("travelWindow.to must be a date in YYYY-MM-DD format")
-	}
 	q := search.Query{
 		Kind:         search.OfferKind(req.Kind),
 		HomeAirports: req.HomeAirports,
@@ -143,8 +139,33 @@ func parseSearchRequest(r *http.Request) (search.Query, error) {
 			Anywhere:   req.Destination.Anywhere,
 			Exclusions: req.Exclusions.codes(),
 		},
-		TravelWindow: search.TravelWindow{From: from, To: to},
-		Sort:         search.SortOrder(req.Sort),
+		Sort: search.SortOrder(req.Sort),
+	}
+	var err error
+	if req.TravelWindow != nil {
+		from, err := time.Parse(time.DateOnly, req.TravelWindow.From)
+		if err != nil {
+			return search.Query{}, errors.New("travelWindow.from must be a date in YYYY-MM-DD format")
+		}
+		to, err := time.Parse(time.DateOnly, req.TravelWindow.To)
+		if err != nil {
+			return search.Query{}, errors.New("travelWindow.to must be a date in YYYY-MM-DD format")
+		}
+		q.TravelWindow = search.TravelWindow{From: from, To: to}
+	}
+	if req.FixedDates != nil {
+		outbound, err := time.Parse(time.DateOnly, req.FixedDates.Outbound)
+		if err != nil {
+			return search.Query{}, errors.New("fixedDates.outbound must be a date in YYYY-MM-DD format")
+		}
+		q.FixedDates = &search.FixedDates{Outbound: outbound}
+		if q.Kind.IsRoundTrip() && req.FixedDates.Inbound != "" {
+			inbound, err := time.Parse(time.DateOnly, req.FixedDates.Inbound)
+			if err != nil {
+				return search.Query{}, errors.New("fixedDates.inbound must be a date in YYYY-MM-DD format")
+			}
+			q.FixedDates.Inbound = inbound
+		}
 	}
 	if q.Filters, err = req.Filters.parse(); err != nil {
 		return search.Query{}, err

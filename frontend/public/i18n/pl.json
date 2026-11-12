@@ -65,9 +65,17 @@
       "unsupportedAirports": "Szukaj tylko z obsługiwanych lotnisk: {{airports}}.",
       "fields": "Podaj 3-literowe kody lotnisk, cel podróży (lotniska, miasta, kraje albo gdziekolwiek), obie daty i liczbę nocy od najmniejszej do największej.",
       "timeRanges": "W filtrach podaj oba końce każdego przedziału godzin albo zostaw oba puste.",
-      "noDepartureDay": "W filtrach zostaw zaznaczony co najmniej jeden dzień wylotu."
+      "noDepartureDay": "W filtrach zostaw zaznaczony co najmniej jeden dzień wylotu.",
+      "fixedDateOrder": "Data powrotu nie może być wcześniejsza niż data wylotu."
     },
-    "failed": "Wyszukiwanie nie powiodło się. Sprawdź formularz i spróbuj ponownie."
+    "failed": "Wyszukiwanie nie powiodło się. Sprawdź formularz i spróbuj ponownie.",
+    "dateMode": {
+      "label": "Daty",
+      "flexible": "Elastyczne daty",
+      "fixed": "Stałe daty"
+    },
+    "outboundDate": "Data wylotu",
+    "inboundDate": "Data powrotu"
   },
   "results": {
     "emptyRoundTrip": "Żadna oferta nie pasuje do wyszukiwania. Spróbuj je poluzować: szersze okno podróży, więcej lotnisk, większy zakres nocy, więcej dni urlopu albo mniej filtrów: szersze przedziały godzin, więcej dni tygodnia.",

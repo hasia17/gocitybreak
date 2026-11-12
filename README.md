@@ -32,6 +32,15 @@ Without Task: `docker compose up -d --build`, and for sample flights, once the A
 
 Search is `POST /api/search`, e.g. `{"kind": "roundTrip", "homeAirports": ["KRK", "KTW"], "destination": {"airports": ["BGY"]}, "travelWindow": {"from": "2026-12-01", "to": "2026-12-10"}, "stayLength": {"min": 2, "max": 3}}`. `homeAirports` must be supported airports (`supportedAirports` of `GET /api/catalogue`). `kind` defaults to `roundTrip`; `"kind": "oneWay"` takes no `stayLength`. `destination` takes any of `airports`, `cities` and `countries` (codes from `GET /api/catalogue`, e.g. `"cities": ["MILAN"], "countries": ["it"]`) or `"anywhere": true`; `exclusions` takes the same three lists and removes them from the destination.
 
+For fixed dates, replace `travelWindow` and `stayLength` with
+`"fixedDates": {"outbound": "2026-12-04", "inbound": "2026-12-06"}`.
+Exactly one of `travelWindow` and `fixedDates` is required. A fixed round trip
+requires an inbound date on or after the outbound date; one-way searches need
+only `outbound`. Each date matches the leg's local departure, including flights
+that arrive the following day. Fixed dates have no stay-length limit; nights
+and leave days are still calculated, and time ranges, direct only and the leave
+limit still apply. The form defaults to flexible dates and remembers its mode.
+
 Round-trip offers carry `leaveDays` (leave-days calculator in `internal/leave`). The query may set `"workStart"` and `"workEnd"` (HH:MM in the home airport's local time, default `09:00` and `17:00`), `"maxLeaveDays"` (0 or more) and `"sort"` (`price`, the default; for round trips only also `leaveDays`).
 
 Optional `filters`: `directOnly`, time ranges `outboundDeparture`, `outboundArrival`, `inboundDeparture`, `inboundArrival` (each `{"from": "06:00", "to": "12:00"}` in the local time of the airport concerned; `to` before `from` wraps past midnight), and `outboundDepartureWeekdays`, `inboundDepartureWeekdays` (`["thu", "fri"]`, by the local departure date of each leg).

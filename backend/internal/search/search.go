@@ -39,9 +39,11 @@ type Query struct {
 	Kind         OfferKind
 	HomeAirports []string
 	Destination  Destination
+	// TravelWindow selects flexible dates; its zero value is absent when FixedDates is set.
 	TravelWindow TravelWindow
-	// StayLength applies to round-trip offers only. Nil means the query names none,
-	// which a round trip may not: it requires a stay length.
+	// FixedDates selects exact local departure dates instead of a travel window and stay length.
+	FixedDates *FixedDates
+	// StayLength is required for a flexible round trip and absent with FixedDates.
 	StayLength *StayLength
 	// WorkStart and WorkEnd are offsets from midnight in the home airport's local time,
 	// from which the leave days of round-trip offers are counted. Nil means the default work
@@ -75,6 +77,11 @@ type Destination struct {
 // TravelWindow is the date range the whole offer must fit into. Both days are inclusive.
 type TravelWindow struct {
 	From, To time.Time
+}
+
+// FixedDates names each leg's local departure date; Inbound is unused for a one-way offer.
+type FixedDates struct {
+	Outbound, Inbound time.Time
 }
 
 // StayLength is the range of nights of a round-trip offer, both ends inclusive.
@@ -231,11 +238,31 @@ func (q Query) validate() error {
 	if !q.Destination.Anywhere && q.Destination.IsEmpty() {
 		return &QueryError{"destination must name airports, cities or countries, or be anywhere"}
 	}
+	hasWindow := q.TravelWindow != (TravelWindow{})
+	if hasWindow == (q.FixedDates != nil) {
+		return &QueryError{"exactly one of travelWindow or fixedDates is required"}
+	}
+	if q.FixedDates != nil {
+		if q.FixedDates.Outbound.IsZero() {
+			return &QueryError{"fixedDates.outbound is required"}
+		}
+		if q.Kind == RoundTrip {
+			if q.FixedDates.Inbound.IsZero() {
+				return &QueryError{"fixedDates.inbound is required for a round trip"}
+			}
+			if q.FixedDates.Inbound.Before(q.FixedDates.Outbound) {
+				return &QueryError{"fixedDates.inbound must not be before fixedDates.outbound"}
+			}
+		}
+		if q.StayLength != nil {
+			return &QueryError{"stayLength must be absent with fixedDates"}
+		}
+	}
 	if q.TravelWindow.To.Before(q.TravelWindow.From) {
 		return &QueryError{"travelWindow.to must not be before travelWindow.from"}
 	}
 	// A stay length is a round-trip matter only.
-	if q.Kind == RoundTrip {
+	if q.Kind == RoundTrip && q.FixedDates == nil {
 		if q.StayLength == nil {
 			return &QueryError{"stayLength is required for a round trip"}
 		}
@@ -297,18 +324,22 @@ func flightColumns(alias string) string {
 		%[1]s.price_amount, %[1]s.price_currency, %[1]s.fetched_at, %[1]s.price_pln`, alias)
 }
 
-// oneWay returns one-way offers from the home airports to the destination airports within the travel window;
+// oneWay returns one-way offers within the travel window or on the fixed departure date;
 // equally priced offers go by departure, then by airports.
 func (s *Searcher) oneWay(ctx context.Context, q Query, destination []string) ([]Offer, error) {
+	from, to := q.TravelWindow.From, q.TravelWindow.To
+	if q.FixedDates != nil {
+		from, to = q.FixedDates.Outbound, q.FixedDates.Outbound
+	}
 	rows, err := s.pool.Query(ctx, `WITH`+pricedFlights+`
 		SELECT `+flightColumns("o")+`
 		FROM priced o
 		WHERE o.departure_airport = ANY($1)
 			AND o.arrival_airport = ANY($2)
-			AND o.departure_date >= $3
-			AND o.arrival_date <= $4
+			AND (($5::boolean AND o.departure_date = $3)
+				OR (NOT $5 AND o.departure_date >= $3 AND o.arrival_date <= $4))
 		ORDER BY o.price_pln, o.departure_date, o.departure_time, o.departure_airport, o.arrival_airport`,
-		q.HomeAirports, destination, q.TravelWindow.From, q.TravelWindow.To)
+		q.HomeAirports, destination, from, to, q.FixedDates != nil)
 	if err != nil {
 		return nil, fmt.Errorf("query flights: %w", err)
 	}
@@ -334,9 +365,17 @@ func (s *Searcher) oneWay(ctx context.Context, q Query, destination []string) ([
 // roundTrip pairs an outbound flight from a home airport to a destination airport with an inbound flight
 // from the same destination airport back to any home airport. The pair fits within the travel window
 // (outbound departure on its first day at the earliest, inbound arrival on its last day at the latest)
-// and its nights within the stay length. Equally priced offers go by outbound departure,
+// and its nights within the stay length; fixed dates match departures instead, without a nights limit.
+// Equally priced offers go by outbound departure,
 // then inbound departure, then airports.
 func (s *Searcher) roundTrip(ctx context.Context, q Query, destination []string) ([]Offer, error) {
+	from, to := q.TravelWindow.From, q.TravelWindow.To
+	var stay StayLength
+	if q.FixedDates != nil {
+		from, to = q.FixedDates.Outbound, q.FixedDates.Inbound
+	} else {
+		stay = *q.StayLength
+	}
 	rows, err := s.pool.Query(ctx, `WITH`+pricedFlights+`
 		SELECT `+flightColumns("o")+`, `+flightColumns("i")+`, n.nights
 		FROM priced o
@@ -349,16 +388,15 @@ func (s *Searcher) roundTrip(ctx context.Context, q Query, destination []string)
 		WHERE o.departure_airport = ANY($1)
 			AND o.arrival_airport = ANY($2)
 			AND i.arrival_airport = ANY($1)
-			AND o.departure_date >= $3
-			AND i.arrival_date <= $4
+			AND (($7::boolean AND o.departure_date = $3 AND i.departure_date = $4)
+				OR (NOT $7 AND o.departure_date >= $3 AND i.arrival_date <= $4
+					AND n.nights BETWEEN $5 AND $6))
 			-- Both times are local at the destination airport.
 			AND i.departure_date + i.departure_time > o.arrival_date + o.arrival_time
-			AND n.nights BETWEEN $5 AND $6
 		ORDER BY o.price_pln + i.price_pln,
 			o.departure_date, o.departure_time, i.departure_date, i.departure_time,
 			o.departure_airport, o.arrival_airport, i.arrival_airport`,
-		q.HomeAirports, destination, q.TravelWindow.From, q.TravelWindow.To,
-		q.StayLength.Min, q.StayLength.Max)
+		q.HomeAirports, destination, from, to, stay.Min, stay.Max, q.FixedDates != nil)
 	if err != nil {
 		return nil, fmt.Errorf("query flight pairs: %w", err)
 	}

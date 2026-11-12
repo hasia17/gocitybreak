@@ -4,7 +4,8 @@ Each `<scenario>.request.json` is the JSON body of a `POST /api/search` request.
 The corresponding `.response.json` is the complete HTTP 200 JSON response body;
 `query-error.response.txt` is the actual HTTP 400 `text/plain` body, including
 its final newline, not a JSON error object. Scenarios are `round-trip` (PLN),
-`one-way`, `foreign-currency` (EUR inbound, converted to PLN), and `query-error`
+`one-way`, `fixed-dates` (overnight outbound and inbound flights),
+`fixed-one-way` (overnight departure), `foreign-currency` (EUR inbound, converted to PLN), and `query-error`
 (an invalid stay-length range). The backend test seeds deterministic flights,
 airports and exchange rates in `backend/internal/app/contract_test.go`. Both
 stacks should use these exact files; requests are inputs, not generated output.
@@ -36,3 +37,12 @@ and update frontend expectations deliberately; never use the flag in CI. Run
 without the flag to check the contract. JSON responses are indented using Go's
 `encoding/json` formatter and compared as complete bytes; text is compared
 exactly. Status and content type are checked in the backend test.
+
+## Fixed dates
+
+A query names exactly one of `travelWindow` and `fixedDates`. Fixed dates use
+`{"outbound":"2026-12-04","inbound":"2026-12-06"}` for round trips and only
+`outbound` for one-way offers. These are each leg's local departure dates, so
+an arrival on the following day still matches. A fixed round trip has no
+`stayLength`; nights and leave days are still calculated from the flights.
+The inbound date must be on or after the outbound date.
