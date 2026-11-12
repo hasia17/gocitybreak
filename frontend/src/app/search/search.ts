@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
@@ -9,9 +9,13 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
+import { TranslocoService } from '@jsverse/transloco';
+import { map, switchMap } from 'rxjs';
+import { Language, textsIn } from '../i18n/language';
+import { ago, plural } from '../i18n/texts';
 import { readTypedNames } from './typed-names';
-import { OfferView, offerView, priceAge } from './offer-view';
-import { Catalogue, OfferKind, SearchResponse, SortOrder, sortOrders } from './search-api';
+import { offerView } from './offer-view';
+import { Catalogue, Offer, OfferKind, SearchResponse, SortOrder, sortOrders } from './search-api';
 import { filtersForm } from './search-filters';
 import { loadSearchSettings, saveSearchSettings } from './search-settings';
 import {
@@ -49,6 +53,7 @@ function maxBelowMin(group: AbstractControl): ValidationErrors | null {
 export class Search {
   private readonly http = inject(HttpClient);
   private readonly fb = inject(NonNullableFormBuilder);
+  private readonly transloco = inject(TranslocoService);
 
   /** Airports, cities and countries to resolve typed names against; undefined until loaded. */
   private readonly catalogue = signal<Catalogue | undefined>(undefined);
@@ -74,15 +79,39 @@ export class Search {
   });
   protected readonly moments = moments;
   protected readonly weekdays = weekdays;
-  protected readonly priceAge = (fetchedAt: string) => priceAge(fetchedAt, Date.now());
+
+  /** The interface language, once its texts have loaded. */
+  private readonly language = toSignal(
+    this.transloco.langChanges$.pipe(
+      switchMap((language) =>
+        this.transloco.selectTranslation(language).pipe(map(() => language as Language)),
+      ),
+    ),
+  );
+  /** Texts and formats of the interface language; undefined until its texts have loaded. */
+  private readonly texts = computed(() => {
+    const language = this.language();
+    return language ? textsIn(this.transloco, language) : undefined;
+  });
+  protected readonly priceAge = (fetchedAt: string) => {
+    const texts = this.texts();
+    return texts ? ago(texts, fetchedAt, Date.now()) : '';
+  };
 
   protected readonly kind = toSignal(this.form.controls.kind.valueChanges, {
     initialValue: this.form.controls.kind.value,
   });
 
-  /** Offers of the last search; undefined before the first search. */
-  protected readonly offers = signal<OfferView[] | undefined>(undefined);
+  /** Offers of the last search and when they arrived; undefined before the first search. */
+  private readonly found = signal<{ offers: Offer[]; at: number } | undefined>(undefined);
+  /** Offers of the last search, shown in the interface language; undefined before the first search. */
+  protected readonly offers = computed(() => {
+    const found = this.found();
+    const texts = this.texts();
+    return found && texts ? found.offers.map((o) => offerView(o, found.at, texts)) : undefined;
+  });
   protected readonly loading = signal(false);
+  /** The translation key of the last search's failure. */
   protected readonly error = signal<string | undefined>(undefined);
   /** Whether the user has tried to search; invalid fields are marked only after that. */
   protected readonly submitted = signal(false);
@@ -127,15 +156,25 @@ export class Search {
     this.error.set(undefined);
     this.http.post<SearchResponse>('/api/search', buildSearchQuery(v, this.catalogue())).subscribe({
       next: (resp) => {
-        const now = Date.now();
-        this.offers.set(resp.offers.map((offer) => offerView(offer, now)));
+        this.found.set({ offers: resp.offers, at: Date.now() });
         this.loading.set(false);
       },
       error: () => {
-        this.error.set('Search failed. Check the form and try again.');
+        this.error.set('search.failed');
         this.loading.set(false);
       },
     });
+  }
+
+  /** The text under `key` in the interface language; empty until the language's texts have loaded. */
+  protected t(key: string, params?: Record<string, unknown>): string {
+    return this.texts()?.t(key, params) ?? '';
+  }
+
+  /** The heading of the results, like "3 offers" or "5 ofert". */
+  protected offerCount(count: number): string {
+    const texts = this.texts();
+    return texts ? plural(texts, 'results.count', count) : '';
   }
 
   /** Whether the form field named by its control path applies to the chosen kind of offer. */

@@ -7,7 +7,7 @@ A search engine for cheap Ryanair flights for short city breaks. Domain vocabula
 | Path | What |
 |---|---|
 | `backend/` | Go JSON API (`cmd/api`), price worker (`cmd/worker`, `internal/worker`, Ryanair and NBP clients in `internal/ryanair`, `internal/nbp`), search (`internal/search`), database access and migrations (`internal/database/migrations`), sample data (`seed/`) |
-| `frontend/` | Angular app; in Docker it is served by nginx, which also proxies `/api` to the backend |
+| `frontend/` | Angular app in Polish and English (texts in `public/i18n/<language>.json`, loaded at runtime with Transloco, ADR-0007); in Docker it is served by nginx, which also proxies `/api` to the backend |
 | `docker-compose.yml` | PostgreSQL + backend + price worker + frontend |
 | `deploy/compose.yml` | The same stack on the server, from published images ([`docs/deploy.md`](docs/deploy.md)) |
 | `.github/workflows/ci.yml` | Tests and image builds on every push and pull request; on `main` also publishes the images and deploys ([`docs/deploy.md`](docs/deploy.md)) |

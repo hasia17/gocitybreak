@@ -1,3 +1,4 @@
+import { provideTestI18n } from '../i18n/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
@@ -17,7 +18,7 @@ describe('shared search HTTP contract', () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [Search],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideTestI18n()],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
   });
@@ -70,7 +71,7 @@ describe('shared search HTTP contract', () => {
     expect(offer).toContain('KRK → BGY');
     expect(offer).toContain('BGY → KRK');
     expect(offer).toContain('2 nights');
-    expect(offer).toContain('90.00 PLN');
+    expect(offer).toContain('PLN 90.00');
   });
 
   it('sends the one-way request and renders the shared response', async () => {
@@ -81,7 +82,7 @@ describe('shared search HTTP contract', () => {
     await fixture.whenStable();
     const offer = root.querySelector('[data-testid="offer"]')!.textContent!;
     expect(offer).toContain('KRK → BGY');
-    expect(offer).toContain('89.00 PLN');
+    expect(offer).toContain('PLN 89.00');
     expect(offer).not.toContain('nights');
   });
 
@@ -92,8 +93,8 @@ describe('shared search HTTP contract', () => {
     req.flush(foreignCurrencyResponse);
     await fixture.whenStable();
     const offer = root.querySelector('[data-testid="offer"]')!.textContent!;
-    expect(offer).toContain('≈ 134.98 PLN');
-    expect(offer).toContain('19.99 EUR');
+    expect(offer).toContain('≈ PLN 134.98');
+    expect(offer).toContain('€19.99');
   });
 
   it('handles the shared plain-text query error', async () => {

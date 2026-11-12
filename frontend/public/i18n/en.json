@@ -1,0 +1,101 @@
+{
+  "app": {
+    "language": "Language",
+    "apiStatus": "API: {{status}}",
+    "version": "Version: {{version}}",
+    "database": "Database: {{status}}",
+    "apiUnavailable": "API unavailable.",
+    "checkingApi": "Checking API…"
+  },
+  "search": {
+    "title": "Where to this weekend?",
+    "lede": "Cheap Ryanair flights for a short city break.",
+    "kind": {
+      "label": "Kind of offer",
+      "roundTrip": "Round trip",
+      "oneWay": "One way"
+    },
+    "from": "From",
+    "fromPlaceholder": "KRK, KTW",
+    "to": "To",
+    "toPlaceholder": "Milan, Spain, anywhere",
+    "except": "Except",
+    "exceptPlaceholder": "Norway, BGY",
+    "earliest": "Earliest",
+    "latest": "Latest",
+    "nights": "Nights",
+    "minNights": "Minimum nights",
+    "maxNights": "Maximum nights",
+    "submit": "Search",
+    "workStart": "Work start",
+    "workEnd": "Work end",
+    "maxLeaveDays": "Max leave days",
+    "anyLeave": "any",
+    "sort": "Sort",
+    "sortBy": "Sort by",
+    "sortOrder": {
+      "price": "Price",
+      "leaveDays": "Leave days"
+    },
+    "filters": "Filters",
+    "directOnly": "Direct flights only",
+    "localTimes": "Hours in local time at each airport.",
+    "moment": {
+      "outboundDeparture": "Outbound departure",
+      "outboundArrival": "Outbound arrival",
+      "inboundDeparture": "Inbound departure",
+      "inboundArrival": "Inbound arrival"
+    },
+    "rangeFrom": "{{moment}} from",
+    "rangeTo": "{{moment}} to",
+    "outboundDays": "Outbound departure days",
+    "inboundDays": "Inbound departure days",
+    "weekday": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    },
+    "hint": {
+      "unsupportedAirports": "Search from supported airports only: {{airports}}.",
+      "fields": "Enter 3-letter airport codes, a destination of airports, cities or countries (or anywhere), both dates and nights from the minimum up to the maximum.",
+      "timeRanges": "In Filters, give each time range both ends, or leave both empty."
+    },
+    "failed": "Search failed. Check the form and try again."
+  },
+  "results": {
+    "emptyRoundTrip": "No offers match your search. Try loosening it: a wider travel window, more airports, more nights to choose from, more leave days, or fewer filters: wider time ranges, more weekdays.",
+    "emptyOneWay": "No offers match your search. Try loosening it: a wider travel window, more airports, or fewer filters: wider time ranges, more weekdays.",
+    "count": {
+      "one": "{{count}} offer",
+      "other": "{{count}} offers"
+    },
+    "perPerson": "Prices per person, no cabin bag",
+    "arrives": "arrives {{date}}",
+    "checked": "checked {{age}}",
+    "separateTickets": {
+      "one": "Booked as {{count}} separate one-way ticket",
+      "other": "Booked as {{count}} separate one-way tickets"
+    },
+    "book": "Book on Ryanair ↗",
+    "bookRoute": "{{route}} on Ryanair ↗"
+  },
+  "offer": {
+    "stops": {
+      "one": "{{count}} stop",
+      "other": "{{count}} stops"
+    },
+    "nights": {
+      "one": "{{count}} night",
+      "other": "{{count}} nights"
+    },
+    "leaveDays": {
+      "one": "{{count}} leave day",
+      "other": "{{count}} leave days"
+    },
+    "noLeaveDays": "no leave days"
+  }
+}
