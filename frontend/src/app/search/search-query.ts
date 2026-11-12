@@ -9,21 +9,21 @@ import { readTypedNames } from './typed-names';
 
 /** The four moments of an offer that a time range can restrict, in travel order. */
 export const moments = [
-  { name: 'outboundDeparture', label: 'Outbound departure' },
-  { name: 'outboundArrival', label: 'Outbound arrival' },
-  { name: 'inboundDeparture', label: 'Inbound departure' },
-  { name: 'inboundArrival', label: 'Inbound arrival' },
+  { name: 'outboundDeparture' },
+  { name: 'outboundArrival' },
+  { name: 'inboundDeparture' },
+  { name: 'inboundArrival' },
 ] as const;
 
 /** The weekdays a departure can be restricted to, from Monday to Sunday. */
-export const weekdays: { value: Weekday; label: string }[] = [
-  { value: 'mon', label: 'Mon' },
-  { value: 'tue', label: 'Tue' },
-  { value: 'wed', label: 'Wed' },
-  { value: 'thu', label: 'Thu' },
-  { value: 'fri', label: 'Fri' },
-  { value: 'sat', label: 'Sat' },
-  { value: 'sun', label: 'Sun' },
+export const weekdays: { value: Weekday }[] = [
+  { value: 'mon' },
+  { value: 'tue' },
+  { value: 'wed' },
+  { value: 'thu' },
+  { value: 'fri' },
+  { value: 'sat' },
+  { value: 'sun' },
 ];
 
 /**

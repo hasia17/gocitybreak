@@ -9,8 +9,11 @@ export interface TypedNames {
   unknown: string[];
 }
 
+/** The word for anywhere in each language of the interface; any of them is understood in any language. */
+const anywhereWords = ['anywhere', 'gdziekolwiek'];
+
 /**
- * Reads airports, cities and countries typed as "Milan, Spain, OSL" or "anywhere". Each name is, in this order,
+ * Reads airports, cities and countries typed as "Milan, Spain, OSL" or "anywhere" ("gdziekolwiek"). Each name is, in this order,
  * an airport code, a city, a country or an airport name, all case-insensitive. Without the catalogue only
  * airport codes are known.
  */
@@ -26,7 +29,7 @@ export function readTypedNames(text: string, catalogue: Catalogue | undefined): 
   for (const raw of text.split(',')) {
     const name = raw.trim().toLowerCase();
     if (!name) continue;
-    if (name === 'anywhere') {
+    if (anywhereWords.includes(name)) {
       typed.anywhere = true;
       continue;
     }

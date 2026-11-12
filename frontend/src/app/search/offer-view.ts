@@ -1,36 +1,27 @@
+import { Texts, ago, money, plural, shortDay } from '../i18n/texts';
 import { Offer } from './search-api';
 import { ryanairTickets } from './ryanair-booking';
-
-const dayFormat = new Intl.DateTimeFormat('en-GB', {
-  weekday: 'short',
-  day: 'numeric',
-  month: 'short',
-  timeZone: 'UTC',
-});
 
 /** Display values for one result, including its booking links. */
 export type OfferView = ReturnType<typeof offerView>;
 
 /**
- * Converts a valid API offer and the current epoch milliseconds into result-list display values.
- * Dates use the traveller's current year; price age is clamped to zero for future fetch times.
+ * Converts a valid API offer and the current epoch milliseconds into result-list display values in
+ * the language of `texts`. Dates use the traveller's current year; price age is clamped to zero
+ * for future fetch times.
  */
-export function offerView(offer: Offer, now: number) {
+export function offerView(offer: Offer, now: number, texts: Texts) {
   const year = new Date(now).getFullYear();
   const legs = [offer.outbound, ...(offer.inbound ? [offer.inbound] : [])];
   const tickets = ryanairTickets(offer);
-  const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
   return {
     legs: legs.map((leg) => ({
-      stops: leg.isDirect
-        ? undefined
-        : `${leg.flights.length - 1} ${leg.flights.length === 2 ? 'stop' : 'stops'}`,
+      stops: leg.isDirect ? undefined : plural(texts, 'offer.stops', leg.flights.length - 1),
       flights: leg.flights.map((flight) => {
         const dateYear = Number(flight.departure.date.slice(0, 4));
-        const day = dayFormat.format(Date.parse(flight.departure.date));
         return {
           departureDate: flight.departure.date,
-          day: dateYear === year ? day : `${day} ${dateYear}`,
+          day: shortDay(texts, flight.departure.date, dateYear !== year),
           departureTime: flight.departure.time,
           arrivalTime: flight.arrival.time,
           arrivalDate: flight.arrival.date,
@@ -41,37 +32,24 @@ export function offerView(offer: Offer, now: number) {
         };
       }),
     })),
-    nights:
-      offer.nights === undefined
-        ? undefined
-        : `${offer.nights} ${offer.nights === 1 ? 'night' : 'nights'}`,
+    nights: offer.nights === undefined ? undefined : plural(texts, 'offer.nights', offer.nights),
     leaveDays:
       offer.leaveDays === undefined
         ? undefined
         : offer.leaveDays === 0
-          ? 'no leave days'
-          : `${offer.leaveDays} ${offer.leaveDays === 1 ? 'leave day' : 'leave days'}`,
+          ? texts.t('offer.noLeaveDays')
+          : plural(texts, 'offer.leaveDays', offer.leaveDays),
     freeLeave: offer.leaveDays === 0,
-    ticketCount: words[tickets.length] ?? `${tickets.length}`,
-    price: `${offer.price.approximate ? '≈ ' : ''}${offer.price.amount.toFixed(2)} ${offer.price.currency}`,
+    separateTickets:
+      tickets.length > 1 ? plural(texts, 'results.separateTickets', tickets.length) : undefined,
+    price: money(texts, offer.price),
     foreignPrices: legs
       .flatMap((leg) => leg.flights)
       .map((flight) => flight.originalPrice)
       .filter((price) => price.currency !== 'PLN')
-      .map((price) => `${price.amount.toFixed(2)} ${price.currency}`),
+      .map((price) => money(texts, price)),
     priceFetchedAt: offer.priceFetchedAt,
-    priceAge: priceAge(offer.priceFetchedAt, now),
+    priceAge: ago(texts, offer.priceFetchedAt, now),
     tickets,
   };
-}
-
-/** Formats the age of a stored price at the given time. */
-export function priceAge(fetchedAt: string, now: number): string {
-  const minutes = Math.max(0, Math.round((now - Date.parse(fetchedAt)) / 60_000));
-  const hours = Math.round(minutes / 60);
-  return minutes < 60
-    ? `${minutes} min ago`
-    : hours < 48
-      ? `${hours} h ago`
-      : `${Math.round(hours / 24)} days ago`;
 }

@@ -1,0 +1,111 @@
+{
+  "app": {
+    "language": "Język",
+    "apiStatus": "API: {{status}}",
+    "version": "Wersja: {{version}}",
+    "database": "Baza danych: {{status}}",
+    "apiUnavailable": "API niedostępne.",
+    "checkingApi": "Sprawdzam API…"
+  },
+  "search": {
+    "title": "Gdzie na weekend?",
+    "lede": "Tanie loty Ryanair na krótki city break.",
+    "kind": {
+      "label": "Rodzaj oferty",
+      "roundTrip": "Tam i z powrotem",
+      "oneWay": "W jedną stronę"
+    },
+    "from": "Skąd",
+    "fromPlaceholder": "KRK, KTW",
+    "to": "Dokąd",
+    "toPlaceholder": "Milan, Spain, gdziekolwiek",
+    "except": "Oprócz",
+    "exceptPlaceholder": "Norway, BGY",
+    "earliest": "Najwcześniej",
+    "latest": "Najpóźniej",
+    "nights": "Noce",
+    "minNights": "Najmniej nocy",
+    "maxNights": "Najwięcej nocy",
+    "submit": "Szukaj",
+    "workStart": "Początek pracy",
+    "workEnd": "Koniec pracy",
+    "maxLeaveDays": "Maks. dni urlopu",
+    "anyLeave": "dowolnie",
+    "sort": "Sortuj",
+    "sortBy": "Sortuj według",
+    "sortOrder": {
+      "price": "Cena",
+      "leaveDays": "Dni urlopu"
+    },
+    "filters": "Filtry",
+    "directOnly": "Tylko loty bezpośrednie",
+    "localTimes": "Godziny w czasie lokalnym każdego lotniska.",
+    "moment": {
+      "outboundDeparture": "Wylot tam",
+      "outboundArrival": "Przylot tam",
+      "inboundDeparture": "Wylot z powrotem",
+      "inboundArrival": "Przylot z powrotem"
+    },
+    "rangeFrom": "{{moment}} od",
+    "rangeTo": "{{moment}} do",
+    "outboundDays": "Dni wylotu tam",
+    "inboundDays": "Dni wylotu z powrotem",
+    "weekday": {
+      "mon": "pon",
+      "tue": "wt",
+      "wed": "śr",
+      "thu": "czw",
+      "fri": "pt",
+      "sat": "sob",
+      "sun": "nd"
+    },
+    "hint": {
+      "unsupportedAirports": "Szukaj tylko z obsługiwanych lotnisk: {{airports}}.",
+      "fields": "Podaj 3-literowe kody lotnisk, cel podróży (lotniska, miasta, kraje albo gdziekolwiek), obie daty i liczbę nocy od najmniejszej do największej.",
+      "timeRanges": "W filtrach podaj oba końce każdego przedziału godzin albo zostaw oba puste."
+    },
+    "failed": "Wyszukiwanie nie powiodło się. Sprawdź formularz i spróbuj ponownie."
+  },
+  "results": {
+    "emptyRoundTrip": "Żadna oferta nie pasuje do wyszukiwania. Spróbuj je poluzować: szersze okno podróży, więcej lotnisk, większy zakres nocy, więcej dni urlopu albo mniej filtrów: szersze przedziały godzin, więcej dni tygodnia.",
+    "emptyOneWay": "Żadna oferta nie pasuje do wyszukiwania. Spróbuj je poluzować: szersze okno podróży, więcej lotnisk albo mniej filtrów: szersze przedziały godzin, więcej dni tygodnia.",
+    "count": {
+      "one": "{{count}} oferta",
+      "few": "{{count}} oferty",
+      "many": "{{count}} ofert",
+      "other": "{{count}} oferty"
+    },
+    "perPerson": "Ceny za osobę, bez bagażu kabinowego",
+    "arrives": "przylot {{date}}",
+    "checked": "sprawdzono {{age}}",
+    "separateTickets": {
+      "one": "Kupowane jako {{count}} osobny bilet w jedną stronę",
+      "few": "Kupowane jako {{count}} osobne bilety w jedną stronę",
+      "many": "Kupowane jako {{count}} osobnych biletów w jedną stronę",
+      "other": "Kupowane jako {{count}} osobnego biletu w jedną stronę"
+    },
+    "book": "Zarezerwuj w Ryanair ↗",
+    "bookRoute": "{{route}} w Ryanair ↗"
+  },
+  "offer": {
+    "stops": {
+      "one": "{{count}} przesiadka",
+      "few": "{{count}} przesiadki",
+      "many": "{{count}} przesiadek",
+      "other": "{{count}} przesiadki"
+    },
+    "nights": {
+      "one": "{{count}} noc",
+      "few": "{{count}} noce",
+      "many": "{{count}} nocy",
+      "other": "{{count}} nocy"
+    },
+    "leaveDays": {
+      "one": "{{count}} dzień urlopu",
+      "few": "{{count}} dni urlopu",
+      "many": "{{count}} dni urlopu",
+      "other": "{{count}} dnia urlopu"
+    },
+    "noLeaveDays": "bez urlopu"
+  }
+}

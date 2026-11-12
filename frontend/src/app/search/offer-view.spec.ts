@@ -1,5 +1,11 @@
+import { TestBed } from '@angular/core/testing';
+import { TranslocoService } from '@jsverse/transloco';
+import en from '../../../public/i18n/en.json';
+import pl from '../../../public/i18n/pl.json';
+import { Language, textsIn } from '../i18n/language';
+import { provideTestI18n } from '../i18n/testing';
 import { Offer } from './search-api';
-import { offerView } from './offer-view';
+import { offerView as viewIn } from './offer-view';
 
 const now = Date.parse('2026-12-05T12:00:00Z');
 const offer: Offer = {
@@ -21,7 +27,22 @@ const offer: Offer = {
   priceFetchedAt: '2026-12-05T09:00:00Z',
 };
 
+/** Intl separates amounts from currencies with a no-break space; tests write a plain one. */
+const plain = (text: string | undefined) => text?.replace(/ /g, ' ');
+
 describe('offerView', () => {
+  let transloco: TranslocoService;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [provideTestI18n()] });
+    transloco = TestBed.inject(TranslocoService);
+    transloco.setTranslation(en, 'en');
+    transloco.setTranslation(pl, 'pl');
+  });
+
+  const offerView = (o: Offer, at: number, language: Language = 'en') =>
+    viewIn(o, at, textsIn(transloco, language));
+
   it('formats a one-way offer with an overnight flight and foreign price', () => {
     const view = offerView(offer, now);
     expect(view.legs[0].flights[0]).toEqual({
@@ -33,9 +54,9 @@ describe('offerView', () => {
       daysLater: 1,
       route: 'BGY → KRK',
     });
-    expect(view.price).toBe('≈ 84.98 PLN');
-    expect(view.foreignPrices).toEqual(['19.99 EUR']);
-    expect(view.priceAge).toBe('3 h ago');
+    expect(plain(view.price)).toBe('≈ PLN 84.98');
+    expect(view.foreignPrices).toEqual(['€19.99']);
+    expect(view.priceAge).toBe('3 hr ago');
     expect(view.tickets[0].url).toContain('originIata=BGY');
   });
 
@@ -79,7 +100,43 @@ describe('offerView', () => {
     expect(view.leaveDays).toBe('no leave days');
     expect(view.freeLeave).toBe(true);
     expect(view.priceAge).toBe('27 days ago');
-    expect(view.ticketCount).toBe('three');
+    expect(view.separateTickets).toBe('Booked as 3 separate one-way tickets');
     expect(view.tickets).toHaveLength(3);
+  });
+
+  it('formats days, prices, ages and plurals in Polish', () => {
+    const view = (nights: number, leaveDays: number, stops = 1) =>
+      offerView(
+        {
+          ...offer,
+          kind: 'roundTrip',
+          outbound: {
+            isDirect: stops === 0,
+            flights: Array(stops + 1).fill(offer.outbound.flights[0]),
+          },
+          inbound: { isDirect: true, flights: [offer.outbound.flights[0]] },
+          nights,
+          leaveDays,
+          priceFetchedAt: '2026-12-03T12:00:00Z',
+        },
+        now,
+        'pl',
+      );
+    const two = view(2, 2);
+    expect(two.legs[0].flights[0].day).toBe('sob 5 gru');
+    expect(plain(two.price)).toBe('≈ 84,98 zł');
+    expect(two.foreignPrices.map(plain)).toEqual(['19,99 €', '19,99 €', '19,99 €']);
+    expect(two.priceAge).toBe('2 dni temu');
+    expect(two.nights).toBe('2 noce');
+    expect(two.leaveDays).toBe('2 dni urlopu');
+    expect(two.legs[0].stops).toBe('1 przesiadka');
+    expect(two.separateTickets).toBe('Kupowane jako 3 osobne bilety w jedną stronę');
+    expect(view(1, 1).nights).toBe('1 noc');
+    expect(view(1, 1).leaveDays).toBe('1 dzień urlopu');
+    expect(view(5, 0, 4).nights).toBe('5 nocy');
+    expect(view(5, 0, 4).leaveDays).toBe('bez urlopu');
+    expect(view(5, 0, 4).legs[0].stops).toBe('4 przesiadki');
+    expect(view(5, 0, 5).legs[0].stops).toBe('5 przesiadek');
+    expect(view(5, 0, 5).separateTickets).toBe('Kupowane jako 7 osobnych biletów w jedną stronę');
   });
 });

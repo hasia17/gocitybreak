@@ -1,6 +1,9 @@
+import { provideTestI18n } from '../i18n/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { ApplicationRef } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { TranslocoService } from '@jsverse/transloco';
 import { Search } from './search';
 
 /** Remembered settings, Ryanair links and the empty result (#10). */
@@ -11,7 +14,7 @@ describe('Search conveniences', () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [Search],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideTestI18n()],
     }).compileComponents();
     httpTesting = TestBed.inject(HttpTestingController);
   });
@@ -246,7 +249,24 @@ describe('Search conveniences', () => {
         isReturn: 'false',
       },
     ]);
-    expect(rendered.textContent).toContain('two separate one-way tickets');
+    expect(rendered.textContent).toContain('Booked as 2 separate one-way tickets');
+  });
+
+  it('shows found offers again in the language switched to, without searching again', async () => {
+    const { rendered } = await showOffer(
+      offer([flight('KRK', 'BGY', '2026-12-04')], [flight('BGY', 'KTW', '2026-12-06')]),
+    );
+    expect(rendered.textContent).toContain('2 nights');
+
+    TestBed.inject(TranslocoService).setActiveLang('pl');
+    await TestBed.inject(ApplicationRef).whenStable();
+
+    const text = document.querySelector('[data-testid="offer"]')!.textContent!;
+    expect(text).toContain('pt 4 gru');
+    expect(text).toContain('2 noce');
+    expect(text).toContain('200,00 zł');
+    expect(text).toContain('Kupowane jako 2 osobne bilety w jedną stronę');
+    expect(text).toContain('sprawdzono 0 min temu');
   });
 
   it('links a one-way offer to one Ryanair one-way booking', async () => {
@@ -268,7 +288,7 @@ describe('Search conveniences', () => {
     );
 
     expect(links.map((l) => l.text)).toEqual(['KRK → STN on Ryanair ↗', 'STN → BGY on Ryanair ↗']);
-    expect(rendered.textContent).toContain('two separate one-way tickets');
+    expect(rendered.textContent).toContain('Booked as 2 separate one-way tickets');
   });
 
   it('suggests loosening the criteria when no offer matches', async () => {

@@ -1,22 +1,39 @@
-<header>
-  <p class="brand">gocitybreak</p>
-</header>
+<ng-container *transloco="let t">
+  <header>
+    <p class="brand">gocitybreak</p>
+    <nav class="languages" [attr.aria-label]="t('app.language')">
+      @for (code of languages; track code; let last = $last) {
+        <button
+          type="button"
+          [lang]="code"
+          [attr.aria-pressed]="language.current() === code"
+          (click)="language.use(code)"
+        >
+          {{ code.toUpperCase() }}
+        </button>
+        @if (!last) {
+          <span aria-hidden="true">|</span>
+        }
+      }
+    </nav>
+  </header>
 
-<main>
-  <app-search />
-</main>
+  <main>
+    <app-search />
+  </main>
 
-<footer>
-  @if (apiStatus.hasValue()) {
-    @let status = apiStatus.value();
-    <ul>
-      <li>API: {{ status.status }}</li>
-      <li>Version: {{ status.version }}</li>
-      <li>Database: {{ status.database.status }}</li>
-    </ul>
-  } @else if (apiStatus.error()) {
-    <p role="alert">API unavailable.</p>
-  } @else {
-    <p>Checking API…</p>
-  }
-</footer>
+  <footer>
+    @if (apiStatus.hasValue()) {
+      @let status = apiStatus.value();
+      <ul>
+        <li>{{ t('app.apiStatus', { status: status.status }) }}</li>
+        <li>{{ t('app.version', { version: status.version }) }}</li>
+        <li>{{ t('app.database', { status: status.database.status }) }}</li>
+      </ul>
+    } @else if (apiStatus.error()) {
+      <p role="alert">{{ t('app.apiUnavailable') }}</p>
+    } @else {
+      <p>{{ t('app.checkingApi') }}</p>
+    }
+  </footer>
+</ng-container>

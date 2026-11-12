@@ -1,49 +1,57 @@
 <section class="hero" [class.compact]="offers() !== undefined">
-  <h1>Where to this weekend?</h1>
-  <p class="lede">Cheap Ryanair flights for a short city break.</p>
+  <h1>{{ t('search.title') }}</h1>
+  <p class="lede">{{ t('search.lede') }}</p>
 
   <form [formGroup]="form" (ngSubmit)="submit()">
-    <div class="kind" role="radiogroup" aria-label="Kind of offer">
-      <label><input type="radio" formControlName="kind" value="roundTrip" />Round trip</label>
-      <label><input type="radio" formControlName="kind" value="oneWay" />One way</label>
+    <div class="kind" role="radiogroup" [attr.aria-label]="t('search.kind.label')">
+      <label
+        ><input type="radio" formControlName="kind" value="roundTrip" />{{
+          t('search.kind.roundTrip')
+        }}</label
+      >
+      <label
+        ><input type="radio" formControlName="kind" value="oneWay" />{{
+          t('search.kind.oneWay')
+        }}</label
+      >
     </div>
     <div class="composer">
       <div class="fields">
         <label class="field codes" [class.invalid]="invalid('homeAirports')">
-          From
+          {{ t('search.from') }}
           <input
             formControlName="homeAirports"
-            placeholder="KRK, KTW"
+            [placeholder]="t('search.fromPlaceholder')"
             autocomplete="off"
             [attr.aria-invalid]="invalid('homeAirports')"
           />
         </label>
         <span class="arrow" aria-hidden="true">→</span>
         <label class="field names" [class.invalid]="invalid('destination')">
-          To
+          {{ t('search.to') }}
           <input
             formControlName="destination"
-            placeholder="Milan, Spain, anywhere"
+            [placeholder]="t('search.toPlaceholder')"
             autocomplete="off"
             [attr.aria-invalid]="invalid('destination')"
           />
         </label>
         <label class="field names" [class.invalid]="invalid('exclusions')">
-          Except
+          {{ t('search.except') }}
           <input
             formControlName="exclusions"
-            placeholder="Norway, BGY"
+            [placeholder]="t('search.exceptPlaceholder')"
             autocomplete="off"
             [attr.aria-invalid]="invalid('exclusions')"
           />
         </label>
         <span class="divider" aria-hidden="true"></span>
         <label class="field" [class.invalid]="invalid('from')">
-          Earliest
+          {{ t('search.earliest') }}
           <input type="date" formControlName="from" [attr.aria-invalid]="invalid('from')" />
         </label>
         <label class="field" [class.invalid]="invalid('to')">
-          Latest
+          {{ t('search.latest') }}
           <input type="date" formControlName="to" [attr.aria-invalid]="invalid('to')" />
         </label>
         @if (applies('stayLength')) {
@@ -52,13 +60,13 @@
             formGroupName="stayLength"
             [class.invalid]="invalid('stayLength')"
           >
-            Nights
+            {{ t('search.nights') }}
             <span class="range">
               <input
                 type="number"
                 min="0"
                 formControlName="min"
-                aria-label="Minimum nights"
+                [attr.aria-label]="t('search.minNights')"
                 [attr.aria-invalid]="invalid('stayLength')"
               />
               <span aria-hidden="true">–</span>
@@ -66,7 +74,7 @@
                 type="number"
                 min="0"
                 formControlName="max"
-                aria-label="Maximum nights"
+                [attr.aria-label]="t('search.maxNights')"
                 [attr.aria-invalid]="invalid('stayLength')"
               />
             </span>
@@ -78,7 +86,7 @@
         type="submit"
         [disabled]="loading()"
         [attr.aria-busy]="loading()"
-        aria-label="Search"
+        [attr.aria-label]="t('search.submit')"
       >
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
           <path d="M5 12h14M13 6l6 6-6 6" />
@@ -89,7 +97,7 @@
       <div class="options">
         <ng-container formGroupName="leave">
           <label class="field time" [class.invalid]="invalid('leave.workStart')">
-            Work start
+            {{ t('search.workStart') }}
             <input
               type="time"
               formControlName="workStart"
@@ -97,7 +105,7 @@
             />
           </label>
           <label class="field time" [class.invalid]="invalid('leave.workEnd')">
-            Work end
+            {{ t('search.workEnd') }}
             <input
               type="time"
               formControlName="workEnd"
@@ -105,49 +113,50 @@
             />
           </label>
           <label class="field leave" [class.invalid]="invalid('leave.maxLeaveDays')">
-            Max leave days
+            {{ t('search.maxLeaveDays') }}
             <input
               type="number"
               min="0"
               formControlName="maxLeaveDays"
-              placeholder="any"
+              [placeholder]="t('search.anyLeave')"
               [attr.aria-invalid]="invalid('leave.maxLeaveDays')"
             />
           </label>
         </ng-container>
         <label class="field">
-          Sort
-          <select formControlName="sort" aria-label="Sort by">
-            <option value="price">Price</option>
-            <option value="leaveDays">Leave days</option>
+          {{ t('search.sort') }}
+          <select formControlName="sort" [attr.aria-label]="t('search.sortBy')">
+            <option value="price">{{ t('search.sortOrder.price') }}</option>
+            <option value="leaveDays">{{ t('search.sortOrder.leaveDays') }}</option>
           </select>
         </label>
       </div>
     }
     <details class="filters" formGroupName="filters">
-      <summary>Filters</summary>
+      <summary>{{ t('search.filters') }}</summary>
       <div class="filters-body">
         <label class="check"
-          ><input type="checkbox" formControlName="directOnly" />Direct flights only</label
+          ><input type="checkbox" formControlName="directOnly" />{{ t('search.directOnly') }}</label
         >
         <div class="time-ranges">
-          <p class="note">Hours in local time at each airport.</p>
+          <p class="note">{{ t('search.localTimes') }}</p>
           @for (moment of moments; track moment.name) {
             @if (applies('filters.' + moment.name)) {
               @let rangeInvalid = invalid('filters.' + moment.name);
+              @let label = t('search.moment.' + moment.name);
               <div class="time-range" [formGroupName]="moment.name" [class.invalid]="rangeInvalid">
-                <span>{{ moment.label }}</span>
+                <span>{{ label }}</span>
                 <input
                   type="time"
                   formControlName="from"
-                  [attr.aria-label]="moment.label + ' from'"
+                  [attr.aria-label]="t('search.rangeFrom', { moment: label })"
                   [attr.aria-invalid]="rangeInvalid"
                 />
                 <span aria-hidden="true">–</span>
                 <input
                   type="time"
                   formControlName="to"
-                  [attr.aria-label]="moment.label + ' to'"
+                  [attr.aria-label]="t('search.rangeTo', { moment: label })"
                   [attr.aria-invalid]="rangeInvalid"
                 />
               </div>
@@ -155,16 +164,24 @@
           }
         </div>
         <fieldset class="days" formGroupName="outboundDepartureWeekdays">
-          <legend>Outbound departure days</legend>
+          <legend>{{ t('search.outboundDays') }}</legend>
           @for (day of weekdays; track day.value) {
-            <label><input type="checkbox" [formControlName]="day.value" />{{ day.label }}</label>
+            <label
+              ><input type="checkbox" [formControlName]="day.value" />{{
+                t('search.weekday.' + day.value)
+              }}</label
+            >
           }
         </fieldset>
         @if (applies('filters.inboundDepartureWeekdays')) {
           <fieldset class="days" formGroupName="inboundDepartureWeekdays">
-            <legend>Inbound departure days</legend>
+            <legend>{{ t('search.inboundDays') }}</legend>
             @for (day of weekdays; track day.value) {
-              <label><input type="checkbox" [formControlName]="day.value" />{{ day.label }}</label>
+              <label
+                ><input type="checkbox" [formControlName]="day.value" />{{
+                  t('search.weekday.' + day.value)
+                }}</label
+              >
             }
           </fieldset>
         }
@@ -175,35 +192,30 @@
   @if (form.invalid && submitted()) {
     <p class="hint" role="alert">
       @if (form.controls.homeAirports.hasError('unsupportedAirport')) {
-        Search from supported airports only: {{ supportedAirportList() }}.
+        {{ t('search.hint.unsupportedAirports', { airports: supportedAirportList() }) }}
       }
-      Enter 3-letter airport codes, a destination of airports, cities or countries (or anywhere),
-      both dates and nights from the minimum up to the maximum.
+      {{ t('search.hint.fields') }}
       @if (form.controls.filters.invalid) {
-        In Filters, give each time range both ends, or leave both empty.
+        {{ t('search.hint.timeRanges') }}
       }
     </p>
   }
 </section>
 
 @if (error(); as message) {
-  <p class="error" role="alert">{{ message }}</p>
+  <p class="error" role="alert">{{ t(message) }}</p>
 }
 
 @if (offers(); as offers) {
   <section class="results" data-testid="results" aria-live="polite">
     @if (offers.length === 0) {
       <p class="empty">
-        No offers match your search. Try loosening it: a wider travel window, more airports,
-        @if (kind() === 'roundTrip') {
-          more nights to choose from, more leave days,
-        }
-        or fewer filters: wider time ranges, more weekdays.
+        {{ t(kind() === 'roundTrip' ? 'results.emptyRoundTrip' : 'results.emptyOneWay') }}
       </p>
     } @else {
       <header class="results-head">
-        <h2>{{ offers.length }} {{ offers.length === 1 ? 'offer' : 'offers' }}</h2>
-        <span>Prices per person, no cabin bag</span>
+        <h2>{{ offerCount(offers.length) }}</h2>
+        <span>{{ t('results.perPerson') }}</span>
       </header>
       <ol class="offers">
         @for (offer of offers; track $index) {
@@ -218,7 +230,9 @@
                     <span class="times">
                       {{ flight.departureTime }} – {{ flight.arrivalTime }}
                       @if (flight.daysLater; as days) {
-                        <abbr title="arrives {{ flight.arrivalDate }}">+{{ days }}</abbr>
+                        <abbr [title]="t('results.arrives', { date: flight.arrivalDate })"
+                          >+{{ days }}</abbr
+                        >
                       }
                     </span>
                     <span class="route">{{ flight.route }}</span>
@@ -241,15 +255,19 @@
                 @for (original of offer.foreignPrices; track $index) {
                   {{ original }} ·
                 }
-                checked {{ priceAge(offer.priceFetchedAt) }}
+                {{ t('results.checked', { age: priceAge(offer.priceFetchedAt) }) }}
               </small>
               @let tickets = offer.tickets;
-              @if (tickets.length > 1) {
-                <small>Booked as {{ offer.ticketCount }} separate one-way tickets</small>
+              @if (offer.separateTickets; as separate) {
+                <small>{{ separate }}</small>
               }
               @for (ticket of tickets; track ticket.url) {
                 <a [href]="ticket.url" target="_blank" rel="noopener">
-                  {{ tickets.length > 1 ? ticket.route : 'Book' }} on Ryanair ↗
+                  {{
+                    tickets.length > 1
+                      ? t('results.bookRoute', { route: ticket.route })
+                      : t('results.book')
+                  }}
                 </a>
               }
             </div>

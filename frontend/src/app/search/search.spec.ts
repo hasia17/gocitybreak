@@ -1,3 +1,4 @@
+import { provideTestI18n } from '../i18n/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
@@ -34,7 +35,7 @@ describe('Search', () => {
     localStorage.clear(); // search remembers its settings; each test starts from the defaults
     await TestBed.configureTestingModule({
       imports: [Search],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideTestI18n()],
     }).compileComponents();
     httpTesting = TestBed.inject(HttpTestingController);
   });
@@ -139,8 +140,8 @@ describe('Search', () => {
     const offer = root.querySelector('[data-testid="offer"]')?.textContent?.replace(/\s+/g, ' ');
     expect(offer).toMatch(/Fri 4 Dec 18:00 – 19:55 KRK → BGY.*Sun 6 Dec 20:00 – 21:50 BGY → KTW/);
     expect(offer).toContain('2 nights');
-    expect(offer).toContain('≈ 173.98 PLN');
-    expect(offer).toContain('19.99 EUR');
+    expect(offer).toContain('≈ PLN 173.98');
+    expect(offer).toContain('€19.99');
     expect(offer).not.toContain('89.00 PLN ·');
   });
 
@@ -357,16 +358,18 @@ describe('Search', () => {
     expect(offer).not.toContain('2026');
     expect(offer).toContain('09:00 – 10:50');
     expect(root.querySelector('[data-testid="offer"] abbr')).toBeNull();
-    expect(offer).toContain('≈ 84.98 PLN');
-    expect(offer).toContain('19.99 EUR');
-    expect(offer).toContain('checked 3 h ago');
+    expect(offer).toContain('≈ PLN 84.98');
+    expect(offer).toContain('€19.99');
+    expect(offer).toContain('checked 3 hr ago');
     const clock = vi
       .spyOn(Date, 'now')
       .mockReturnValue(Date.parse(threeHoursAgo) + 4 * 60 * 60 * 1000);
     try {
       fill(root, 'To', 'KRK');
       fixture.detectChanges();
-      expect(root.querySelector('[data-testid="offer"]')?.textContent).toContain('checked 4 h ago');
+      expect(root.querySelector('[data-testid="offer"]')?.textContent).toContain(
+        'checked 4 hr ago',
+      );
     } finally {
       clock.mockRestore();
     }
