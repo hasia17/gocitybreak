@@ -1,0 +1,18 @@
+{
+  "kind": "roundTrip",
+  "homeAirports": [
+    "KRK"
+  ],
+  "destination": {
+    "airports": [
+      "BGY"
+    ]
+  },
+  "workStart": "09:00",
+  "workEnd": "17:00",
+  "sort": "price",
+  "fixedDates": {
+    "outbound": "2026-12-04",
+    "inbound": "2026-12-06"
+  }
+}

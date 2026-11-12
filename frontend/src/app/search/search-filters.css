@@ -37,6 +37,42 @@
   gap: 0.5rem;
   min-height: 2.75rem;
 }
+.leave-switch {
+  padding: 0 0.6rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.leave-switch input {
+  appearance: none;
+  width: 2.25rem;
+  height: 1.25rem;
+  margin: 0;
+  padding: 0.125rem;
+  border: 1px solid var(--line);
+  border-radius: 9999px;
+  background: var(--subtle);
+  cursor: inherit;
+}
+.leave-switch input::before {
+  display: block;
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 50%;
+  background: var(--muted);
+  content: '';
+}
+.leave-switch input:checked {
+  background: var(--text);
+}
+.leave-switch input:checked::before {
+  transform: translateX(1rem);
+  background: var(--page);
+}
+.leave-switch input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
 .time-ranges {
   display: grid;
   gap: 0.25rem;
@@ -137,4 +173,13 @@
   .time-range {
     grid-template-columns: 1fr auto auto auto;
   }
+}
+
+.time-range .field-error {
+  grid-column: 1 / -1;
+  max-width: none;
+}
+.days .field-error {
+  flex-basis: 100%;
+  max-width: none;
 }

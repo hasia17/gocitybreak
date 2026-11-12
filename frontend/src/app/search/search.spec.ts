@@ -1,15 +1,23 @@
+import { fillPlace, flushCatalogue } from './place-testing';
 import { provideTestI18n } from '../i18n/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import { Search } from './search';
+import { TranslocoService } from '@jsverse/transloco';
 import { Catalogue } from './search-api';
 
 const catalogue: Catalogue = {
-  supportedAirports: [{ code: 'KRK', name: 'Kraków' }],
+  supportedAirports: [{ code: 'KRK', name: 'Kraków', names: { en: 'Krakow', pl: 'Kraków' } }],
   airports: [
-    { code: 'BGY', name: 'Milan Bergamo', cities: ['BERGAMO', 'MILAN'], country: 'it' },
+    {
+      code: 'BGY',
+      name: 'Milan Bergamo',
+      names: { en: 'Milan Bergamo', pl: 'Mediolan-Bergamo' },
+      cities: ['BERGAMO', 'MILAN'],
+      country: 'it',
+    },
     { code: 'KRK', name: 'Kraków', cities: ['KRAKOW'], country: 'pl' },
     { code: 'MXP', name: 'Milan Malpensa', cities: ['MILAN'], country: 'it' },
     { code: 'OSL', name: 'Oslo', cities: ['OSLO'], country: 'no' },
@@ -17,14 +25,20 @@ const catalogue: Catalogue = {
   cities: [
     { code: 'BERGAMO', name: 'Bergamo', country: 'it', airports: ['BGY'] },
     { code: 'KRAKOW', name: 'Kraków', country: 'pl', airports: ['KRK'] },
-    { code: 'MILAN', name: 'Milan', country: 'it', airports: ['BGY', 'MXP'] },
+    {
+      code: 'MILAN',
+      name: 'Milan',
+      names: { en: 'Milan', pl: 'Mediolan' },
+      country: 'it',
+      airports: ['BGY', 'MXP'],
+    },
     { code: 'OSLO', name: 'Oslo', country: 'no', airports: ['OSL'] },
   ],
   countries: [
     { code: 'it', name: 'Italy' },
     { code: 'no', name: 'Norway' },
     { code: 'pl', name: 'Poland' },
-    { code: 'es', name: 'Spain' },
+    { code: 'es', name: 'Spain', names: { en: 'Spain', pl: 'Hiszpania' } },
   ],
 };
 
@@ -33,6 +47,7 @@ describe('Search', () => {
 
   beforeEach(async () => {
     localStorage.clear(); // search remembers its settings; each test starts from the defaults
+    vi.spyOn(Date, 'now').mockReturnValue(new Date(2026, 10, 1, 12).getTime());
     await TestBed.configureTestingModule({
       imports: [Search],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideTestI18n()],
@@ -44,12 +59,18 @@ describe('Search', () => {
     // Tests that type only airport codes leave the catalogue request unanswered.
     httpTesting.match('/api/catalogue');
     httpTesting.verify();
+    vi.restoreAllMocks();
   });
 
   function fill(root: HTMLElement, label: string, value: string) {
-    const input = Array.from(root.querySelectorAll('label'))
-      .find((l) => l.textContent?.trim().startsWith(label))
-      ?.querySelector('input');
+    if (fillPlace(root, label, value)) return;
+    const input =
+      Array.from(root.querySelectorAll<HTMLInputElement>('input')).find(
+        (i) => i.getAttribute('aria-label') === label,
+      ) ??
+      Array.from(root.querySelectorAll('label'))
+        .find((l) => l.textContent?.trim().startsWith(label))
+        ?.querySelector('input');
     if (!input) throw new Error(`no input labelled ${label}`);
     input.value = value;
     input.dispatchEvent(new Event('input'));
@@ -143,7 +164,9 @@ describe('Search', () => {
     await fixture.whenStable();
 
     const offer = root.querySelector('[data-testid="offer"]')?.textContent?.replace(/\s+/g, ' ');
-    expect(offer).toMatch(/Fri 4 Dec 18:00 – 19:55 KRK → BGY.*Sun 6 Dec 20:00 – 21:50 BGY → KTW/);
+    expect(offer).toMatch(
+      /Fri 4 Dec 18:00 – 19:55 KRK Kraków → BGY Bergamo.*Sun 6 Dec 20:00 – 21:50 BGY Bergamo → KTW Katowice/,
+    );
     expect(offer).toContain('2 nights');
     expect(offer).toContain('≈ PLN 173.98');
     expect(offer).toContain('€19.99');
@@ -239,6 +262,9 @@ describe('Search', () => {
     root = fixture.nativeElement as HTMLElement;
 
     const value = (label: string) =>
+      Array.from(root.querySelectorAll<HTMLInputElement>('input')).find(
+        (i) => i.getAttribute('aria-label') === label,
+      ) ??
       Array.from(root.querySelectorAll('label'))
         .find((l) => l.textContent?.trim().startsWith(label))
         ?.querySelector('input')?.value;
@@ -279,6 +305,9 @@ describe('Search', () => {
     root.querySelector<HTMLInputElement>('input[type="radio"][value="roundTrip"]')!.click();
     await fixture.whenStable();
     const value = (label: string) =>
+      Array.from(root.querySelectorAll<HTMLInputElement>('input')).find(
+        (i) => i.getAttribute('aria-label') === label,
+      ) ??
       Array.from(root.querySelectorAll('label'))
         .find((l) => l.textContent?.trim().startsWith(label))
         ?.querySelector('input')?.value;
@@ -402,8 +431,8 @@ describe('Search', () => {
 
     httpTesting.expectNone('/api/search');
     const alert = root.querySelector('[role="alert"]')?.textContent;
-    expect(alert).toContain('leave at least one departure day ticked');
-    expect(alert).not.toContain('3-letter airport codes');
+    expect(alert).toContain('Leave at least one possible departure day ticked');
+    expect(alert).not.toContain('Choose home airports');
     const inbound = Array.from(root.querySelectorAll('fieldset')).find((f) =>
       f.querySelector('legend')?.textContent?.trim().startsWith('Inbound departure days'),
     );
@@ -476,7 +505,7 @@ describe('Search', () => {
     await fixture.whenStable();
 
     const offer = root.querySelector('[data-testid="offer"]')?.textContent?.replace(/\s+/g, ' ');
-    expect(offer).toContain('BGY → KRK');
+    expect(offer).toContain('BGY Bergamo → KRK Kraków');
     expect(offer).toContain('Sat 5 Dec');
     expect(offer).not.toContain('2026');
     expect(offer).toContain('09:00 – 10:50');
@@ -508,7 +537,7 @@ describe('Search', () => {
     const root = fixture.nativeElement as HTMLElement;
 
     fill(root, 'From', 'KRK');
-    fill(root, 'To', 'BG');
+    fill(root, 'To', 'Atlantis');
     root.querySelectorAll('input').forEach((i) => i.dispatchEvent(new Event('blur')));
     await fixture.whenStable();
     expect(root.querySelector('input[aria-invalid="true"]')).toBeNull();
@@ -518,10 +547,10 @@ describe('Search', () => {
     await fixture.whenStable();
 
     const invalid = Array.from(root.querySelectorAll('input[aria-invalid="true"]')).map(
-      (i) => i.closest('label')?.textContent?.trim().split(/\s/)[0],
+      (i) => i.getAttribute('aria-label') ?? i.closest('label')?.textContent?.trim().split(/\s/)[0],
     );
     expect(invalid).toEqual(['To', 'Earliest', 'Latest']);
-    expect(root.querySelector('[role="alert"]')?.textContent).toContain('3-letter airport codes');
+    expect(root.querySelector('[role="alert"]')?.textContent).toContain('Choose a suggestion');
   });
 
   it('shows the year only for dates outside the current year, and stops only for indirect legs', async () => {
@@ -620,7 +649,7 @@ describe('Search', () => {
     expect(root.textContent).toContain('No offers');
   });
 
-  it('takes only supported airports as home airports, and lists them when another is typed', async () => {
+  it('takes only supported airports as home airports and never sends an unsupported typed code', async () => {
     const fixture = TestBed.createComponent(Search);
     httpTesting.expectOne({ method: 'GET', url: '/api/catalogue' }).flush(catalogue);
     await fixture.whenStable();
@@ -634,8 +663,16 @@ describe('Search', () => {
     await fixture.whenStable();
 
     httpTesting.expectNone('/api/search');
-    expect(labelled<HTMLInputElement>(root, 'From').getAttribute('aria-invalid')).toBe('true');
-    expect(root.querySelector('[role="alert"]')?.textContent).toContain('KRK (Kraków)');
+    expect(root.querySelector('[data-place-chip="BGY"]')).toBeNull();
+    const from = labelled<HTMLInputElement>(root, 'From');
+    expect(from.value).toBe('BGY');
+    expect(from.getAttribute('aria-invalid')).toBe('true');
+    from.value = '';
+    from.dispatchEvent(new Event('input'));
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+    const request = httpTesting.expectOne('/api/search');
+    expect(request.request.body.homeAirports).toEqual(['KRK']);
+    request.flush({ offers: [] });
   });
 
   describe('destination', () => {
@@ -655,15 +692,37 @@ describe('Search', () => {
       return root;
     }
 
-    it('marks an airport, city or country it does not know', async () => {
+    it.each([
+      ['Milan', { cities: ['MILAN'] }],
+      ['Mediolan', { cities: ['MILAN'] }],
+      ['Spain', { countries: ['es'] }],
+      ['Hiszpania', { countries: ['es'] }],
+      ['Milan Bergamo', { airports: ['BGY'] }],
+      ['Mediolan-Bergamo', { airports: ['BGY'] }],
+    ])('resolves %s from either catalogue language', async (name, destination) => {
+      await searchFrom(name as string);
+      const req = httpTesting.expectOne('/api/search');
+      expect(req.request.body.destination).toEqual(destination);
+      req.flush({ offers: [] });
+    });
+
+    it('keeps unknown text and Anywhere exclusions out of the query', async () => {
       const root = await searchFrom('Milan, Atlantis', 'anywhere');
 
       httpTesting.expectNone('/api/search');
-      const invalid = Array.from(root.querySelectorAll('input[aria-invalid="true"]')).map(
-        (i) => i.closest('label')?.textContent?.trim().split(/\s/)[0],
-      );
-      expect(invalid).toEqual(['To', 'Except']);
-      expect(root.querySelector('[role="alert"]')?.textContent).toContain('cities or countries');
+      expect(root.querySelector('[data-place-chip="Atlantis"]')).toBeNull();
+      expect(labelled<HTMLInputElement>(root, 'To').value).toBe('Atlantis');
+      for (const label of ['To', 'Except']) {
+        const control = labelled<HTMLInputElement>(root, label);
+        expect(control.getAttribute('aria-invalid')).toBe('true');
+        control.value = '';
+        control.dispatchEvent(new Event('input'));
+      }
+      root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+      const request = httpTesting.expectOne('/api/search');
+      expect(request.request.body.destination).toEqual({ cities: ['MILAN'] });
+      expect(request.request.body.exclusions).toBeUndefined();
+      request.flush({ offers: [] });
     });
   });
 });

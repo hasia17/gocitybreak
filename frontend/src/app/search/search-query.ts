@@ -69,6 +69,7 @@ function chosenDays(days: Record<Weekday, boolean>, possible: Set<Weekday>): Wee
  * ticked: a search would find nothing, so the form asks to leave at least one ticked.
  */
 export function departureDaysWithoutChoice(v: SearchFormValue): DepartureDays[] {
+  if (v.dateMode === 'fixed') return [];
   const possible = windowWeekdays(v.from, v.to);
   return (['outboundDepartureWeekdays', 'inboundDepartureWeekdays'] as const).filter(
     (name) =>
@@ -92,8 +93,26 @@ export const roundTripOnlyFields: readonly string[] = [
   'filters.inboundDepartureWeekdays',
 ];
 
-/** Whether the form field named by its control path applies to offers of the kind. */
-export function fieldApplies(path: string, kind: OfferKind): boolean {
+/** Flexible travel window and nights, or exact local departure dates. */
+export type DateMode = 'flexible' | 'fixed';
+
+/** Whether a form field applies to the chosen kind of offer and date mode. */
+export function fieldApplies(
+  path: string,
+  kind: OfferKind,
+  dateMode: DateMode = 'flexible',
+): boolean {
+  if (dateMode === 'fixed') {
+    if (
+      [
+        'stayLength',
+        'filters.outboundDepartureWeekdays',
+        'filters.inboundDepartureWeekdays',
+      ].includes(path)
+    )
+      return false;
+    if (path === 'to' && kind === 'oneWay') return false;
+  }
   return kind === 'roundTrip' || !roundTripOnlyFields.includes(path);
 }
 
@@ -127,13 +146,20 @@ export interface FiltersValue {
 /** The search form's raw value: what getRawValue() returns, keeping the values of disabled fields. */
 export interface SearchFormValue {
   kind: OfferKind;
+  dateMode?: DateMode;
   homeAirports: string;
   destination: string;
   exclusions: string;
   from: string;
   to: string;
   stayLength: { min: number; max: number };
-  leave: { workStart: string; workEnd: string; maxLeaveDays: number | null };
+  leave: {
+    /** Absent in older remembered settings; false means the leave limit still applies. */
+    ignoreLeave?: boolean;
+    workStart: string;
+    workEnd: string;
+    maxLeaveDays: number | null;
+  };
   sort: SortOrder;
   filters: FiltersValue;
 }
@@ -152,18 +178,23 @@ export function buildSearchQuery(
     kind: v.kind,
     homeAirports: typedCodes(v.homeAirports),
     destination: {},
-    travelWindow: { from: v.from, to: v.to },
   };
+  if (v.dateMode === 'fixed') {
+    query.fixedDates = { outbound: v.from, ...(v.kind === 'roundTrip' && { inbound: v.to }) };
+  } else {
+    query.travelWindow = { from: v.from, to: v.to };
+  }
   const destination = readTypedNames(v.destination, catalogue);
   query.destination = destination.anywhere ? { anywhere: true } : destination.codes;
   const exclusions = readTypedNames(v.exclusions, catalogue).codes;
   if (Object.keys(exclusions).length > 0) query.exclusions = exclusions;
-  if (fieldApplies('stayLength', v.kind))
+  if (fieldApplies('stayLength', v.kind, v.dateMode))
     query.stayLength = { min: Number(v.stayLength.min), max: Number(v.stayLength.max) };
   if (fieldApplies('leave', v.kind)) {
     query.workStart = v.leave.workStart;
     query.workEnd = v.leave.workEnd;
-    if (v.leave.maxLeaveDays != null) query.maxLeaveDays = Number(v.leave.maxLeaveDays);
+    if (!v.leave.ignoreLeave && v.leave.maxLeaveDays != null)
+      query.maxLeaveDays = Number(v.leave.maxLeaveDays);
   }
   if (fieldApplies('sort', v.kind)) query.sort = v.sort;
   const filters: SearchFilters = {};
@@ -177,7 +208,7 @@ export function buildSearchQuery(
   for (const name of ['outboundDepartureWeekdays', 'inboundDepartureWeekdays'] as const) {
     const chosen = chosenDays(v.filters[name], possible);
     if (
-      fieldApplies(`filters.${name}`, v.kind) &&
+      fieldApplies(`filters.${name}`, v.kind, v.dateMode) &&
       chosen.length > 0 &&
       chosen.length < possible.size
     )

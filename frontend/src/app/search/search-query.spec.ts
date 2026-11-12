@@ -160,6 +160,21 @@ describe('buildSearchQuery', () => {
     });
   });
 
+  it('omits an ignored leave limit while keeping work hours and leave sorting', () => {
+    const value = rawValue();
+    value.leave = {
+      ignoreLeave: true,
+      workStart: '08:00',
+      workEnd: '16:00',
+      maxLeaveDays: 0,
+    };
+    value.sort = 'leaveDays';
+
+    const query = buildSearchQuery(value, catalogue);
+    expect(query).not.toHaveProperty('maxLeaveDays');
+    expect(query).toMatchObject({ workStart: '08:00', workEnd: '16:00', sort: 'leaveDays' });
+  });
+
   it('sends the chosen filters: direct only, time ranges of every moment and weekdays of both directions', () => {
     const v = rawValue();
     v.filters.directOnly = true;

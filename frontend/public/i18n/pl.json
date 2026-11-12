@@ -18,15 +18,16 @@
     "from": "Skąd",
     "fromPlaceholder": "KRK, KTW",
     "to": "Dokąd",
-    "toPlaceholder": "Milan, Spain, gdziekolwiek",
+    "toPlaceholder": "Mediolan, Hiszpania, gdziekolwiek",
     "except": "Oprócz",
-    "exceptPlaceholder": "Norway, BGY",
+    "exceptPlaceholder": "Norwegia, BGY",
     "earliest": "Najwcześniej",
     "latest": "Najpóźniej",
     "nights": "Noce",
     "minNights": "Najmniej nocy",
     "maxNights": "Najwięcej nocy",
     "submit": "Szukaj",
+    "ignoreLeave": "Nie martwię się urlopem",
     "workStart": "Początek pracy",
     "workEnd": "Koniec pracy",
     "maxLeaveDays": "Maks. dni urlopu",
@@ -63,13 +64,51 @@
     },
     "hint": {
       "unsupportedAirports": "Szukaj tylko z obsługiwanych lotnisk: {{airports}}.",
-      "fields": "Podaj 3-literowe kody lotnisk, cel podróży (lotniska, miasta, kraje albo gdziekolwiek), obie daty i liczbę nocy od najmniejszej do największej.",
-      "timeRanges": "W filtrach podaj oba końce każdego przedziału godzin albo zostaw oba puste.",
-      "noDepartureDay": "W filtrach zostaw zaznaczony co najmniej jeden dzień wylotu."
+      "fixedDateOrder": "Data powrotu nie może być wcześniejsza niż data wylotu."
     },
-    "failed": "Wyszukiwanie nie powiodło się. Sprawdź formularz i spróbuj ponownie."
+    "failed": "Wyszukiwanie nie powiodło się. Sprawdź formularz i spróbuj ponownie.",
+    "dateMode": {
+      "label": "Daty",
+      "flexible": "Elastyczne daty",
+      "fixed": "Stałe daty"
+    },
+    "outboundDate": "Data wylotu",
+    "inboundDate": "Data powrotu",
+    "errors": {
+      "homeAirports": "Wybierz obsługiwane lotnisko wylotu z podpowiedzi.",
+      "destination": "Wybierz cel z podpowiedzi lub opcję Gdziekolwiek.",
+      "dateOrder": "Najpóźniejsza data nie może być wcześniejsza niż najwcześniejsza.",
+      "dates": "Sprawdź daty podróży i wybierz daty elastyczne albo stałe.",
+      "stayLength": "Sprawdź minimalną i maksymalną liczbę nocy; stałe daty nie wymagają długości pobytu.",
+      "workHours": "Sprawdź godziny rozpoczęcia i zakończenia pracy.",
+      "timeRanges": "Sprawdź zakresy godzin wylotu i przylotu.",
+      "weekdays": "Sprawdź dni wylotu wybrane w Filtrach.",
+      "leaveLimit": "Limit urlopu musi wynosić zero lub więcej.",
+      "sort": "Wybierz dostępny sposób sortowania dla tego rodzaju oferty.",
+      "kind": "Wybierz podróż w obie strony albo w jedną stronę.",
+      "rejected": "Wyszukiwanie zostało odrzucone. Sprawdź wybrane opcje i spróbuj ponownie.",
+      "server": "Coś poszło nie tak po naszej stronie. Spróbuj ponownie."
+    },
+    "validation": {
+      "homeAirports": "Wybierz co najmniej jedno lotnisko domowe.",
+      "destination": "Wybierz cel podróży.",
+      "dateRequired": "Wybierz datę.",
+      "chooseSuggestion": "Wybierz podpowiedź albo usuń wpisany tekst.",
+      "nightCount": "Podaj liczbę całkowitą nocy, nie mniejszą niż zero.",
+      "nightOrder": "Maksymalna liczba nocy nie może być mniejsza od minimalnej.",
+      "workStart": "Podaj godzinę rozpoczęcia pracy.",
+      "workEnd": "Podaj godzinę zakończenia pracy.",
+      "leaveCount": "Podaj liczbę całkowitą dni urlopu, nie mniejszą niż zero.",
+      "timeRange": "Podaj oba końce przedziału godzin albo zostaw oba puste.",
+      "departureDay": "Zostaw zaznaczony co najmniej jeden możliwy dzień wylotu.",
+      "dateOrder": "Najpóźniejsza data nie może być wcześniejsza niż najwcześniejsza.",
+      "pastDate": "Wybierz dzisiejszą lub późniejszą datę."
+    }
   },
   "results": {
+    "label": "Wyniki wyszukiwania",
+    "loading": "Szukamy ofert…",
+    "showMore": "Pokaż więcej",
     "emptyRoundTrip": "Żadna oferta nie pasuje do wyszukiwania. Spróbuj je poluzować: szersze okno podróży, więcej lotnisk, większy zakres nocy, więcej dni urlopu albo mniej filtrów: szersze przedziały godzin, więcej dni tygodnia.",
     "emptyOneWay": "Żadna oferta nie pasuje do wyszukiwania. Spróbuj je poluzować: szersze okno podróży, więcej lotnisk albo mniej filtrów: szersze przedziały godzin, więcej dni tygodnia.",
     "count": {
@@ -91,6 +130,8 @@
     "bookRoute": "{{route}} w Ryanair ↗"
   },
   "offer": {
+    "outbound": "Wylot",
+    "return": "Powrót",
     "stops": {
       "one": "{{count}} przesiadka",
       "few": "{{count}} przesiadki",
@@ -110,5 +151,71 @@
       "other": "{{count}} dnia urlopu"
     },
     "noLeaveDays": "bez urlopu"
+  },
+  "places": {
+    "airport": "lotnisko",
+    "city": "miasto",
+    "country": "kraj",
+    "airportCount": "lotniska: {{count}}",
+    "remove": "Usuń {{place}}",
+    "noMatches": "Brak pasujących miejsc",
+    "loading": "Wczytywanie miejsc…",
+    "loadError": "Nie udało się wczytać miejsc. Spróbuj ponownie.",
+    "retry": "Spróbuj ponownie",
+    "anywhere": "Gdziekolwiek"
+  },
+  "tips": {
+    "flexible": {
+      "label": "O elastycznych datach",
+      "text": "Szukaj lotów w oknie podróży, wybierając zakres nocy dla podróży tam i z powrotem."
+    },
+    "fixed": {
+      "label": "O stałych datach",
+      "text": "Wybierz dokładne lokalne daty wylotu tam i z powrotem (jedną datę dla lotu w jedną stronę). Liczba nocy wynika z lotów."
+    },
+    "nights": {
+      "label": "O nocach",
+      "text": "Liczone jak noce hotelowe. Przylot przed 06:00 liczy się od poprzedniej nocy."
+    },
+    "workStart": {
+      "label": "O początku pracy"
+    },
+    "workEnd": {
+      "label": "O końcu pracy"
+    },
+    "workHours": {
+      "text": "Wylot po końcu pracy i powrót przed początkiem pracy nie kosztują dnia urlopu. Te godziny służą do liczenia urlopu, nie ograniczają godzin lotów."
+    },
+    "maxLeaveDays": {
+      "label": "O maksymalnej liczbie dni urlopu",
+      "text": "Tylko dni robocze, bez weekendów i polskich świąt ustawowo wolnych od pracy."
+    },
+    "localTimes": {
+      "text": "Czas lokalny na każdym lotnisku, jak na bilecie: wylot według czasu lotniska wylotu, przylot według czasu lotniska przylotu."
+    },
+    "outboundDeparture": {
+      "label": "O godzinie wylotu tam"
+    },
+    "outboundArrival": {
+      "label": "O godzinie przylotu tam"
+    },
+    "inboundDeparture": {
+      "label": "O godzinie wylotu z powrotem"
+    },
+    "inboundArrival": {
+      "label": "O godzinie przylotu z powrotem"
+    },
+    "approximatePrice": {
+      "label": "O przybliżonej cenie",
+      "text": "Przeliczono na PLN po średnim kursie NBP, ponieważ lot jest wyceniony w innej walucie."
+    },
+    "priceAge": {
+      "label": "O czasie sprawdzenia ceny",
+      "text": "To zapisana cena, która mogła się zmienić. Aktualną cenę sprawdzisz na stronie Ryanair."
+    },
+    "separateTickets": {
+      "label": "O osobnych biletach",
+      "text": "Samodzielna przesiadka odbywa się na własne ryzyko. Nikt nie gwarantuje kolejnego lotu, jeśli pierwszy się spóźni."
+    }
   }
 }

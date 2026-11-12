@@ -32,6 +32,20 @@ func TestSearchChecksQueryRules(t *testing.T) {
 		{"travel window ends before it starts", changed(oneWay(), func(q *search.Query) {
 			q.TravelWindow = search.TravelWindow{From: day("2026-12-10"), To: day("2026-12-01")}
 		}), "travelWindow.to must not be before travelWindow.from"},
+		{"no dates", changed(oneWay(), func(q *search.Query) { q.TravelWindow = search.TravelWindow{} }),
+			"exactly one of travelWindow or fixedDates is required"},
+		{"both date modes", changed(oneWay(), func(q *search.Query) {
+			q.FixedDates = &search.FixedDates{Outbound: day("2026-12-04")}
+		}), "exactly one of travelWindow or fixedDates is required"},
+		{"fixed inbound before outbound", changed(fixedRoundTrip(), func(q *search.Query) {
+			q.FixedDates.Inbound = day("2026-12-03")
+		}), "fixedDates.inbound must not be before fixedDates.outbound"},
+		{"fixed round trip without inbound", changed(fixedRoundTrip(), func(q *search.Query) {
+			q.FixedDates.Inbound = time.Time{}
+		}), "fixedDates.inbound is required for a round trip"},
+		{"fixed dates with stay length", changed(fixedRoundTrip(), func(q *search.Query) {
+			q.StayLength = &search.StayLength{Min: 2, Max: 3}
+		}), "stayLength must be absent with fixedDates"},
 		{"round trip without a stay length", changed(roundTrip(), func(q *search.Query) { q.StayLength = nil }),
 			"stayLength is required for a round trip"},
 		{"negative stay length", changed(roundTrip(), func(q *search.Query) {
@@ -87,4 +101,12 @@ func day(s string) time.Time {
 func changed(base search.Query, change func(*search.Query)) search.Query {
 	change(&base)
 	return base
+}
+
+func fixedRoundTrip() search.Query {
+	q := roundTrip()
+	q.TravelWindow = search.TravelWindow{}
+	q.StayLength = nil
+	q.FixedDates = &search.FixedDates{Outbound: day("2026-12-04"), Inbound: day("2026-12-06")}
+	return q
 }

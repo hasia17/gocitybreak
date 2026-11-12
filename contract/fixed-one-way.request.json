@@ -1,0 +1,14 @@
+{
+  "kind": "oneWay",
+  "homeAirports": [
+    "KRK"
+  ],
+  "destination": {
+    "airports": [
+      "BGY"
+    ]
+  },
+  "fixedDates": {
+    "outbound": "2026-12-05"
+  }
+}

@@ -1,3 +1,5 @@
+import { useSearchClock } from './search-testing';
+import { fillPlace } from './place-testing';
 import { provideTestI18n } from '../i18n/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -10,6 +12,8 @@ import foreignCurrencyRequest from '../../../../contract/foreign-currency.reques
 import foreignCurrencyResponse from '../../../../contract/foreign-currency.response.json';
 import queryErrorResponse from '../../../../contract/query-error.response.txt?raw';
 import { Search } from './search';
+
+useSearchClock();
 
 describe('shared search HTTP contract', () => {
   let http: HttpTestingController;
@@ -37,6 +41,7 @@ describe('shared search HTTP contract', () => {
       await fixture.whenStable();
     }
     function fill(label: string, value: string) {
+      if (fillPlace(root, label, value)) return;
       const input = Array.from(root.querySelectorAll('label'))
         .find((element) => element.textContent?.trim().startsWith(label))!
         .querySelector('input')!;
@@ -68,8 +73,8 @@ describe('shared search HTTP contract', () => {
     req.flush(roundTripResponse);
     await fixture.whenStable();
     const offer = root.querySelector('[data-testid="offer"]')!.textContent!.replace(/\s+/g, ' ');
-    expect(offer).toContain('KRK → BGY');
-    expect(offer).toContain('BGY → KRK');
+    expect(offer).toContain('KRK Kraków → BGY Bergamo');
+    expect(offer).toContain('BGY Bergamo → KRK Kraków');
     expect(offer).toContain('2 nights');
     expect(offer).toContain('PLN 90.00');
   });
@@ -81,7 +86,7 @@ describe('shared search HTTP contract', () => {
     req.flush(oneWayResponse);
     await fixture.whenStable();
     const offer = root.querySelector('[data-testid="offer"]')!.textContent!;
-    expect(offer).toContain('KRK → BGY');
+    expect(offer).toContain('KRK Kraków → BGY Bergamo');
     expect(offer).toContain('PLN 89.00');
     expect(offer).not.toContain('nights');
   });
@@ -108,6 +113,6 @@ describe('shared search HTTP contract', () => {
       headers: { 'Content-Type': 'text/plain' },
     });
     await fixture.whenStable();
-    expect(root.textContent).toContain('Search failed. Check the form and try again.');
+    expect(root.textContent).toContain('Check the minimum and maximum nights; fixed dates do not use a stay length.');
   });
 });

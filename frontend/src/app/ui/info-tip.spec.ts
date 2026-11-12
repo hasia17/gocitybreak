@@ -59,4 +59,44 @@ describe('InfoTip', () => {
     button.click();
     expect(await shown()).toBe(true);
   });
+  it('keeps a focused explanation open when the pointer leaves', async () => {
+    const { button, shown } = await render();
+    button.dispatchEvent(new FocusEvent('focus'));
+    button.dispatchEvent(new Event('mouseleave'));
+    expect(await shown()).toBe(true);
+    button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(await shown()).toBe(false);
+  });
+
+  it('keeps the explanation inside the viewport when opened near its bottom-right edge', async () => {
+    const { button, tip, shown } = await render();
+    vi.spyOn(button, 'getBoundingClientRect').mockReturnValue({
+      left: 990,
+      right: 1014,
+      top: 750,
+      bottom: 774,
+      width: 24,
+      height: 24,
+      x: 990,
+      y: 750,
+      toJSON: () => ({}),
+    });
+    vi.spyOn(tip, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      right: 288,
+      top: 0,
+      bottom: 100,
+      width: 288,
+      height: 100,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    button.click();
+    expect(await shown()).toBe(true);
+    expect(parseFloat(tip.style.left)).toBeLessThanOrEqual(window.innerWidth - 288 - 8);
+    expect(parseFloat(tip.style.left)).toBeGreaterThanOrEqual(8);
+    expect(parseFloat(tip.style.top)).toBeLessThanOrEqual(window.innerHeight - 100 - 8);
+    expect(parseFloat(tip.style.top)).toBeGreaterThanOrEqual(8);
+  });
 });

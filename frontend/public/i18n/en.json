@@ -27,6 +27,7 @@
     "minNights": "Minimum nights",
     "maxNights": "Maximum nights",
     "submit": "Search",
+    "ignoreLeave": "I don't worry about leave",
     "workStart": "Work start",
     "workEnd": "Work end",
     "maxLeaveDays": "Max leave days",
@@ -63,13 +64,51 @@
     },
     "hint": {
       "unsupportedAirports": "Search from supported airports only: {{airports}}.",
-      "fields": "Enter 3-letter airport codes, a destination of airports, cities or countries (or anywhere), both dates and nights from the minimum up to the maximum.",
-      "timeRanges": "In Filters, give each time range both ends, or leave both empty.",
-      "noDepartureDay": "In Filters, leave at least one departure day ticked."
+      "fixedDateOrder": "The inbound date must not be before the outbound date."
     },
-    "failed": "Search failed. Check the form and try again."
+    "failed": "Search failed. Check the form and try again.",
+    "dateMode": {
+      "label": "Dates",
+      "flexible": "Flexible dates",
+      "fixed": "Fixed dates"
+    },
+    "outboundDate": "Outbound date",
+    "inboundDate": "Inbound date",
+    "errors": {
+      "homeAirports": "Choose a supported home airport from the suggestions.",
+      "destination": "Choose a destination from the suggestions, or Anywhere.",
+      "dateOrder": "The latest date must not be before the earliest date.",
+      "dates": "Check your travel dates and choose either flexible or fixed dates.",
+      "stayLength": "Check the minimum and maximum nights; fixed dates do not use a stay length.",
+      "workHours": "Check your work start and work end times.",
+      "timeRanges": "Check the departure and arrival time ranges.",
+      "weekdays": "Check the departure days selected in Filters.",
+      "leaveLimit": "The leave limit must be zero or more.",
+      "sort": "Choose an available sort order for this kind of offer.",
+      "kind": "Choose round trip or one way.",
+      "rejected": "This search was rejected. Check your choices and try again.",
+      "server": "Something went wrong on our side. Please try again."
+    },
+    "validation": {
+      "homeAirports": "Choose at least one home airport.",
+      "destination": "Choose a destination.",
+      "dateRequired": "Choose a date.",
+      "chooseSuggestion": "Choose a suggestion or clear the typed text.",
+      "nightCount": "Enter a whole number of nights, zero or more.",
+      "nightOrder": "Maximum nights must be at least the minimum.",
+      "workStart": "Enter your work start time.",
+      "workEnd": "Enter your work end time.",
+      "leaveCount": "Enter a whole number of leave days, zero or more.",
+      "timeRange": "Enter both ends of the time range or leave both empty.",
+      "departureDay": "Leave at least one possible departure day ticked.",
+      "dateOrder": "The latest date must not be before the earliest date.",
+      "pastDate": "Choose today or a later date."
+    }
   },
   "results": {
+    "label": "Search results",
+    "loading": "Searching for offers…",
+    "showMore": "Show more",
     "emptyRoundTrip": "No offers match your search. Try loosening it: a wider travel window, more airports, more nights to choose from, more leave days, or fewer filters: wider time ranges, more weekdays.",
     "emptyOneWay": "No offers match your search. Try loosening it: a wider travel window, more airports, or fewer filters: wider time ranges, more weekdays.",
     "count": {
@@ -87,6 +126,8 @@
     "bookRoute": "{{route}} on Ryanair ↗"
   },
   "offer": {
+    "outbound": "Outbound",
+    "return": "Return",
     "stops": {
       "one": "{{count}} stop",
       "other": "{{count}} stops"
@@ -100,5 +141,71 @@
       "other": "{{count}} leave days"
     },
     "noLeaveDays": "no leave days"
+  },
+  "places": {
+    "airport": "airport",
+    "city": "city",
+    "country": "country",
+    "airportCount": "{{count}} airports",
+    "remove": "Remove {{place}}",
+    "noMatches": "No matching places",
+    "loading": "Loading places…",
+    "loadError": "Could not load places. Please try again.",
+    "retry": "Retry",
+    "anywhere": "Anywhere"
+  },
+  "tips": {
+    "flexible": {
+      "label": "About flexible dates",
+      "text": "Find flights within a travel window, choosing a range of nights for a round trip."
+    },
+    "fixed": {
+      "label": "About fixed dates",
+      "text": "Choose exact local departure dates out and back (one date for one way). The number of nights follows from the flights."
+    },
+    "nights": {
+      "label": "About nights",
+      "text": "Counted like hotel nights. An arrival before 06:00 counts from the night before."
+    },
+    "workStart": {
+      "label": "About work start"
+    },
+    "workEnd": {
+      "label": "About work end"
+    },
+    "workHours": {
+      "text": "A departure after work end and a return before work start cost no leave day. These hours count leave days; they do not restrict flight times."
+    },
+    "maxLeaveDays": {
+      "label": "About max leave days",
+      "text": "Working days only, excluding weekends and Polish public holidays."
+    },
+    "localTimes": {
+      "text": "Local time at each airport, as on the ticket: departure at the departure airport, arrival at the arrival airport."
+    },
+    "outboundDeparture": {
+      "label": "About outbound departure time"
+    },
+    "outboundArrival": {
+      "label": "About outbound arrival time"
+    },
+    "inboundDeparture": {
+      "label": "About inbound departure time"
+    },
+    "inboundArrival": {
+      "label": "About inbound arrival time"
+    },
+    "approximatePrice": {
+      "label": "About approximate prices",
+      "text": "Converted into PLN at the NBP mid-market rate because a flight is priced in another currency."
+    },
+    "priceAge": {
+      "label": "About price age",
+      "text": "This is a stored price and may have changed. Check the current price on Ryanair’s site."
+    },
+    "separateTickets": {
+      "label": "About separate tickets",
+      "text": "A self-transfer is at your own risk. Nobody guarantees the next flight if the first is late."
+    }
   }
 }
