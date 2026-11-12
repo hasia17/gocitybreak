@@ -100,7 +100,9 @@
       "workEnd": "Podaj godzinę zakończenia pracy.",
       "leaveCount": "Podaj liczbę całkowitą dni urlopu, nie mniejszą niż zero.",
       "timeRange": "Podaj oba końce przedziału godzin albo zostaw oba puste.",
-      "departureDay": "Zostaw zaznaczony co najmniej jeden możliwy dzień wylotu."
+      "departureDay": "Zostaw zaznaczony co najmniej jeden możliwy dzień wylotu.",
+      "dateOrder": "Najpóźniejsza data nie może być wcześniejsza niż najwcześniejsza.",
+      "pastDate": "Wybierz dzisiejszą lub późniejszą datę."
     }
   },
   "results": {

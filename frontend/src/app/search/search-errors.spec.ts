@@ -43,16 +43,37 @@ describe('Search date validation and failures', () => {
     root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
   }
 
-  it.each(['roundTrip', 'oneWay'])('blocks a reversed flexible travel window for %s', async (kind) => {
-    const { fixture, root } = await render();
-    root.querySelector<HTMLInputElement>(`input[value="${kind}"]`)!.click();
-    fill(root, 'from', '2026-12-06');
-    fill(root, 'to', '2026-12-04');
-    submit(root);
-    await fixture.whenStable();
-    http.expectNone('/api/search');
-    expect(root.querySelector('input[formControlName="to"]')?.getAttribute('aria-invalid')).toBe('true');
-  });
+  it.each(['roundTrip', 'oneWay'])(
+    'blocks a reversed flexible travel window for %s',
+    async (kind) => {
+      const { fixture, root } = await render();
+      root.querySelector<HTMLInputElement>(`input[value="${kind}"]`)!.click();
+      fill(root, 'from', '2026-12-06');
+      fill(root, 'to', '2026-12-04');
+      submit(root);
+      await fixture.whenStable();
+      http.expectNone('/api/search');
+      expect(root.querySelector('input[formControlName="to"]')?.getAttribute('aria-invalid')).toBe(
+        'true',
+      );
+      const input = root.querySelector<HTMLInputElement>('input[formControlName="to"]')!;
+      const message = root.querySelector('#' + input.getAttribute('aria-describedby'));
+      expect(message?.textContent).toContain(
+        'The latest date must not be before the earliest date.',
+      );
+      expect(message?.getAttribute('role')).toBe('alert');
+      TestBed.inject(TranslocoService).setActiveLang('pl');
+      await fixture.whenStable();
+      expect(message?.textContent).toContain(
+        'Najpóźniejsza data nie może być wcześniejsza niż najwcześniejsza.',
+      );
+      fill(root, 'to', '2026-12-07');
+      submit(root);
+      http.expectOne('/api/search').flush({ offers: [] });
+      await fixture.whenStable();
+      expect(input.getAttribute('aria-describedby')).toBeNull();
+    },
+  );
 
   it.each([
     ['flexible', 'roundTrip', 'from'],
@@ -74,7 +95,13 @@ describe('Search date validation and failures', () => {
     submit(root);
     await fixture.whenStable();
     http.expectNone('/api/search');
-    expect(root.querySelector(`input[formControlName="${field}"]`)?.getAttribute('aria-invalid')).toBe('true');
+    expect(
+      root.querySelector(`input[formControlName="${field}"]`)?.getAttribute('aria-invalid'),
+    ).toBe('true');
+    const input = root.querySelector<HTMLInputElement>(`input[formControlName="${field}"]`)!;
+    expect(root.querySelector('#' + input.getAttribute('aria-describedby'))?.textContent).toContain(
+      'Choose today or a later date.',
+    );
   });
 
   it('accepts browser-local today and rechecks unchanged dates after local midnight', async () => {
@@ -90,7 +117,12 @@ describe('Search date validation and failures', () => {
     submit(root);
     await fixture.whenStable();
     http.expectNone('/api/search');
-    expect(root.querySelector('input[formControlName="from"]')?.getAttribute('aria-invalid')).toBe('true');
+    expect(root.querySelector('input[formControlName="from"]')?.getAttribute('aria-invalid')).toBe(
+      'true',
+    );
+    TestBed.inject(TranslocoService).setActiveLang('pl');
+    await fixture.whenStable();
+    expect(root.textContent).toContain('Wybierz dzisiejszą lub późniejszą datę.');
   });
 
   it('ignores the remembered past inbound date for a fixed one-way search', async () => {
@@ -109,7 +141,9 @@ describe('Search date validation and failures', () => {
     const { fixture, root } = await render();
     submit(root);
     http.expectOne('/api/search').flush('home airport "ZZZ" is not a supported airport\n', {
-      status: 400, statusText: 'Bad Request', headers: { 'Content-Type': 'text/plain' },
+      status: 400,
+      statusText: 'Bad Request',
+      headers: { 'Content-Type': 'text/plain' },
     });
     await fixture.whenStable();
     expect(root.textContent).toContain('Choose a supported home airport from the suggestions.');
@@ -120,46 +154,87 @@ describe('Search date validation and failures', () => {
   });
   it.each([
     ['homeAirports must not be empty', 'Choose a supported home airport from the suggestions.'],
-    ['destination must name airports, cities or countries, or be anywhere', 'Choose a destination from the suggestions, or Anywhere.'],
-    ['travelWindow.to must not be before travelWindow.from', 'The latest date must not be before the earliest date.'],
-    ['fixedDates.inbound must not be before fixedDates.outbound', 'The inbound date must not be before the outbound date.'],
-    ['fixedDates.outbound must be a date in YYYY-MM-DD format', 'Check your travel dates and choose either flexible or fixed dates.'],
-    ['fixedDates.inbound is required for a round trip', 'Check your travel dates and choose either flexible or fixed dates.'],
-    ['exactly one of travelWindow or fixedDates is required', 'Check your travel dates and choose either flexible or fixed dates.'],
-    ['stayLength must be absent with fixedDates', 'Check the minimum and maximum nights; fixed dates do not use a stay length.'],
-    ['stayLength.max must not be less than stayLength.min', 'Check the minimum and maximum nights; fixed dates do not use a stay length.'],
+    [
+      'destination must name airports, cities or countries, or be anywhere',
+      'Choose a destination from the suggestions, or Anywhere.',
+    ],
+    [
+      'travelWindow.to must not be before travelWindow.from',
+      'The latest date must not be before the earliest date.',
+    ],
+    [
+      'fixedDates.inbound must not be before fixedDates.outbound',
+      'The inbound date must not be before the outbound date.',
+    ],
+    [
+      'fixedDates.outbound must be a date in YYYY-MM-DD format',
+      'Check your travel dates and choose either flexible or fixed dates.',
+    ],
+    [
+      'fixedDates.inbound is required for a round trip',
+      'Check your travel dates and choose either flexible or fixed dates.',
+    ],
+    [
+      'exactly one of travelWindow or fixedDates is required',
+      'Check your travel dates and choose either flexible or fixed dates.',
+    ],
+    [
+      'stayLength must be absent with fixedDates',
+      'Check the minimum and maximum nights; fixed dates do not use a stay length.',
+    ],
+    [
+      'stayLength.max must not be less than stayLength.min',
+      'Check the minimum and maximum nights; fixed dates do not use a stay length.',
+    ],
     ['workStart must be a time in HH:MM format', 'Check your work start and work end times.'],
-    ['outboundDeparture.from must be a time in HH:MM format', 'Check the departure and arrival time ranges.'],
-    ['inboundDepartureWeekdays must list days as mon, tue, wed, thu, fri, sat or sun', 'Check the departure days selected in Filters.'],
+    [
+      'outboundDeparture.from must be a time in HH:MM format',
+      'Check the departure and arrival time ranges.',
+    ],
+    [
+      'inboundDepartureWeekdays must list days as mon, tue, wed, thu, fri, sat or sun',
+      'Check the departure days selected in Filters.',
+    ],
     ['maxLeaveDays must not be negative', 'The leave limit must be zero or more.'],
-    ['sort "leaveDays" applies to round trips only', 'Choose an available sort order for this kind of offer.'],
+    [
+      'sort "leaveDays" applies to round trips only',
+      'Choose an available sort order for this kind of offer.',
+    ],
     ['kind must be "roundTrip" or "oneWay"', 'Choose round trip or one way.'],
-    ['a new backend reason that the frontend does not know', 'This search was rejected. Check your choices and try again.'],
+    [
+      'a new backend reason that the frontend does not know',
+      'This search was rejected. Check your choices and try again.',
+    ],
   ])('shows a translated query message for the 400 reason %s', async (reason, message) => {
     const { fixture, root } = await render();
     submit(root);
     http.expectOne('/api/search').flush(reason + '\n', {
-      status: 400, statusText: 'Bad Request', headers: { 'Content-Type': 'text/plain' },
+      status: 400,
+      statusText: 'Bad Request',
+      headers: { 'Content-Type': 'text/plain' },
     });
     await fixture.whenStable();
     expect(root.textContent).toContain(message);
     expect(root.textContent).not.toContain(reason);
   });
 
-  it.each([500, 503, 0])('shows a distinct retry message for server or network failure %s', async (status) => {
-    const { fixture, root } = await render();
-    submit(root);
-    const request = http.expectOne('/api/search');
-    if (status === 0) request.error(new ProgressEvent('error'));
-    else request.flush('search failed', { status, statusText: 'Server Error' });
-    await fixture.whenStable();
-    expect(root.textContent).toContain('Something went wrong on our side. Please try again.');
-    expect(root.textContent).not.toContain('Check your choices');
-    expect(root.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(false);
-    // A failed request can be retried and its message clears when the retry succeeds.
-    submit(root);
-    http.expectOne('/api/search').flush({ offers: [] });
-    await fixture.whenStable();
-    expect(root.textContent).not.toContain('Something went wrong');
-  });
+  it.each([500, 503, 0])(
+    'shows a distinct retry message for server or network failure %s',
+    async (status) => {
+      const { fixture, root } = await render();
+      submit(root);
+      const request = http.expectOne('/api/search');
+      if (status === 0) request.error(new ProgressEvent('error'));
+      else request.flush('search failed', { status, statusText: 'Server Error' });
+      await fixture.whenStable();
+      expect(root.textContent).toContain('Something went wrong on our side. Please try again.');
+      expect(root.textContent).not.toContain('Check your choices');
+      expect(root.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(false);
+      // A failed request can be retried and its message clears when the retry succeeds.
+      submit(root);
+      http.expectOne('/api/search').flush({ offers: [] });
+      await fixture.whenStable();
+      expect(root.textContent).not.toContain('Something went wrong');
+    },
+  );
 });

@@ -1,3 +1,4 @@
+import { useSearchClock } from './search-testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
@@ -6,6 +7,8 @@ import { provideTestI18n } from '../i18n/testing';
 import { Search } from './search';
 import { Catalogue, Flight } from './search-api';
 import { fillPlace } from './place-testing';
+
+useSearchClock();
 
 describe('Search offer readability', () => {
   let http: HttpTestingController;

@@ -1,3 +1,4 @@
+import { useSearchClock } from './search-testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
@@ -24,6 +25,8 @@ const catalogue: Catalogue = {
     { code: 'it', name: 'Italy', names: { pl: 'Włochy' } },
   ],
 };
+useSearchClock();
+
 describe('Search place chips', () => {
   let http: HttpTestingController;
   beforeEach(async () => {

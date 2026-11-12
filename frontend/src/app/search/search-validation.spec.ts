@@ -1,3 +1,4 @@
+import { useSearchClock } from './search-testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
@@ -5,6 +6,8 @@ import { TranslocoService } from '@jsverse/transloco';
 import { provideTestI18n } from '../i18n/testing';
 import { fillPlace, flushCatalogue } from './place-testing';
 import { Search } from './search';
+
+useSearchClock();
 
 describe('Search field validation', () => {
   let http: HttpTestingController;

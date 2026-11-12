@@ -68,9 +68,7 @@ function pastDate(control: AbstractControl): ValidationErrors | null {
 /** The latest flexible date cannot precede the earliest date, for either kind of offer. */
 function dateOrder(form: AbstractControl): ValidationErrors | null {
   const v = (form as FormGroup).getRawValue() as SearchFormValue;
-  return v.dateMode === 'flexible' && v.from && v.to && v.to < v.from
-    ? { dateOrder: true }
-    : null;
+  return v.dateMode === 'flexible' && v.from && v.to && v.to < v.from ? { dateOrder: true } : null;
 }
 
 /** Map the English API reasons to interface keys; unknown reasons never reach the page. */
@@ -82,7 +80,10 @@ function rejectedSearchMessage(reason: string): string {
   const categories: [RegExp, string][] = [
     [/^(homeAirports\b|home airport .* is not a supported airport$)/, 'homeAirports'],
     [/^destination\b/, 'destination'],
-    [/^(travelWindow\.|fixedDates\.|exactly one of travelWindow or fixedDates is required$)/, 'dates'],
+    [
+      /^(travelWindow\.|fixedDates\.|exactly one of travelWindow or fixedDates is required$)/,
+      'dates',
+    ],
     [/^stayLength\b/, 'stayLength'],
     [/^(workStart|workEnd)\b/, 'workHours'],
     [/^(outbound|inbound)(Departure|Arrival)\./, 'timeRanges'],
@@ -357,7 +358,10 @@ export class Search {
     if (!this.invalid(path)) return '';
     if (path.startsWith('filters.') && this.noDayLeft(path.slice(8) as DepartureDays))
       return this.t('search.validation.departureDay');
+    if (this.form.get(path)?.hasError('pastDate')) return this.t('search.validation.pastDate');
     if (path === 'to' && this.invalidFixedDates()) return this.t('search.hint.fixedDateOrder');
+    if (path === 'to' && this.form.hasError('dateOrder'))
+      return this.t('search.validation.dateOrder');
     if (path.startsWith('stayLength.')) {
       return this.t(
         'search.validation.' + (this.form.get(path)?.invalid ? 'nightCount' : 'nightOrder'),

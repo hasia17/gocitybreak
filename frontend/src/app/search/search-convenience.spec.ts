@@ -1,3 +1,4 @@
+import { useSearchClock } from './search-testing';
 import { fillPlace, flushCatalogue } from './place-testing';
 import { provideTestI18n } from '../i18n/testing';
 import { provideHttpClient } from '@angular/common/http';
@@ -8,6 +9,8 @@ import { TranslocoService } from '@jsverse/transloco';
 import { Search } from './search';
 
 /** Remembered settings, Ryanair links and the empty result (#10). */
+useSearchClock();
+
 describe('Search conveniences', () => {
   let httpTesting: HttpTestingController;
 

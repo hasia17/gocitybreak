@@ -1,3 +1,4 @@
+import { useSearchClock } from './search-testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
@@ -8,6 +9,8 @@ import { fillPlace, flushCatalogue } from './place-testing';
 import { Search } from './search';
 
 /** Search progress through the search DOM and HTTP boundary (#41). */
+useSearchClock();
+
 describe('Search loading', () => {
   let http: HttpTestingController;
 

@@ -1,3 +1,4 @@
+import { useSearchClock } from './search-testing';
 import { fillPlace, flushCatalogue } from './place-testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -8,6 +9,8 @@ import { Search } from './search';
 import { Offer } from './search-api';
 
 /** Offer paging through the search DOM and HTTP boundary (#40). */
+useSearchClock();
+
 describe('Search offer paging', () => {
   let http: HttpTestingController;
 

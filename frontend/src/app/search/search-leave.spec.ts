@@ -1,3 +1,4 @@
+import { useSearchClock } from './search-testing';
 import { fillPlace, flushCatalogue } from './place-testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -7,6 +8,8 @@ import { provideTestI18n } from '../i18n/testing';
 import { Search } from './search';
 
 /** Leave planning through the visible form and the search HTTP boundary (#34). */
+useSearchClock();
+
 describe('Search leave limit', () => {
   let httpTesting: HttpTestingController;
 

@@ -100,7 +100,9 @@
       "workEnd": "Enter your work end time.",
       "leaveCount": "Enter a whole number of leave days, zero or more.",
       "timeRange": "Enter both ends of the time range or leave both empty.",
-      "departureDay": "Leave at least one possible departure day ticked."
+      "departureDay": "Leave at least one possible departure day ticked.",
+      "dateOrder": "The latest date must not be before the earliest date.",
+      "pastDate": "Choose today or a later date."
     }
   },
   "results": {

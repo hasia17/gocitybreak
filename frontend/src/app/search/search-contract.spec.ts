@@ -1,3 +1,4 @@
+import { useSearchClock } from './search-testing';
 import { fillPlace } from './place-testing';
 import { provideTestI18n } from '../i18n/testing';
 import { provideHttpClient } from '@angular/common/http';
@@ -11,6 +12,8 @@ import foreignCurrencyRequest from '../../../../contract/foreign-currency.reques
 import foreignCurrencyResponse from '../../../../contract/foreign-currency.response.json';
 import queryErrorResponse from '../../../../contract/query-error.response.txt?raw';
 import { Search } from './search';
+
+useSearchClock();
 
 describe('shared search HTTP contract', () => {
   let http: HttpTestingController;

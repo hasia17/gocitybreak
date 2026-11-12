@@ -1,3 +1,4 @@
+import { useSearchClock } from './search-testing';
 import { fillPlace, flushCatalogue } from './place-testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -8,6 +9,8 @@ import fixedDatesResponse from '../../../../contract/fixed-dates.response.json';
 import fixedOneWayRequest from '../../../../contract/fixed-one-way.request.json';
 import fixedOneWayResponse from '../../../../contract/fixed-one-way.response.json';
 import { Search } from './search';
+
+useSearchClock();
 
 describe('Fixed dates search', () => {
   let http: HttpTestingController;
