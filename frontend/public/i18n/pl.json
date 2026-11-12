@@ -103,6 +103,8 @@
     "bookRoute": "{{route}} w Ryanair ↗"
   },
   "offer": {
+    "outbound": "Wylot",
+    "return": "Powrót",
     "stops": {
       "one": "{{count}} przesiadka",
       "few": "{{count}} przesiadki",
