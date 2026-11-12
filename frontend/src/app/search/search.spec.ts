@@ -162,7 +162,9 @@ describe('Search', () => {
     await fixture.whenStable();
 
     const offer = root.querySelector('[data-testid="offer"]')?.textContent?.replace(/\s+/g, ' ');
-    expect(offer).toMatch(/Fri 4 Dec 18:00 – 19:55 KRK → BGY.*Sun 6 Dec 20:00 – 21:50 BGY → KTW/);
+    expect(offer).toMatch(
+      /Fri 4 Dec 18:00 – 19:55 KRK Kraków → BGY Bergamo.*Sun 6 Dec 20:00 – 21:50 BGY Bergamo → KTW Katowice/,
+    );
     expect(offer).toContain('2 nights');
     expect(offer).toContain('≈ PLN 173.98');
     expect(offer).toContain('€19.99');
@@ -501,7 +503,7 @@ describe('Search', () => {
     await fixture.whenStable();
 
     const offer = root.querySelector('[data-testid="offer"]')?.textContent?.replace(/\s+/g, ' ');
-    expect(offer).toContain('BGY → KRK');
+    expect(offer).toContain('BGY Bergamo → KRK Kraków');
     expect(offer).toContain('Sat 5 Dec');
     expect(offer).not.toContain('2026');
     expect(offer).toContain('09:00 – 10:50');

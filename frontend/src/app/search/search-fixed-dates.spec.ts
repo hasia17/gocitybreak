@@ -107,7 +107,9 @@ describe('Fixed dates search', () => {
     expect(req.request.body).toEqual(fixedOneWayRequest);
     req.flush(fixedOneWayResponse);
     await fixture.whenStable();
-    expect(root.querySelector('[data-testid="offer"]')?.textContent).toContain('KRK → BGY');
+    expect(root.querySelector('[data-testid="offer"]')?.textContent).toContain(
+      'KRK Kraków → BGY Bergamo',
+    );
     mode(root, 'flexible');
     await fixture.whenStable();
     expect(root.querySelector('input[formControlName="to"]')).not.toBeNull();

@@ -5,6 +5,7 @@ import { TranslocoService } from '@jsverse/transloco';
 import { provideTestI18n } from '../i18n/testing';
 import { Search } from './search';
 import { Catalogue, Flight } from './search-api';
+import { fillPlace } from './place-testing';
 
 describe('Search offer readability', () => {
   let http: HttpTestingController;
@@ -49,6 +50,7 @@ describe('Search offer readability', () => {
       ['Earliest', '2026-12-01'],
       ['Latest', '2026-12-10'],
     ]) {
+      if (fillPlace(root, label, value)) continue;
       const input = Array.from(root.querySelectorAll('label'))
         .find((l) => l.textContent?.trim().startsWith(label))!
         .querySelector('input')!;
