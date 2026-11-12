@@ -117,7 +117,7 @@ export interface Money {
 
 /** What the search form chooses from. */
 export interface Catalogue {
-  supportedAirports: { code: string; name: string }[];
+  supportedAirports: { code: string; name: string; names?: Record<string, string> }[];
   airports: CatalogueAirport[];
   /** A city covers several airports, e.g. Milan covers MXP and BGY. */
   cities: City[];
@@ -127,6 +127,8 @@ export interface Catalogue {
 export interface CatalogueAirport {
   code: string;
   name: string;
+  /** Names in each interface language; absent in older catalogue responses. */
+  names?: Record<string, string>;
   /** Codes of the cities the airport belongs to; an airport may belong to several. */
   cities: string[];
   country?: string;
@@ -135,6 +137,8 @@ export interface CatalogueAirport {
 export interface City {
   code: string;
   name: string;
+  /** Names in each interface language; absent in older catalogue responses. */
+  names?: Record<string, string>;
   country?: string;
   airports: string[];
 }
@@ -143,4 +147,6 @@ export interface Country {
   /** Lower-case ISO 3166-1 alpha-2 code, e.g. "it". */
   code: string;
   name: string;
+  /** Names in each interface language; absent in older catalogue responses. */
+  names?: Record<string, string>;
 }

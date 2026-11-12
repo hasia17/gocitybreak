@@ -27,6 +27,7 @@
     "minNights": "Minimum nights",
     "maxNights": "Maximum nights",
     "submit": "Search",
+    "ignoreLeave": "I don't worry about leave",
     "workStart": "Work start",
     "workEnd": "Work end",
     "maxLeaveDays": "Max leave days",

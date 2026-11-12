@@ -116,8 +116,19 @@ func queryOf(t *testing.T, requestURI string) url.Values {
 }
 
 func TestAirportsParsesTheRecordedCatalogue(t *testing.T) {
-	rec := newRecording(t, "/api/views/locate/5/airports/en/active",
-		http.StatusOK, payload(t, "airports.json"))
+	en, pl := payload(t, "airports.json"), payload(t, "airports-pl.json")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/views/locate/5/airports/en/active":
+			_, _ = io.WriteString(w, en)
+		case "/api/views/locate/5/airports/pl/active":
+			_, _ = io.WriteString(w, pl)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(server.Close)
+	rec := &recording{Server: server}
 
 	airports, err := rec.client().Airports(t.Context())
 
@@ -128,16 +139,41 @@ func TestAirportsParsesTheRecordedCatalogue(t *testing.T) {
 		{
 			Code: "BGY", Name: "Milan Bergamo", TimeZone: "Europe/Rome",
 			CityCode: "MILAN", CityName: "Milan", CountryCode: "it", CountryName: "Italy",
+			Names: map[string]string{"en": "Milan Bergamo", "pl": "Mediolan-Bergamo"}, CityNames: map[string]string{"en": "Milan", "pl": "Mediolan"}, CountryNames: map[string]string{"en": "Italy", "pl": "Włochy"},
 		},
 		{
 			Code: "KRK", Name: "Krakow", TimeZone: "Europe/Warsaw",
 			CityCode: "KRAKOW", CityName: "Krakow", CountryCode: "pl", CountryName: "Poland",
+			Names: map[string]string{"en": "Krakow", "pl": "Kraków"}, CityNames: map[string]string{"en": "Krakow", "pl": "Kraków"}, CountryNames: map[string]string{"en": "Poland", "pl": "Polska"},
 		},
 		{
 			Code: "RAK", Name: "Marrakesh Menara", TimeZone: "Africa/Casablanca",
 			CityCode: "MARRAKESH", CityName: "Marrakesh", CountryCode: "ma", CountryName: "Morocco",
+			Names: map[string]string{"en": "Marrakesh Menara", "pl": "Marrakesz-Menara"}, CityNames: map[string]string{"en": "Marrakesh", "pl": "Marrakesz"}, CountryNames: map[string]string{"en": "Morocco", "pl": "Maroko"},
 		},
 	})
+}
+
+func TestAirportsCarriesEachLanguageMatchedByCode(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/views/locate/5/airports/en/active":
+			_, _ = io.WriteString(w, `[{"code":"KRK","name":"Krakow","timeZone":"Europe/Warsaw","city":{"code":"KRAKOW","name":"Krakow"},"country":{"code":"pl","name":"Poland"}},{"code":"MAD","name":"Madrid","city":{"code":"MADRID","name":"Madrid"},"country":{"code":"es","name":"Spain"}}]`)
+		case "/api/views/locate/5/airports/pl/active":
+			_, _ = io.WriteString(w, `[{"code":"MAD","name":"Madryt","city":{"code":"MADRID","name":"Madryt"},"country":{"code":"es","name":"Hiszpania"}},{"code":"KRK","name":"Kraków","city":{"code":"KRAKOW","name":"Kraków"},"country":{"code":"pl","name":"Polska"}}]`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(server.Close)
+	client := ryanair.NewHTTPClient(server.URL, fetch.NewClient(fetch.Options{}))
+	airports, err := client.Airports(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertEqual(t, "Krakow airport names", airports[0].Names, map[string]string{"en": "Krakow", "pl": "Kraków"})
+	assertEqual(t, "Madrid city names", airports[1].CityNames, map[string]string{"en": "Madrid", "pl": "Madryt"})
+	assertEqual(t, "Spain country names", airports[1].CountryNames, map[string]string{"en": "Spain", "pl": "Hiszpania"})
 }
 
 func TestRoutesListDirectDestinationsOnly(t *testing.T) {
@@ -263,5 +299,16 @@ func TestTimetableFailsOnAMalformedTime(t *testing.T) {
 	}
 	if flights != nil {
 		t.Errorf("flights = %v, want none", flights)
+	}
+}
+
+func TestAirportsRejectsIncompleteLanguages(t *testing.T) {
+	rec := newRecording(t, "/api/views/locate/5/airports/en/active", http.StatusOK, payload(t, "airports.json"))
+	airports, err := rec.client().Airports(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "pl") {
+		t.Fatalf("Airports error = %v, want missing Polish catalogue", err)
+	}
+	if airports != nil {
+		t.Errorf("Airports = %+v, want no partial catalogue", airports)
 	}
 }

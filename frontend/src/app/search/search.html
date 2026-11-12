@@ -113,32 +113,38 @@
     @if (applies('leave') || applies('sort')) {
       <div class="options">
         <ng-container formGroupName="leave">
-          <label class="field time" [class.invalid]="invalid('leave.workStart')">
-            {{ t('search.workStart') }}
-            <input
-              type="time"
-              formControlName="workStart"
-              [attr.aria-invalid]="invalid('leave.workStart')"
-            />
+          <label class="check leave-switch">
+            <input type="checkbox" role="switch" formControlName="ignoreLeave" />
+            {{ t('search.ignoreLeave') }}
           </label>
-          <label class="field time" [class.invalid]="invalid('leave.workEnd')">
-            {{ t('search.workEnd') }}
-            <input
-              type="time"
-              formControlName="workEnd"
-              [attr.aria-invalid]="invalid('leave.workEnd')"
-            />
-          </label>
-          <label class="field leave" [class.invalid]="invalid('leave.maxLeaveDays')">
-            {{ t('search.maxLeaveDays') }}
-            <input
-              type="number"
-              min="0"
-              formControlName="maxLeaveDays"
-              [placeholder]="t('search.anyLeave')"
-              [attr.aria-invalid]="invalid('leave.maxLeaveDays')"
-            />
-          </label>
+          @if (!ignoreLeave()) {
+            <label class="field time" [class.invalid]="invalid('leave.workStart')">
+              {{ t('search.workStart') }}
+              <input
+                type="time"
+                formControlName="workStart"
+                [attr.aria-invalid]="invalid('leave.workStart')"
+              />
+            </label>
+            <label class="field time" [class.invalid]="invalid('leave.workEnd')">
+              {{ t('search.workEnd') }}
+              <input
+                type="time"
+                formControlName="workEnd"
+                [attr.aria-invalid]="invalid('leave.workEnd')"
+              />
+            </label>
+            <label class="field leave" [class.invalid]="invalid('leave.maxLeaveDays')">
+              {{ t('search.maxLeaveDays') }}
+              <input
+                type="number"
+                min="0"
+                formControlName="maxLeaveDays"
+                [placeholder]="t('search.anyLeave')"
+                [attr.aria-invalid]="invalid('leave.maxLeaveDays')"
+              />
+            </label>
+          }
         </ng-container>
         <div class="field sort">
           <span aria-hidden="true">{{ t('search.sort') }}</span>

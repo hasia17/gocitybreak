@@ -4,7 +4,15 @@
  * request. The search component enables, disables and shows fields from the applicability
  * table and builds its request with {@link buildSearchQuery}.
  */
-import { Catalogue, OfferKind, SearchFilters, SearchQuery, SortOrder, Weekday } from './search-api';
+import {
+  Catalogue,
+  Offer,
+  OfferKind,
+  SearchFilters,
+  SearchQuery,
+  SortOrder,
+  Weekday,
+} from './search-api';
 import { readTypedNames } from './typed-names';
 
 /** The four moments of an offer that a time range can restrict, in travel order. */
@@ -145,7 +153,13 @@ export interface SearchFormValue {
   from: string;
   to: string;
   stayLength: { min: number; max: number };
-  leave: { workStart: string; workEnd: string; maxLeaveDays: number | null };
+  leave: {
+    /** Absent in older remembered settings; false means the leave limit still applies. */
+    ignoreLeave?: boolean;
+    workStart: string;
+    workEnd: string;
+    maxLeaveDays: number | null;
+  };
   sort: SortOrder;
   filters: FiltersValue;
 }
@@ -179,7 +193,8 @@ export function buildSearchQuery(
   if (fieldApplies('leave', v.kind)) {
     query.workStart = v.leave.workStart;
     query.workEnd = v.leave.workEnd;
-    if (v.leave.maxLeaveDays != null) query.maxLeaveDays = Number(v.leave.maxLeaveDays);
+    if (!v.leave.ignoreLeave && v.leave.maxLeaveDays != null)
+      query.maxLeaveDays = Number(v.leave.maxLeaveDays);
   }
   if (fieldApplies('sort', v.kind)) query.sort = v.sort;
   const filters: SearchFilters = {};
@@ -201,4 +216,14 @@ export function buildSearchQuery(
   }
   if (Object.keys(filters).length > 0) query.filters = filters;
   return query;
+}
+
+/**
+ * Found offers in the sort order, as the backend sorts them: by price, or by leave days and then
+ * by price. Lets the user switch the order of offers already found without searching again.
+ */
+export function sortOffers(offers: readonly Offer[], sort: SortOrder): Offer[] {
+  const sorted = [...offers].sort((a, b) => a.price.amount - b.price.amount);
+  if (sort === 'leaveDays') sorted.sort((a, b) => (a.leaveDays ?? 0) - (b.leaveDays ?? 0));
+  return sorted;
 }

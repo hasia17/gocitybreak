@@ -1,3 +1,4 @@
+import { catalogueName } from './catalogue-names';
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
@@ -26,6 +27,7 @@ import {
   DepartureDays,
   departureDaysWithoutChoice,
   SearchFormValue,
+  sortOffers,
   windowWeekdays,
   defaultWorkEnd,
   defaultWorkStart,
@@ -93,6 +95,7 @@ export class Search {
         { validators: maxBelowMin },
       ),
       leave: this.fb.group({
+        ignoreLeave: false,
         workStart: [defaultWorkStart, Validators.required],
         workEnd: [defaultWorkEnd, Validators.required],
         maxLeaveDays: this.fb.control<number | null>(null, Validators.pattern(/^\d+$/)),
@@ -126,6 +129,12 @@ export class Search {
   protected readonly kind = toSignal(this.form.controls.kind.valueChanges, {
     initialValue: this.form.controls.kind.value,
   });
+  protected readonly ignoreLeave = toSignal(
+    this.form.controls.leave.controls.ignoreLeave.valueChanges,
+    {
+      initialValue: this.form.controls.leave.controls.ignoreLeave.value,
+    },
+  );
 
   protected readonly dateMode = toSignal(this.form.controls.dateMode.valueChanges, {
     initialValue: this.form.controls.dateMode.value,
@@ -133,11 +142,19 @@ export class Search {
 
   /** Offers of the last search and when they arrived; undefined before the first search. */
   private readonly found = signal<{ offers: Offer[]; at: number } | undefined>(undefined);
-  /** Offers of the last search, shown in the interface language; undefined before the first search. */
+  private readonly sort = toSignal(this.form.controls.sort.valueChanges, {
+    initialValue: this.form.controls.sort.value,
+  });
+  /**
+   * Offers of the last search in the chosen order, shown in the interface language; undefined
+   * before the first search. Switching the sort reorders them at once.
+   */
   protected readonly offers = computed(() => {
     const found = this.found();
     const texts = this.texts();
-    return found && texts ? found.offers.map((o) => offerView(o, found.at, texts)) : undefined;
+    return found && texts
+      ? sortOffers(found.offers, this.sort()).map((o) => offerView(o, found.at, texts))
+      : undefined;
   });
   protected readonly loading = signal(false);
   /** The translation key of the last search's failure. */
@@ -165,6 +182,9 @@ export class Search {
     merge(this.form.controls.kind.valueChanges, this.form.controls.dateMode.valueChanges)
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.updateApplicableFields());
+    this.form.controls.leave.controls.ignoreLeave.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.updateLeaveLimit());
     merge(this.form.controls.from.valueChanges, this.form.controls.to.valueChanges)
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.greyOutImpossibleDays());
@@ -226,6 +246,7 @@ export class Search {
       if (fieldApplies(path, kind.value, dateMode.value)) this.form.get(path)?.enable();
       else this.form.get(path)?.disable();
     }
+    this.updateLeaveLimit();
     this.greyOutImpossibleDays();
   }
 
@@ -238,6 +259,14 @@ export class Search {
     const { outboundDepartureWeekdays, inboundDepartureWeekdays } =
       this.form.controls.filters.controls;
     return [outboundDepartureWeekdays, inboundDepartureWeekdays];
+  }
+
+  /** An ignored leave limit keeps its value but cannot invalidate the search. */
+  private updateLeaveLimit() {
+    const leave = this.form.controls.leave.controls;
+    if (this.form.controls.kind.value === 'roundTrip' && !leave.ignoreLeave.value)
+      leave.maxLeaveDays.enable({ emitEvent: false });
+    else leave.maxLeaveDays.disable({ emitEvent: false });
   }
 
   /**
@@ -293,7 +322,7 @@ export class Search {
   /** The supported airports, like "KRK (Kraków), KTW (Katowice)". */
   protected supportedAirportList(): string {
     return (this.catalogue()?.supportedAirports ?? [])
-      .map((a) => `${a.code} (${a.name})`)
+      .map((a) => `${a.code} (${catalogueName(a, this.language() ?? 'en')})`)
       .join(', ');
   }
 

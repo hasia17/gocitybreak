@@ -4,12 +4,19 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import { Search } from './search';
+import { TranslocoService } from '@jsverse/transloco';
 import { Catalogue } from './search-api';
 
 const catalogue: Catalogue = {
-  supportedAirports: [{ code: 'KRK', name: 'Kraków' }],
+  supportedAirports: [{ code: 'KRK', name: 'Kraków', names: { en: 'Krakow', pl: 'Kraków' } }],
   airports: [
-    { code: 'BGY', name: 'Milan Bergamo', cities: ['BERGAMO', 'MILAN'], country: 'it' },
+    {
+      code: 'BGY',
+      name: 'Milan Bergamo',
+      names: { en: 'Milan Bergamo', pl: 'Mediolan-Bergamo' },
+      cities: ['BERGAMO', 'MILAN'],
+      country: 'it',
+    },
     { code: 'KRK', name: 'Kraków', cities: ['KRAKOW'], country: 'pl' },
     { code: 'MXP', name: 'Milan Malpensa', cities: ['MILAN'], country: 'it' },
     { code: 'OSL', name: 'Oslo', cities: ['OSLO'], country: 'no' },
@@ -17,14 +24,20 @@ const catalogue: Catalogue = {
   cities: [
     { code: 'BERGAMO', name: 'Bergamo', country: 'it', airports: ['BGY'] },
     { code: 'KRAKOW', name: 'Kraków', country: 'pl', airports: ['KRK'] },
-    { code: 'MILAN', name: 'Milan', country: 'it', airports: ['BGY', 'MXP'] },
+    {
+      code: 'MILAN',
+      name: 'Milan',
+      names: { en: 'Milan', pl: 'Mediolan' },
+      country: 'it',
+      airports: ['BGY', 'MXP'],
+    },
     { code: 'OSLO', name: 'Oslo', country: 'no', airports: ['OSL'] },
   ],
   countries: [
     { code: 'it', name: 'Italy' },
     { code: 'no', name: 'Norway' },
     { code: 'pl', name: 'Poland' },
-    { code: 'es', name: 'Spain' },
+    { code: 'es', name: 'Spain', names: { en: 'Spain', pl: 'Hiszpania' } },
   ],
 };
 
@@ -148,6 +161,72 @@ describe('Search', () => {
     expect(offer).toContain('≈ PLN 173.98');
     expect(offer).toContain('€19.99');
     expect(offer).not.toContain('89.00 PLN ·');
+  });
+
+  it('reorders the offers found at once when the sort changes, without searching again', async () => {
+    const fixture = TestBed.createComponent(Search);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    fill(root, 'From', 'KRK');
+    fill(root, 'To', 'BGY');
+    fill(root, 'Earliest', '2026-12-01');
+    fill(root, 'Latest', '2026-12-10');
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+    const fetchedAt = new Date().toISOString();
+    const roundTrip = (out: string, back: string, price: number, leaveDays: number) => {
+      const flight = (from: string, to: string, date: string) => ({
+        departureAirport: from,
+        arrivalAirport: to,
+        departure: { date, time: '10:00', timeZone: 'Europe/Warsaw' },
+        arrival: { date, time: '12:00', timeZone: 'Europe/Rome' },
+        originalPrice: { amount: price / 2, currency: 'PLN' },
+        fetchedAt,
+      });
+      return {
+        kind: 'roundTrip',
+        outbound: { isDirect: true, flights: [flight('KRK', 'BGY', out)] },
+        inbound: { isDirect: true, flights: [flight('BGY', 'KRK', back)] },
+        nights: 2,
+        leaveDays,
+        price: { amount: price, currency: 'PLN', approximate: false },
+        priceFetchedAt: fetchedAt,
+      };
+    };
+    httpTesting.expectOne('/api/search').flush({
+      offers: [
+        roundTrip('2026-12-02', '2026-12-04', 100, 3),
+        roundTrip('2026-12-05', '2026-12-07', 150, 0),
+        roundTrip('2026-12-04', '2026-12-06', 200, 0),
+      ],
+    });
+    await fixture.whenStable();
+    const firstDays = () =>
+      Array.from(root.querySelectorAll('[data-testid="offer"] time')).map((t) =>
+        t.getAttribute('datetime'),
+      );
+    expect(firstDays()).toEqual([
+      '2026-12-02',
+      '2026-12-04',
+      '2026-12-05',
+      '2026-12-07',
+      '2026-12-04',
+      '2026-12-06',
+    ]);
+
+    root
+      .querySelector<HTMLInputElement>('[aria-label="Sort by"] input[value="leaveDays"]')!
+      .click();
+    await fixture.whenStable();
+
+    httpTesting.expectNone('/api/search');
+    expect(firstDays()).toEqual([
+      '2026-12-05',
+      '2026-12-07',
+      '2026-12-04',
+      '2026-12-06',
+      '2026-12-02',
+      '2026-12-04',
+    ]);
   });
 
   it('remembers work hours, the maximum of leave days and the sort for the next visit', async () => {
@@ -569,6 +648,9 @@ describe('Search', () => {
 
     httpTesting.expectNone('/api/search');
     expect(labelled<HTMLInputElement>(root, 'From').getAttribute('aria-invalid')).toBe('true');
+    expect(root.querySelector('[role="alert"]')?.textContent).toContain('KRK (Krakow)');
+    TestBed.inject(TranslocoService).setActiveLang('pl');
+    await fixture.whenStable();
     expect(root.querySelector('[role="alert"]')?.textContent).toContain('KRK (Kraków)');
   });
 
@@ -588,6 +670,20 @@ describe('Search', () => {
       await fixture.whenStable();
       return root;
     }
+
+    it.each([
+      ['Milan', { cities: ['MILAN'] }],
+      ['Mediolan', { cities: ['MILAN'] }],
+      ['Spain', { countries: ['es'] }],
+      ['Hiszpania', { countries: ['es'] }],
+      ['Milan Bergamo', { airports: ['BGY'] }],
+      ['Mediolan-Bergamo', { airports: ['BGY'] }],
+    ])('resolves %s from either catalogue language', async (name, destination) => {
+      await searchFrom(name as string);
+      const req = httpTesting.expectOne('/api/search');
+      expect(req.request.body.destination).toEqual(destination);
+      req.flush({ offers: [] });
+    });
 
     it('marks an airport, city or country it does not know', async () => {
       const root = await searchFrom('Milan, Atlantis', 'anywhere');

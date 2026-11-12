@@ -17,7 +17,7 @@ import (
 
 // Client is what the price worker needs from Ryanair. HTTPClient implements it.
 type Client interface {
-	// Airports returns Ryanair's catalogue of active airports.
+	// Airports returns Ryanair's catalogue of active airports with English and Polish names.
 	Airports(ctx context.Context) ([]Airport, error)
 	// Routes returns the codes of airports Ryanair flies to directly from airport.
 	Routes(ctx context.Context, airport string) ([]string, error)
@@ -33,13 +33,17 @@ type Client interface {
 
 // Airport is an airport from Ryanair's catalogue, with the city and country Ryanair assigns it to.
 type Airport struct {
-	Code        string
-	Name        string
-	TimeZone    string
-	CityCode    string
-	CityName    string
-	CountryCode string // lower-case ISO 3166-1 alpha-2, e.g. "pl"
-	CountryName string
+	// Names, CityNames and CountryNames are keyed by interface language.
+	Names        map[string]string
+	CityNames    map[string]string
+	CountryNames map[string]string
+	Code         string
+	Name         string
+	TimeZone     string
+	CityCode     string
+	CityName     string
+	CountryCode  string // lower-case ISO 3166-1 alpha-2, e.g. "pl"
+	CountryName  string
 }
 
 // Money is an amount in minor units (grosze, cents) of a currency.
@@ -108,17 +112,35 @@ type airportJSON struct {
 }
 
 func (c *HTTPClient) Airports(ctx context.Context) ([]Airport, error) {
-	var body []airportJSON
-	if err := c.fetch.GetJSON(ctx, c.baseURL+"/api/views/locate/5/airports/en/active", &body); err != nil {
-		return nil, fmt.Errorf("airports: %w", err)
-	}
-	airports := make([]Airport, 0, len(body))
-	for _, a := range body {
-		airports = append(airports, Airport{
-			Code: a.Code, Name: a.Name, TimeZone: a.TimeZone,
-			CityCode: a.City.Code, CityName: a.City.Name,
-			CountryCode: a.Country.Code, CountryName: a.Country.Name,
-		})
+	var airports []Airport
+	byCode := map[string]int{}
+	for _, language := range []string{"en", "pl"} {
+		var body []airportJSON
+		if err := c.fetch.GetJSON(ctx, c.baseURL+"/api/views/locate/5/airports/"+language+"/active", &body); err != nil {
+			return nil, fmt.Errorf("airports %s: %w", language, err)
+		}
+		for _, a := range body {
+			i, exists := byCode[a.Code]
+			if !exists {
+				i = len(airports)
+				byCode[a.Code] = i
+				airports = append(airports, Airport{
+					Code: a.Code, Name: a.Name, TimeZone: a.TimeZone,
+					CityCode: a.City.Code, CityName: a.City.Name,
+					CountryCode: a.Country.Code, CountryName: a.Country.Name,
+					Names: map[string]string{}, CityNames: map[string]string{}, CountryNames: map[string]string{},
+				})
+			}
+			airport := &airports[i]
+			airport.Names[language] = a.Name
+			// The codes are shared across languages; do not attach a translated name to another place.
+			if airport.CityCode == a.City.Code {
+				airport.CityNames[language] = a.City.Name
+			}
+			if airport.CountryCode == a.Country.Code {
+				airport.CountryNames[language] = a.Country.Name
+			}
+		}
 	}
 	return airports, nil
 }
