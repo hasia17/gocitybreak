@@ -139,7 +139,9 @@ export class Search {
     const found = this.found();
     const texts = this.texts();
     return found && texts
-      ? sortOffers(found.offers, this.sort()).map((o) => offerView(o, found.at, texts))
+      ? sortOffers(found.offers, this.sort()).map((o) =>
+          offerView(o, found.at, texts, this.catalogue()),
+        )
       : undefined;
   });
   protected readonly visibleCount = signal(20);

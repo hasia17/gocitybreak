@@ -4,7 +4,7 @@ import en from '../../../public/i18n/en.json';
 import pl from '../../../public/i18n/pl.json';
 import { Language, textsIn } from '../i18n/language';
 import { provideTestI18n } from '../i18n/testing';
-import { Offer } from './search-api';
+import { Catalogue, Offer } from './search-api';
 import { offerView as viewIn } from './offer-view';
 
 const now = Date.parse('2026-12-05T12:00:00Z');
@@ -58,6 +58,60 @@ describe('offerView', () => {
     expect(view.foreignPrices).toEqual(['€19.99']);
     expect(view.priceAge).toBe('3 hr ago');
     expect(view.tickets[0].url).toContain('originIata=BGY');
+  });
+
+  it('labels the outbound and return legs in the interface language', () => {
+    const roundTrip: Offer = {
+      ...offer,
+      kind: 'roundTrip',
+      inbound: offer.outbound,
+    };
+    expect(offerView(roundTrip, now).legs.map((leg) => leg.label)).toEqual(['Outbound', 'Return']);
+    expect(offerView(roundTrip, now, 'pl').legs.map((leg) => leg.label)).toEqual([
+      'Wylot',
+      'Powrót',
+    ]);
+    expect(offerView(offer, now).legs.map((leg) => leg.label)).toEqual(['Outbound']);
+  });
+
+  it('names every flight airport by its own city, in the interface language', () => {
+    const catalogue: Catalogue = {
+      supportedAirports: [],
+      airports: [
+        { code: 'BGY', name: 'Milan Bergamo', cities: ['BERGAMO', 'MILAN'] },
+        { code: 'KRK', name: 'Krakow Airport', cities: ['KRAKOW'] },
+      ],
+      cities: [
+        { code: 'MILAN', name: 'Milan', names: { pl: 'Mediolan' }, airports: ['BGY'] },
+        { code: 'BERGAMO', name: 'Bergamo', airports: ['BGY'] },
+        { code: 'KRAKOW', name: 'Krakow', names: { pl: 'Kraków' }, airports: ['KRK'] },
+      ],
+      countries: [],
+    };
+    const selfTransfer: Offer = {
+      ...offer,
+      kind: 'roundTrip',
+      outbound: {
+        isDirect: false,
+        flights: [
+          { ...offer.outbound.flights[0], departureAirport: 'KRK', arrivalAirport: 'STN' },
+          { ...offer.outbound.flights[0], departureAirport: 'STN', arrivalAirport: 'BGY' },
+        ],
+      },
+      inbound: offer.outbound,
+    };
+    const routes = (language: Language) =>
+      viewIn(selfTransfer, now, textsIn(transloco, language), catalogue).legs.map((leg) =>
+        leg.flights.map((flight) => flight.route),
+      );
+    expect(routes('en')).toEqual([
+      ['KRK Krakow → STN', 'STN → BGY Bergamo'],
+      ['BGY Bergamo → KRK Krakow'],
+    ]);
+    expect(routes('pl')).toEqual([
+      ['KRK Kraków → STN', 'STN → BGY Bergamo'],
+      ['BGY Bergamo → KRK Kraków'],
+    ]);
   });
 
   it('handles leave-day plurals, zero nights and price-age boundaries', () => {

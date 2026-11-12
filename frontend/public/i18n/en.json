@@ -89,6 +89,8 @@
     "bookRoute": "{{route}} on Ryanair ↗"
   },
   "offer": {
+    "outbound": "Outbound",
+    "return": "Return",
     "stops": {
       "one": "{{count}} stop",
       "other": "{{count}} stops"
