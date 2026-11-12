@@ -150,6 +150,72 @@ describe('Search', () => {
     expect(offer).not.toContain('89.00 PLN ·');
   });
 
+  it('reorders the offers found at once when the sort changes, without searching again', async () => {
+    const fixture = TestBed.createComponent(Search);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    fill(root, 'From', 'KRK');
+    fill(root, 'To', 'BGY');
+    fill(root, 'Earliest', '2026-12-01');
+    fill(root, 'Latest', '2026-12-10');
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+    const fetchedAt = new Date().toISOString();
+    const roundTrip = (out: string, back: string, price: number, leaveDays: number) => {
+      const flight = (from: string, to: string, date: string) => ({
+        departureAirport: from,
+        arrivalAirport: to,
+        departure: { date, time: '10:00', timeZone: 'Europe/Warsaw' },
+        arrival: { date, time: '12:00', timeZone: 'Europe/Rome' },
+        originalPrice: { amount: price / 2, currency: 'PLN' },
+        fetchedAt,
+      });
+      return {
+        kind: 'roundTrip',
+        outbound: { isDirect: true, flights: [flight('KRK', 'BGY', out)] },
+        inbound: { isDirect: true, flights: [flight('BGY', 'KRK', back)] },
+        nights: 2,
+        leaveDays,
+        price: { amount: price, currency: 'PLN', approximate: false },
+        priceFetchedAt: fetchedAt,
+      };
+    };
+    httpTesting.expectOne('/api/search').flush({
+      offers: [
+        roundTrip('2026-12-02', '2026-12-04', 100, 3),
+        roundTrip('2026-12-05', '2026-12-07', 150, 0),
+        roundTrip('2026-12-04', '2026-12-06', 200, 0),
+      ],
+    });
+    await fixture.whenStable();
+    const firstDays = () =>
+      Array.from(root.querySelectorAll('[data-testid="offer"] time')).map((t) =>
+        t.getAttribute('datetime'),
+      );
+    expect(firstDays()).toEqual([
+      '2026-12-02',
+      '2026-12-04',
+      '2026-12-05',
+      '2026-12-07',
+      '2026-12-04',
+      '2026-12-06',
+    ]);
+
+    root
+      .querySelector<HTMLInputElement>('[aria-label="Sort by"] input[value="leaveDays"]')!
+      .click();
+    await fixture.whenStable();
+
+    httpTesting.expectNone('/api/search');
+    expect(firstDays()).toEqual([
+      '2026-12-05',
+      '2026-12-07',
+      '2026-12-04',
+      '2026-12-06',
+      '2026-12-02',
+      '2026-12-04',
+    ]);
+  });
+
   it('remembers work hours, the maximum of leave days and the sort for the next visit', async () => {
     const first = TestBed.createComponent(Search);
     await first.whenStable();
