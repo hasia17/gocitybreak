@@ -20,16 +20,16 @@ h1 {
   color: var(--muted);
 }
 
-.kind {
+/* A pill of mutually exclusive choices: the kind of offer and the sort order. */
+.toggle {
   display: inline-flex;
   gap: 0.25rem;
-  margin: 0 0 0.75rem;
   padding: 0.2rem;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 9999px;
 }
-.kind label {
+.toggle label {
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -40,22 +40,25 @@ h1 {
   font-size: 0.875rem;
   cursor: pointer;
 }
-.kind label:hover {
+.toggle label:hover {
   background: var(--subtle);
 }
-.kind input {
+.toggle input {
   position: absolute;
   inset: 0;
   margin: 0;
   opacity: 0;
   cursor: pointer;
 }
-.kind label:has(input:checked) {
+.toggle label:has(input:checked) {
   background: var(--text);
   color: var(--page);
 }
-.kind label:has(input:focus-visible) {
+.toggle label:has(input:focus-visible) {
   box-shadow: 0 0 0 2px var(--ring);
+}
+.kind {
+  margin: 0 0 0.75rem;
 }
 
 .composer {
@@ -152,20 +155,28 @@ h1 {
   text-align: left;
 }
 .time input {
-  width: 5.5rem;
+  /* Room for a 12-hour clock's AM/PM as well. */
+  width: 7.25rem;
 }
 .leave input {
   width: 6.5rem;
 }
-.field select {
-  padding: 0.15rem 0;
-  border: 0;
-  outline: 0;
+.sort {
+  cursor: default;
+}
+.sort:hover,
+.sort:focus-within {
   background: none;
-  color: var(--text);
-  font: inherit;
-  font-size: 1.05rem;
-  cursor: pointer;
+  box-shadow: none;
+}
+.sort .toggle {
+  margin-top: 0.2rem;
+  padding: 0.15rem;
+}
+.sort .toggle label {
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  font-size: 0.8rem;
 }
 .arrow {
   color: var(--muted);

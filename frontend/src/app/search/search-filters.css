@@ -1,4 +1,4 @@
-/* The "Filters and sorting" panel of the search form. */
+/* The "Filters" panel of the search form. */
 .filters {
   max-width: 44rem;
   margin: 0.75rem auto 0;
@@ -26,25 +26,16 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
 }
-.filters input,
-.filters select {
+.filters input {
   color: var(--text);
   font: inherit;
   font-variant-numeric: tabular-nums;
 }
-.check,
-.sort {
+.check {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   min-height: 2.75rem;
-}
-.sort select {
-  min-height: 2.25rem;
-  padding: 0 0.5rem;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
 }
 .time-ranges {
   display: grid;

@@ -113,7 +113,7 @@ describe('App', () => {
       await fixture.whenStable();
 
       expect(root.querySelector('h1')?.textContent).toBe('Gdzie na weekend?');
-      expect(root.querySelector<HTMLSelectElement>('select')?.getAttribute('aria-label')).toBe(
+      expect(root.querySelector('.sort [role="radiogroup"]')?.getAttribute('aria-label')).toBe(
         'Sortuj według',
       );
       expect(

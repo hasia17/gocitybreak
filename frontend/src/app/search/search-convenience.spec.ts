@@ -168,9 +168,9 @@ describe('Search conveniences', () => {
 
     expect(input(root, 'From').value).toBe('KTW');
     expect(input(root, 'Work start').value).toBe('07:30');
-    expect(root.querySelector<HTMLSelectElement>('select[aria-label="Sort by"]')!.value).toBe(
-      'price',
-    );
+    expect(
+      root.querySelector<HTMLInputElement>('[aria-label="Sort by"] input:checked')!.value,
+    ).toBe('price');
   });
 
   it('sorts by price when the remembered sort no longer exists', async () => {
@@ -180,9 +180,9 @@ describe('Search conveniences', () => {
       JSON.stringify({ homeAirports: 'KRK', sort: 'pricePerNight' }),
     );
     const { root } = await render();
-    expect(root.querySelector<HTMLSelectElement>('select[aria-label="Sort by"]')!.value).toBe(
-      'price',
-    );
+    expect(
+      root.querySelector<HTMLInputElement>('[aria-label="Sort by"] input:checked')!.value,
+    ).toBe('price');
 
     fill(root, 'To', 'BGY');
     fill(root, 'Earliest', '2026-12-01');
