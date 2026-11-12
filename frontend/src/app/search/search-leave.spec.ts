@@ -1,3 +1,4 @@
+import { fillPlace, flushCatalogue } from './place-testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
@@ -26,13 +27,14 @@ describe('Search leave limit', () => {
 
   async function render() {
     const fixture = TestBed.createComponent(Search);
+    flushCatalogue();
     await fixture.whenStable();
     return { fixture, root: fixture.nativeElement as HTMLElement };
   }
 
   function findInput(root: HTMLElement, label: string): HTMLInputElement | undefined {
     return (
-      Array.from(root.querySelectorAll('label'))
+      Array.from(root.querySelectorAll<HTMLInputElement>('input')).find(i => i.getAttribute('aria-label') === label) ?? Array.from(root.querySelectorAll('label'))
         .find((l) => l.textContent?.trim().startsWith(label))
         ?.querySelector('input') ?? undefined
     );
@@ -45,6 +47,7 @@ describe('Search leave limit', () => {
   }
 
   function fill(root: HTMLElement, label: string, value: string) {
+    if (fillPlace(root, label, value)) return;
     const el = input(root, label);
     el.value = value;
     el.dispatchEvent(new Event('input'));

@@ -1,3 +1,4 @@
+import { fillPlace, flushCatalogue } from './place-testing';
 import { provideTestI18n } from '../i18n/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -60,7 +61,8 @@ describe('Search', () => {
   });
 
   function fill(root: HTMLElement, label: string, value: string) {
-    const input = Array.from(root.querySelectorAll('label'))
+    if (fillPlace(root, label, value)) return;
+    const input = Array.from(root.querySelectorAll<HTMLInputElement>('input')).find(i => i.getAttribute('aria-label') === label) ?? Array.from(root.querySelectorAll('label'))
       .find((l) => l.textContent?.trim().startsWith(label))
       ?.querySelector('input');
     if (!input) throw new Error(`no input labelled ${label}`);
@@ -252,7 +254,7 @@ describe('Search', () => {
     root = fixture.nativeElement as HTMLElement;
 
     const value = (label: string) =>
-      Array.from(root.querySelectorAll('label'))
+      Array.from(root.querySelectorAll<HTMLInputElement>('input')).find(i => i.getAttribute('aria-label') === label) ?? Array.from(root.querySelectorAll('label'))
         .find((l) => l.textContent?.trim().startsWith(label))
         ?.querySelector('input')?.value;
     expect(value('Work start')).toBe('07:30');
@@ -292,7 +294,7 @@ describe('Search', () => {
     root.querySelector<HTMLInputElement>('input[type="radio"][value="roundTrip"]')!.click();
     await fixture.whenStable();
     const value = (label: string) =>
-      Array.from(root.querySelectorAll('label'))
+      Array.from(root.querySelectorAll<HTMLInputElement>('input')).find(i => i.getAttribute('aria-label') === label) ?? Array.from(root.querySelectorAll('label'))
         .find((l) => l.textContent?.trim().startsWith(label))
         ?.querySelector('input')?.value;
     expect(value('Work start')).toBe('07:30');
@@ -416,7 +418,7 @@ describe('Search', () => {
     httpTesting.expectNone('/api/search');
     const alert = root.querySelector('[role="alert"]')?.textContent;
     expect(alert).toContain('leave at least one departure day ticked');
-    expect(alert).not.toContain('3-letter airport codes');
+    expect(alert).not.toContain('Choose home airports');
     const inbound = Array.from(root.querySelectorAll('fieldset')).find((f) =>
       f.querySelector('legend')?.textContent?.trim().startsWith('Inbound departure days'),
     );
@@ -521,7 +523,7 @@ describe('Search', () => {
     const root = fixture.nativeElement as HTMLElement;
 
     fill(root, 'From', 'KRK');
-    fill(root, 'To', 'BG');
+    fill(root, 'To', 'Atlantis');
     root.querySelectorAll('input').forEach((i) => i.dispatchEvent(new Event('blur')));
     await fixture.whenStable();
     expect(root.querySelector('input[aria-invalid="true"]')).toBeNull();
@@ -531,10 +533,10 @@ describe('Search', () => {
     await fixture.whenStable();
 
     const invalid = Array.from(root.querySelectorAll('input[aria-invalid="true"]')).map(
-      (i) => i.closest('label')?.textContent?.trim().split(/\s/)[0],
+      (i) => i.getAttribute('aria-label') ?? i.closest('label')?.textContent?.trim().split(/\s/)[0],
     );
     expect(invalid).toEqual(['To', 'Earliest', 'Latest']);
-    expect(root.querySelector('[role="alert"]')?.textContent).toContain('3-letter airport codes');
+    expect(root.querySelector('[role="alert"]')?.textContent).toContain('Choose home airports');
   });
 
   it('shows the year only for dates outside the current year, and stops only for indirect legs', async () => {
@@ -633,7 +635,7 @@ describe('Search', () => {
     expect(root.textContent).toContain('No offers');
   });
 
-  it('takes only supported airports as home airports, and lists them when another is typed', async () => {
+  it('takes only supported airports as home airports and never sends an unsupported typed code', async () => {
     const fixture = TestBed.createComponent(Search);
     httpTesting.expectOne({ method: 'GET', url: '/api/catalogue' }).flush(catalogue);
     await fixture.whenStable();
@@ -646,12 +648,11 @@ describe('Search', () => {
     root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
     await fixture.whenStable();
 
-    httpTesting.expectNone('/api/search');
-    expect(labelled<HTMLInputElement>(root, 'From').getAttribute('aria-invalid')).toBe('true');
-    expect(root.querySelector('[role="alert"]')?.textContent).toContain('KRK (Krakow)');
-    TestBed.inject(TranslocoService).setActiveLang('pl');
-    await fixture.whenStable();
-    expect(root.querySelector('[role="alert"]')?.textContent).toContain('KRK (Kraków)');
+    const request = httpTesting.expectOne('/api/search');
+    expect(request.request.body.homeAirports).toEqual(['KRK']);
+    expect(root.querySelector('[data-place-chip="BGY"]')).toBeNull();
+    expect(labelled<HTMLInputElement>(root, 'From').value).toBe('BGY');
+
   });
 
   describe('destination', () => {
@@ -685,15 +686,15 @@ describe('Search', () => {
       req.flush({ offers: [] });
     });
 
-    it('marks an airport, city or country it does not know', async () => {
+    it('keeps unknown text and Anywhere exclusions out of the query', async () => {
       const root = await searchFrom('Milan, Atlantis', 'anywhere');
 
-      httpTesting.expectNone('/api/search');
-      const invalid = Array.from(root.querySelectorAll('input[aria-invalid="true"]')).map(
-        (i) => i.closest('label')?.textContent?.trim().split(/\s/)[0],
-      );
-      expect(invalid).toEqual(['To', 'Except']);
-      expect(root.querySelector('[role="alert"]')?.textContent).toContain('cities or countries');
+      const request = httpTesting.expectOne('/api/search');
+      expect(request.request.body.destination).toEqual({cities: ['MILAN']});
+      expect(request.request.body.exclusions).toBeUndefined();
+      expect(root.querySelector('[data-place-chip="Atlantis"]')).toBeNull();
+      expect(labelled<HTMLInputElement>(root, 'To').value).toBe('Atlantis');
+
     });
   });
 });

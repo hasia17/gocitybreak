@@ -1,3 +1,4 @@
+import { fillPlace } from './place-testing';
 import { provideTestI18n } from '../i18n/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -37,6 +38,7 @@ describe('shared search HTTP contract', () => {
       await fixture.whenStable();
     }
     function fill(label: string, value: string) {
+      if (fillPlace(root, label, value)) return;
       const input = Array.from(root.querySelectorAll('label'))
         .find((element) => element.textContent?.trim().startsWith(label))!
         .querySelector('input')!;
