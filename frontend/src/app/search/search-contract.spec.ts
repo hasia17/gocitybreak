@@ -70,8 +70,8 @@ describe('shared search HTTP contract', () => {
     req.flush(roundTripResponse);
     await fixture.whenStable();
     const offer = root.querySelector('[data-testid="offer"]')!.textContent!.replace(/\s+/g, ' ');
-    expect(offer).toContain('KRK → BGY');
-    expect(offer).toContain('BGY → KRK');
+    expect(offer).toContain('KRK Kraków → BGY Bergamo');
+    expect(offer).toContain('BGY Bergamo → KRK Kraków');
     expect(offer).toContain('2 nights');
     expect(offer).toContain('PLN 90.00');
   });
@@ -83,7 +83,7 @@ describe('shared search HTTP contract', () => {
     req.flush(oneWayResponse);
     await fixture.whenStable();
     const offer = root.querySelector('[data-testid="offer"]')!.textContent!;
-    expect(offer).toContain('KRK → BGY');
+    expect(offer).toContain('KRK Kraków → BGY Bergamo');
     expect(offer).toContain('PLN 89.00');
     expect(offer).not.toContain('nights');
   });

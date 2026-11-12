@@ -247,3 +247,24 @@ h1 {
   font-size: 0.75rem;
   line-height: 1.4;
 }
+/* Keep tooltip triggers next to headings, outside labels and their input hit areas. */
+.mode-choice,
+.field-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+.mode-choice {
+  padding-right: 0.4rem;
+}
+.field-info {
+  position: relative;
+}
+.field-info .field {
+  padding-right: 1.75rem;
+}
+.field-info app-info-tip {
+  position: absolute;
+  top: 0.05rem;
+  right: 0.2rem;
+}

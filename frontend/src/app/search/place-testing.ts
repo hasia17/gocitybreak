@@ -12,11 +12,13 @@ export const testCatalogue: Catalogue = {
   ],
   airports: [
     { code: 'KRK', name: 'Kraków', cities: ['KRAKOW'], country: 'pl' },
-    { code: 'KTW', name: 'Katowice', cities: [], country: 'pl' },
-    { code: 'BGY', name: 'Milan Bergamo', cities: ['MILAN'], country: 'it' },
+    { code: 'KTW', name: 'Katowice', cities: ['KATOWICE'], country: 'pl' },
+    { code: 'BGY', name: 'Milan Bergamo', cities: ['BERGAMO', 'MILAN'], country: 'it' },
   ],
   cities: [
     { code: 'KRAKOW', name: 'Kraków', airports: ['KRK'], country: 'pl' },
+    { code: 'KATOWICE', name: 'Katowice', airports: ['KTW'], country: 'pl' },
+    { code: 'BERGAMO', name: 'Bergamo', airports: ['BGY'], country: 'it' },
     { code: 'MILAN', name: 'Milan', airports: ['BGY'], country: 'it' },
   ],
   countries: [
