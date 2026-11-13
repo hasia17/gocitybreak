@@ -146,7 +146,6 @@
     "airport": "airport",
     "city": "city",
     "country": "country",
-    "airportCount": "{{count}} airports",
     "remove": "Remove {{place}}",
     "noMatches": "No matching places",
     "loading": "Loading places…",

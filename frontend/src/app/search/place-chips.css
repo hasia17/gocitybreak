@@ -39,6 +39,15 @@ input::placeholder {
   color: var(--text);
   font-size: 0.85rem;
 }
+/* Read by screen readers; sighted users see the airports in the chip's tooltip. */
+.city-airports {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 .chip button {
   border: 0;
   background: none;

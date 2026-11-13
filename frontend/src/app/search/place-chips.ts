@@ -39,8 +39,15 @@ import { cataloguePlaces, PlaceField, PlaceSuggestion, suggestPlaces } from './p
     <label [for]="id + '-input'">{{ label() }}</label>
     <div class="chips">
       @for (place of chosen(); track place.value) {
-        <span class="chip" [attr.data-place-chip]="place.value">
+        <span
+          class="chip"
+          [attr.data-place-chip]="place.value"
+          [attr.title]="place.kind === 'city' ? cityAirports(place) : null"
+        >
           {{ shortLabel(place) }}
+          @if (place.kind === 'city') {
+            <span class="city-airports">({{ cityAirports(place) }})</span>
+          }
           <button
             type="button"
             [disabled]="disabled() || !catalogue()"
@@ -171,11 +178,15 @@ export class PlaceChips implements ControlValueAccessor, Validator {
   protected shortLabel(place: PlaceSuggestion): string {
     return place.kind === 'airport' ? `${place.code} ${place.name}` : place.name;
   }
+  /** The codes of a city's airports, so the user sees what choosing the city covers. */
+  protected cityAirports(place: PlaceSuggestion): string {
+    return place.airports.join(', ');
+  }
   protected optionLabel(place: PlaceSuggestion): string {
     const name = [this.shortLabel(place), place.context].filter(Boolean).join(', ');
     return place.kind === 'anywhere'
       ? name
-      : `${name} — ${this.t('places.' + place.kind)}${place.kind === 'city' ? ' · ' + this.t('places.airportCount', { count: place.airports.length }) : ''}`;
+      : `${name} — ${this.t('places.' + place.kind)}${place.kind === 'city' ? ' · ' + this.cityAirports(place) : ''}`;
   }
   protected type(event: Event): void {
     this.text.set((event.target as HTMLInputElement).value);
