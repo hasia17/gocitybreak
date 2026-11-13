@@ -21,6 +21,9 @@ func TestSearchExpandsCityIntoItsAirportsIncludingOurAdditions(t *testing.T) {
 		// Ryanair assigns GRO to Girona and REU to Reus; we add both to Barcelona.
 		"Barcelona":         {cities: []string{"BARCELONA"}, want: []string{"BCN", "GRO", "REU"}},
 		"Rome and Brussels": {cities: []string{"ROME", "BRUSSELS"}, want: []string{"BRU", "CIA", "CRL", "FCO"}},
+		// Ryanair assigns TRF (Oslo Torp) to Sandefjord; we add it to Oslo as well.
+		"Oslo":       {cities: []string{"OSLO"}, want: []string{"OSL", "TRF"}},
+		"Sandefjord": {cities: []string{"SANDEFJORD"}, want: []string{"TRF"}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			code, body := search(t, srv, oneWayFromKrakowTo(t, map[string]any{"cities": tc.cities}, nil))
@@ -67,7 +70,7 @@ func TestSearchAnywhereCoversEveryAirportReachableFromHomeAirports(t *testing.T)
 	if code != http.StatusOK {
 		t.Fatalf("status code = %d, want %d", code, http.StatusOK)
 	}
-	want := []string{"BCN", "BGY", "BRU", "CIA", "CRL", "FCO", "GRO", "MXP", "OSL", "REU"}
+	want := []string{"BCN", "BGY", "BRU", "CIA", "CRL", "FCO", "GRO", "MXP", "OSL", "REU", "TRF"}
 	if got := arrivalAirports(body.Offers); !slices.Equal(got, want) {
 		t.Errorf("offers arrive at %v, want %v", got, want)
 	}
@@ -184,6 +187,7 @@ var europeanAirports = fixture{
 		{"BRU", "Brussels", "Europe/Brussels", false, "BRUSSELS", "Brussels", "be", "Belgium"},
 		{"CRL", "Brussels Charleroi", "Europe/Brussels", false, "CHARLEROI", "Charleroi", "be", "Belgium"},
 		{"OSL", "Oslo", "Europe/Oslo", false, "OSLO", "Oslo", "no", "Norway"},
+		{"TRF", "Oslo Torp", "Europe/Oslo", false, "SANDEFJORD", "Sandefjord", "no", "Norway"},
 	},
 }
 
