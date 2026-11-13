@@ -211,9 +211,11 @@ export class Search {
   protected readonly submitted = signal(false);
 
   constructor() {
-    this.form.controls.sort.valueChanges
-      .pipe(takeUntilDestroyed())
-      .subscribe(() => this.visibleCount.set(20));
+    this.form.controls.sort.valueChanges.pipe(takeUntilDestroyed()).subscribe((sort) => {
+      this.visibleCount.set(20);
+      // The sort is chosen over the results, after searching: remember it on its own.
+      saveSearchSettings({ ...loadSearchSettings(), sort });
+    });
     // Fields that do not apply to the kind of offer are disabled: a disabled control does not
     // affect the form's validity, and the raw value keeps it so remembered settings lose nothing.
     merge(this.form.controls.kind.valueChanges, this.form.controls.dateMode.valueChanges)

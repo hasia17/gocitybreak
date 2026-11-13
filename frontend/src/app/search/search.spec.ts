@@ -108,6 +108,32 @@ describe('Search', () => {
     dayBox(root, days, weekday).click();
   }
 
+  /** A search response with one KRK⇄BGY round trip, enough to show the results header. */
+  function oneRoundTrip() {
+    const fetchedAt = new Date().toISOString();
+    const flight = (from: string, to: string, date: string) => ({
+      departureAirport: from,
+      arrivalAirport: to,
+      departure: { date, time: '10:00', timeZone: 'Europe/Warsaw' },
+      arrival: { date, time: '12:00', timeZone: 'Europe/Rome' },
+      originalPrice: { amount: 100, currency: 'PLN' },
+      fetchedAt,
+    });
+    return {
+      offers: [
+        {
+          kind: 'roundTrip',
+          outbound: { isDirect: true, flights: [flight('KRK', 'BGY', '2026-12-04')] },
+          inbound: { isDirect: true, flights: [flight('BGY', 'KRK', '2026-12-06')] },
+          nights: 2,
+          leaveDays: 1,
+          price: { amount: 200, currency: 'PLN', approximate: false },
+          priceFetchedAt: fetchedAt,
+        },
+      ],
+    };
+  }
+
   function nights(root: HTMLElement, which: 'Minimum' | 'Maximum') {
     return root.querySelector<HTMLInputElement>(`input[aria-label="${which} nights"]`);
   }
@@ -250,11 +276,12 @@ describe('Search', () => {
     fill(root, 'Work start', '07:30');
     fill(root, 'Work end', '15:30');
     fill(root, 'Max leave days', '1');
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+    httpTesting.expectOne('/api/search').flush(oneRoundTrip());
+    await first.whenStable();
     root
       .querySelector<HTMLInputElement>('[aria-label="Sort by"] input[value="leaveDays"]')!
       .click();
-    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
-    httpTesting.expectOne('/api/search').flush({ offers: [] });
     first.destroy();
 
     const fixture = TestBed.createComponent(Search);
@@ -271,12 +298,13 @@ describe('Search', () => {
     expect(value('Work start')).toBe('07:30');
     expect(value('Work end')).toBe('15:30');
     expect(value('Max leave days')).toBe('1');
-    expect(
-      root.querySelector<HTMLInputElement>('[aria-label="Sort by"] input:checked')!.value,
-    ).toBe('leaveDays');
+    flushCatalogue();
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+    expect(httpTesting.expectOne('/api/search').request.body.sort).toBe('leaveDays');
   });
 
   it('remembers the round-trip settings through a one-way search', async () => {
+    localStorage.setItem('gocitybreak.searchSettings.v1', JSON.stringify({ sort: 'leaveDays' }));
     const first = TestBed.createComponent(Search);
     await first.whenStable();
     let root = first.nativeElement as HTMLElement;
@@ -287,9 +315,6 @@ describe('Search', () => {
     fill(root, 'Work start', '07:30');
     fill(root, 'Work end', '15:30');
     fill(root, 'Max leave days', '1');
-    root
-      .querySelector<HTMLInputElement>('[aria-label="Sort by"] input[value="leaveDays"]')!
-      .click();
     root.querySelector<HTMLInputElement>('input[type="radio"][value="oneWay"]')!.click();
     await first.whenStable();
     root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
@@ -314,12 +339,13 @@ describe('Search', () => {
     expect(value('Work start')).toBe('07:30');
     expect(value('Work end')).toBe('15:30');
     expect(value('Max leave days')).toBe('1');
-    expect(
-      root.querySelector<HTMLInputElement>('[aria-label="Sort by"] input:checked')!.value,
-    ).toBe('leaveDays');
+    flushCatalogue();
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+    expect(httpTesting.expectOne('/api/search').request.body.sort).toBe('leaveDays');
   });
 
-  it('offers only outbound filters and price sorting for one-way offers', async () => {
+  it('offers only outbound filters and no leave sorting for one-way offers', async () => {
+    localStorage.setItem('gocitybreak.searchSettings.v1', JSON.stringify({ sort: 'leaveDays' }));
     const fixture = TestBed.createComponent(Search);
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
@@ -331,20 +357,22 @@ describe('Search', () => {
     // Half a range is invalid, but inbound filters do not apply to one-way offers.
     time(root, 'Inbound departure from', '14:00');
     day(root, 'Inbound departure days', 'Sun');
-    root
-      .querySelector<HTMLInputElement>('[aria-label="Sort by"] input[value="leaveDays"]')!
-      .click();
     root.querySelector<HTMLInputElement>('input[type="radio"][value="oneWay"]')!.click();
     await fixture.whenStable();
 
     expect(root.querySelector('input[aria-label="Inbound departure from"]')).toBeNull();
     expect(root.textContent).not.toContain('Inbound departure days');
-    expect(root.querySelector('input[value="leaveDays"]')).toBeNull();
     time(root, 'Outbound arrival from', '06:00');
     time(root, 'Outbound arrival to', '10:00');
     root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
 
-    httpTesting.expectOne('/api/search').flush({ offers: [] });
+    const request = httpTesting.expectOne('/api/search');
+    expect(request.request.body).not.toHaveProperty('sort');
+    const { outbound, price, priceFetchedAt } = oneRoundTrip().offers[0];
+    request.flush({ offers: [{ kind: 'oneWay', outbound, price, priceFetchedAt }] });
+    await fixture.whenStable();
+    expect(root.querySelector('[data-testid="offer"]')).not.toBeNull();
+    expect(root.querySelector('[aria-label="Sort by"]')).toBeNull();
   });
 
   it('marks a time range with only one end set invalid instead of searching', async () => {

@@ -161,7 +161,10 @@
     "loading": "Wczytywanie miejsc…",
     "loadError": "Nie udało się wczytać miejsc. Spróbuj ponownie.",
     "retry": "Spróbuj ponownie",
-    "anywhere": "Gdziekolwiek"
+    "anywhere": "Gdziekolwiek",
+    "more": "i {{count}} więcej: {{places}}",
+    "chosen": "Wybrane ({{count}})",
+    "clearAll": "Wyczyść wszystko"
   },
   "tips": {
     "flexible": {

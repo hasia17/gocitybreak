@@ -115,9 +115,7 @@ describe('App', () => {
       await fixture.whenStable();
 
       expect(root.querySelector('h1')?.textContent).toBe('Gdzie na weekend?');
-      expect(root.querySelector('.sort [role="radiogroup"]')?.getAttribute('aria-label')).toBe(
-        'Sortuj według',
-      );
+      expect(root.querySelector('.filters summary')?.textContent?.trim()).toBe('Filtry');
       expect(
         root.querySelector<HTMLInputElement>(
           'app-place-chips[formControlName="homeAirports"] input',

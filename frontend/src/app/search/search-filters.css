@@ -75,18 +75,22 @@
 }
 .time-ranges {
   display: grid;
-  gap: 0.25rem;
+  /* One label column as wide as the longest label, shared by every row through subgrid. */
+  grid-template-columns: max-content repeat(3, auto);
+  justify-content: start;
+  gap: 0.25rem 0.5rem;
   width: 100%;
 }
 .note {
+  grid-column: 1 / -1;
   margin: 0;
   color: var(--muted);
   font-size: 0.8rem;
 }
 .time-range {
   display: grid;
-  grid-template-columns: 9rem auto auto auto;
-  gap: 0.5rem;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   align-items: center;
   justify-content: start;
   min-height: 2.75rem;
@@ -170,7 +174,7 @@
 }
 
 @media (max-width: 640px) {
-  .time-range {
+  .time-ranges {
     grid-template-columns: 1fr auto auto auto;
   }
 }

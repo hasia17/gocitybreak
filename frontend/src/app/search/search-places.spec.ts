@@ -197,6 +197,78 @@ describe('Search place chips', () => {
     http.expectNone('/api/search');
     expect(to.getAttribute('aria-invalid')).toBe('true');
   });
+  it('shows the example placeholder only while no place is chosen', async () => {
+    const fixture = TestBed.createComponent(Search);
+    http.expectOne('/api/catalogue').flush(catalogue);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    const from = root.querySelector<HTMLInputElement>('[aria-label="From"]')!;
+    expect(from.placeholder).toBe('KRK, KTW');
+    from.value = 'KRK';
+    from.dispatchEvent(new Event('input'));
+    await fixture.whenStable();
+    root.querySelector<HTMLButtonElement>('[role="option"]')!.click();
+    await fixture.whenStable();
+    expect(from.placeholder).toBe('');
+    root.querySelector<HTMLButtonElement>('button[aria-label^="Remove KRK"]')!.click();
+    await fixture.whenStable();
+    expect(from.placeholder).toBe('KRK, KTW');
+  });
+  it('keeps the field one row tall, listing the places beyond the first two behind "+N"', async () => {
+    const fixture = TestBed.createComponent(Search);
+    http.expectOne('/api/catalogue').flush(catalogue);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    const to = root.querySelector<HTMLInputElement>('[aria-label="To"]')!;
+    const field = to.closest('app-place-chips')!;
+    const choose = async (name: string) => {
+      to.value = name;
+      to.dispatchEvent(new Event('input'));
+      await fixture.whenStable();
+      field.querySelector<HTMLButtonElement>('[role="option"]')!.click();
+      await fixture.whenStable();
+    };
+    const chips = () =>
+      Array.from(field.querySelectorAll('[data-place-chip]')).map((c) =>
+        c.getAttribute('data-place-chip'),
+      );
+    const listed = () =>
+      Array.from(field.querySelectorAll('[data-chosen-place]')).map((c) =>
+        c.getAttribute('data-chosen-place'),
+      );
+    const more = () => field.querySelector<HTMLButtonElement>('button[aria-expanded]');
+    for (const name of ['Milan', 'KRK', 'KTW']) await choose(name);
+    expect(chips()).toEqual(['city:MILAN', 'KRK']);
+    expect(more()!.textContent!.trim()).toBe('+1');
+    expect(more()!.getAttribute('aria-label')).toBe('1 more: KTW Katowice');
+    expect(listed()).toEqual([]);
+
+    more()!.click();
+    await fixture.whenStable();
+    expect(more()!.getAttribute('aria-expanded')).toBe('true');
+    expect(listed()).toEqual(['city:MILAN', 'KRK', 'KTW']);
+    document.body.click();
+    await fixture.whenStable();
+    expect(listed()).toEqual([]);
+
+    more()!.click();
+    await fixture.whenStable();
+    field.querySelector<HTMLButtonElement>('[data-chosen-place="KRK"] button')!.click();
+    await fixture.whenStable();
+    expect(chips()).toEqual(['city:MILAN', 'KTW']);
+    expect(more()).toBeNull();
+    expect(listed()).toEqual([]);
+
+    await choose('KRK');
+    more()!.click();
+    await fixture.whenStable();
+    Array.from(field.querySelectorAll<HTMLButtonElement>('.chosen-list button'))
+      .find((b) => b.textContent!.trim() === 'Clear all')!
+      .click();
+    await fixture.whenStable();
+    expect(chips()).toEqual([]);
+    expect(more()).toBeNull();
+  });
   it('takes the Anywhere label and cross-language matches from the runtime dictionaries', async () => {
     const translations = TestBed.inject(TranslocoService);
     translations.setTranslation({ places: { anywhere: 'Every destination' } }, 'en', {
