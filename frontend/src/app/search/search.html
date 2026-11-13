@@ -158,7 +158,7 @@
         </svg>
       </button>
     </div>
-    @if (applies('leave') || applies('sort')) {
+    @if (applies('leave')) {
       <div class="options">
         <ng-container formGroupName="leave">
           <label class="check leave-switch">
@@ -224,21 +224,6 @@
             </div>
           }
         </ng-container>
-        <div class="field sort">
-          <span aria-hidden="true">{{ t('search.sort') }}</span>
-          <div class="toggle" role="radiogroup" [attr.aria-label]="t('search.sortBy')">
-            <label
-              ><input type="radio" formControlName="sort" value="price" />{{
-                t('search.sortOrder.price')
-              }}</label
-            >
-            <label
-              ><input type="radio" formControlName="sort" value="leaveDays" />{{
-                t('search.sortOrder.leaveDays')
-              }}</label
-            >
-          </div>
-        </div>
       </div>
     }
     <details class="filters" formGroupName="filters">
@@ -390,6 +375,30 @@
         <header class="results-head">
           <h2>{{ offerCount(offers.length) }}</h2>
           <span>{{ t('results.perPerson') }}</span>
+          @if (applies('sort')) {
+            <!-- Sorting reorders the found offers at once, so it sits with them, not in the form. -->
+            <div class="sort">
+              <span aria-hidden="true">{{ t('search.sort') }}</span>
+              <div class="toggle" role="radiogroup" [attr.aria-label]="t('search.sortBy')">
+                <label
+                  ><input
+                    type="radio"
+                    name="sort"
+                    [formControl]="form.controls.sort"
+                    value="price"
+                  />{{ t('search.sortOrder.price') }}</label
+                >
+                <label
+                  ><input
+                    type="radio"
+                    name="sort"
+                    [formControl]="form.controls.sort"
+                    value="leaveDays"
+                  />{{ t('search.sortOrder.leaveDays') }}</label
+                >
+              </div>
+            </div>
+          }
         </header>
         <ol class="offers">
           @for (offer of visibleOffers(); track $index) {

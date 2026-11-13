@@ -179,9 +179,13 @@ describe('Search conveniences', () => {
 
     expect(root.querySelector('[data-place-chip="KTW"]')).not.toBeNull();
     expect(input(root, 'Work start').value).toBe('07:30');
-    expect(
-      root.querySelector<HTMLInputElement>('[aria-label="Sort by"] input:checked')!.value,
-    ).toBe('price');
+
+    fill(root, 'To', 'BGY');
+    fill(root, 'Earliest', '2026-12-01');
+    fill(root, 'Latest', '2026-12-10');
+    search(root);
+
+    expect(httpTesting.expectOne('/api/search').request.body.sort).toBe('price');
   });
 
   it('ticks every departure day of settings remembered when no tick meant any day', async () => {
@@ -220,9 +224,6 @@ describe('Search conveniences', () => {
       JSON.stringify({ homeAirports: 'KRK', sort: 'pricePerNight' }),
     );
     const { root } = await render();
-    expect(
-      root.querySelector<HTMLInputElement>('[aria-label="Sort by"] input:checked')!.value,
-    ).toBe('price');
 
     fill(root, 'To', 'BGY');
     fill(root, 'Earliest', '2026-12-01');

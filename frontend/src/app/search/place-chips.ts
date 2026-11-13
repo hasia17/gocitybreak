@@ -35,16 +35,17 @@ import { cataloguePlaces, PlaceField, PlaceSuggestion, suggestPlaces } from './p
     { provide: NG_VALIDATORS, useExisting: forwardRef(() => PlaceChips), multi: true },
   ],
   styleUrl: './place-chips.css',
+  host: { '(document:click)': 'clickOutside($event)' },
   template: `
     <label [for]="id + '-input'">{{ label() }}</label>
-    <div class="chips">
-      @for (place of chosen(); track place.value) {
+    <div class="chips" (click)="focusInput($event)">
+      @for (place of shownChips(); track place.value) {
         <span
           class="chip"
           [attr.data-place-chip]="place.value"
           [attr.title]="place.kind === 'city' ? cityAirports(place) : null"
         >
-          {{ shortLabel(place) }}
+          <span class="chip-name">{{ shortLabel(place) }}</span>
           @if (place.kind === 'city') {
             <span class="city-airports">({{ cityAirports(place) }})</span>
           }
@@ -57,6 +58,53 @@ import { cataloguePlaces, PlaceField, PlaceSuggestion, suggestPlaces } from './p
             ×
           </button>
         </span>
+      }
+      @if (hiddenChips().length) {
+        <button
+          type="button"
+          class="more"
+          [id]="id + '-more'"
+          [disabled]="disabled() || !catalogue()"
+          [attr.aria-expanded]="listOpen()"
+          [attr.aria-controls]="id + '-chosen'"
+          [attr.aria-label]="
+            t('places.more', { count: hiddenChips().length, places: hiddenNames() })
+          "
+          [attr.title]="hiddenNames()"
+          (click)="toggleList()"
+        >
+          +{{ hiddenChips().length }}
+        </button>
+      }
+      @if (listOpen()) {
+        <div
+          class="chosen-list"
+          role="group"
+          [id]="id + '-chosen'"
+          [attr.aria-label]="t('places.chosen', { count: chosen().length })"
+          (keydown)="listKey($event)"
+        >
+          <div class="chosen-heading">
+            <span>{{ t('places.chosen', { count: chosen().length }) }}</span>
+            <button type="button" class="clear" (click)="clearAll()">
+              {{ t('places.clearAll') }}
+            </button>
+          </div>
+          <ul>
+            @for (place of chosen(); track place.value; let i = $index) {
+              <li [attr.data-chosen-place]="place.value">
+                <span>{{ listLabel(place) }}</span>
+                <button
+                  type="button"
+                  [attr.aria-label]="t('places.remove', { place: shortLabel(place) })"
+                  (click)="removeFromList(place.value, i)"
+                >
+                  ×
+                </button>
+              </li>
+            }
+          </ul>
+        </div>
       }
       <input
         [id]="id + '-input'"
@@ -71,10 +119,10 @@ import { cataloguePlaces, PlaceField, PlaceSuggestion, suggestPlaces } from './p
         [attr.aria-describedby]="error() ? id + '-error' : null"
         [disabled]="disabled() || !catalogue()"
         autocomplete="off"
-        [placeholder]="placeholder()"
+        [placeholder]="chosen().length ? '' : placeholder()"
         [value]="text()"
         (input)="type($event)"
-        (focus)="focused.set(true)"
+        (focus)="focus()"
         (blur)="blur()"
         (keydown)="key($event)"
       />
@@ -105,6 +153,7 @@ import { cataloguePlaces, PlaceField, PlaceSuggestion, suggestPlaces } from './p
 })
 export class PlaceChips implements ControlValueAccessor, Validator {
   private static nextId = 0;
+  private static readonly shownChips = 2;
   protected readonly id = `places-${PlaceChips.nextId++}`;
   readonly catalogue = input<Catalogue>();
   readonly field = input.required<PlaceField>();
@@ -123,6 +172,8 @@ export class PlaceChips implements ControlValueAccessor, Validator {
   protected readonly focused = signal(false);
   protected readonly active = signal(-1);
   protected readonly disabled = signal(false);
+  /** Whether the list of every chosen place is open, from the "+N" button. */
+  protected readonly listOpen = signal(false);
   protected readonly open = computed(
     () => this.focused() && !this.disabled() && !!this.catalogue(),
   );
@@ -140,6 +191,14 @@ export class PlaceChips implements ControlValueAccessor, Validator {
       .map((place) => all.find((p) => p.value === placeValue(place)))
       .filter((p) => p !== undefined);
   });
+  /** The first few chips; the rest wait behind "+N", so the field stays one row tall. */
+  protected readonly shownChips = computed(() => this.chosen().slice(0, PlaceChips.shownChips));
+  protected readonly hiddenChips = computed(() => this.chosen().slice(PlaceChips.shownChips));
+  protected readonly hiddenNames = computed(() =>
+    this.hiddenChips()
+      .map((place) => this.shortLabel(place))
+      .join(', '),
+  );
   protected readonly suggestions = computed(() =>
     suggestPlaces(
       this.text(),
@@ -187,6 +246,60 @@ export class PlaceChips implements ControlValueAccessor, Validator {
     return place.kind === 'anywhere'
       ? name
       : `${name} — ${this.t('places.' + place.kind)}${place.kind === 'city' ? ' · ' + this.cityAirports(place) : ''}`;
+  }
+  /** Clicking between or beside the chips starts typing, as clicking an ordinary input would. */
+  protected focusInput(event: MouseEvent): void {
+    if (!(event.target as HTMLElement).closest('button, .chosen-list')) this.input()?.focus();
+  }
+  protected focus(): void {
+    this.listOpen.set(false);
+    this.focused.set(true);
+  }
+  protected listLabel(place: PlaceSuggestion): string {
+    return place.kind === 'city'
+      ? `${this.shortLabel(place)} (${this.cityAirports(place)})`
+      : this.shortLabel(place);
+  }
+  protected toggleList(): void {
+    this.listOpen.update((open) => !open);
+  }
+  protected clickOutside(event: MouseEvent): void {
+    if (this.listOpen() && !this.element.nativeElement.contains(event.target as Node)) {
+      this.listOpen.set(false);
+    }
+  }
+  protected listKey(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.listOpen.set(false);
+      this.element.nativeElement.querySelector<HTMLElement>(`#${this.id}-more`)?.focus();
+    }
+  }
+  /** Removes a place from the open list, keeping focus in the list while places stay hidden. */
+  protected removeFromList(value: string, index: number): void {
+    this.remove(value);
+    if (!this.hiddenChips().length) {
+      this.listOpen.set(false);
+      this.input()?.focus();
+      return;
+    }
+    afterNextRender(
+      () => {
+        const buttons =
+          this.element.nativeElement.querySelectorAll<HTMLElement>('.chosen-list li button');
+        buttons[Math.min(index, buttons.length - 1)]?.focus();
+      },
+      { injector: this.injector },
+    );
+  }
+  protected clearAll(): void {
+    this.selected.set([]);
+    this.onChange(writePlaceSelections(this.selected()));
+    this.listOpen.set(false);
+    this.input()?.focus();
+  }
+  private input(): HTMLInputElement | null {
+    return this.element.nativeElement.querySelector('input');
   }
   protected type(event: Event): void {
     this.text.set((event.target as HTMLInputElement).value);

@@ -73,12 +73,12 @@ describe('Search leave limit', () => {
   }
 
   it('removes the leave limit and hides its fields while preserving work hours and leave sorting', async () => {
+    localStorage.setItem('gocitybreak.searchSettings.v1', JSON.stringify({ sort: 'leaveDays' }));
     const { fixture, root } = await render();
     fillTrip(root);
     fill(root, 'Work start', '08:00');
     fill(root, 'Work end', '16:00');
     fill(root, 'Max leave days', '1');
-    root.querySelector<HTMLInputElement>('input[value="leaveDays"]')!.click();
 
     const leaveSwitch = input(root, "I don't worry about leave");
     expect(leaveSwitch.checked).toBe(false);
@@ -89,7 +89,6 @@ describe('Search leave limit', () => {
     expect(findInput(root, 'Work start')).toBeUndefined();
     expect(findInput(root, 'Work end')).toBeUndefined();
     expect(findInput(root, 'Max leave days')).toBeUndefined();
-    expect(root.querySelector('input[value="leaveDays"]')).not.toBeNull();
     const request = search(root);
     expect(request.request.body).not.toHaveProperty('maxLeaveDays');
     expect(request.request.body).toMatchObject({
@@ -121,6 +120,9 @@ describe('Search leave limit', () => {
     });
     await fixture.whenStable();
     expect(root.querySelector('[data-testid="offer"]')?.textContent).toContain('3 leave days');
+    expect(
+      root.querySelector<HTMLInputElement>('[aria-label="Sort by"] input:checked')!.value,
+    ).toBe('leaveDays');
   });
 
   it('does not let a hidden leave limit block searching', async () => {

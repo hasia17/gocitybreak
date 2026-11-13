@@ -10,14 +10,17 @@ label {
 }
 .chips {
   display: flex;
-  flex-wrap: wrap;
+  /* One row whatever is chosen: extra places wait behind "+N", long names are cut short. */
+  flex-wrap: nowrap;
   gap: 0.25rem;
   align-items: center;
   max-width: 18rem;
 }
+/* The input continues the last row of chips and takes what is left of it. */
 input {
-  width: 10rem;
-  min-width: 4rem;
+  flex: 1 1 3rem;
+  width: 5rem;
+  min-width: 3rem;
   padding: 0.15rem 0;
   border: 0;
   outline: 0;
@@ -26,11 +29,18 @@ input {
   font: inherit;
   font-size: 1.05rem;
 }
+/* Once places are chosen, an idle input stays out of the way instead of wrapping onto an empty row. */
+.chips:has(.chip) input:not(:focus) {
+  flex: 0 1 1px;
+  min-width: 0;
+}
 input::placeholder {
   color: var(--faint);
 }
 .chip {
   display: inline-flex;
+  flex: 0 1 auto;
+  min-width: 0;
   align-items: center;
   gap: 0.25rem;
   padding: 0.15rem 0.35rem;
@@ -38,6 +48,28 @@ input::placeholder {
   background: var(--subtle);
   color: var(--text);
   font-size: 0.85rem;
+}
+.chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.more {
+  flex: none;
+  min-height: 1.75rem;
+  padding: 0 0.45rem;
+  border: 0;
+  border-radius: 0.4rem;
+  background: var(--subtle);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.more:hover,
+.more[aria-expanded='true'] {
+  background: var(--text);
+  color: var(--page);
 }
 /* Read by screen readers; sighted users see the airports in the chip's tooltip. */
 .city-airports {
@@ -49,6 +81,7 @@ input::placeholder {
   white-space: nowrap;
 }
 .chip button {
+  flex: none;
   border: 0;
   background: none;
   color: inherit;
@@ -57,7 +90,8 @@ input::placeholder {
   min-width: 1.5rem;
   min-height: 1.5rem;
 }
-.suggestions {
+.suggestions,
+.chosen-list {
   position: absolute;
   top: 100%;
   left: 0;
@@ -90,6 +124,60 @@ input::placeholder {
   outline: 2px solid var(--ring);
   outline-offset: -2px;
 }
+.chosen-list {
+  width: min(22rem, 85vw);
+  color: var(--text);
+  font-size: 0.875rem;
+  cursor: auto;
+}
+.chosen-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+}
+.chosen-list .clear {
+  min-height: 2.25rem;
+  padding: 0 0.6rem;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+.chosen-list .clear:hover {
+  background: var(--subtle);
+}
+.chosen-list ul {
+  margin: 0;
+  padding: 0.25rem 0;
+  list-style: none;
+}
+.chosen-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0 0.5rem 0 0.75rem;
+}
+.chosen-list li button {
+  flex: none;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+.chosen-list li button:hover {
+  background: var(--subtle);
+  color: var(--text);
+}
 .no-matches {
   display: block;
   padding: 0.75rem;
@@ -102,4 +190,10 @@ input::placeholder {
   color: var(--danger);
   font-size: 0.75rem;
   line-height: 1.4;
+}
+
+/* An active field turns grey; chips switch to the surface colour so they stay visible on it. */
+:host(:focus-within) .chip,
+:host(:focus-within) .more:not([aria-expanded='true']) {
+  background: var(--surface);
 }

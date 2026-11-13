@@ -134,7 +134,7 @@ describe('Search offer paging', () => {
     expect(rows()).toHaveLength(40);
 
     root
-      .querySelector<HTMLInputElement>('input[formControlName="sort"][value="leaveDays"]')!
+      .querySelector<HTMLInputElement>('[aria-label="Sort by"] input[value="leaveDays"]')!
       .click();
     await fixture.whenStable();
 
@@ -147,7 +147,7 @@ describe('Search offer paging', () => {
     expect(rows()).toHaveLength(40);
     expect(rows()[39].querySelector('.price strong')?.textContent).toBe('PLN 105.00');
 
-    root.querySelector<HTMLInputElement>('input[formControlName="sort"][value="price"]')!.click();
+    root.querySelector<HTMLInputElement>('[aria-label="Sort by"] input[value="price"]')!.click();
     await fixture.whenStable();
     expect(rows()).toHaveLength(20);
     expect(rows()[0].querySelector('.price strong')?.textContent).toBe('PLN 100.00');
