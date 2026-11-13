@@ -133,6 +133,37 @@ describe('Search place chips', () => {
       destination: { cities: ['MILAN'] },
     });
   });
+  it.each(['To', 'Except'])(
+    'shows the airports a city covers in its %s suggestion and chip',
+    async (field) => {
+      const fixture = TestBed.createComponent(Search);
+      http.expectOne('/api/catalogue').flush({
+        ...catalogue,
+        airports: [
+          ...catalogue.airports,
+          { code: 'MXP', name: 'Milan Malpensa', cities: ['MILAN'], country: 'it' },
+        ],
+        cities: [{ ...catalogue.cities[0], airports: ['BGY', 'MXP'] }],
+      });
+      await fixture.whenStable();
+      const root = fixture.nativeElement as HTMLElement;
+      const input = root.querySelector<HTMLInputElement>(
+        `[role="combobox"][aria-label="${field}"]`,
+      )!;
+      input.value = 'Milan';
+      input.dispatchEvent(new Event('input'));
+      await fixture.whenStable();
+      const city = Array.from(root.querySelectorAll<HTMLButtonElement>('[role="option"]')).find(
+        (o) => o.textContent?.includes('city'),
+      )!;
+      expect(city.textContent?.trim()).toBe('Milan, Italy — city · BGY, MXP');
+      city.click();
+      await fixture.whenStable();
+      const chip = root.querySelector('[data-place-chip="city:MILAN"]')!;
+      expect(chip.getAttribute('title')).toBe('BGY, MXP');
+      expect(chip.querySelector('.city-airports')?.textContent).toBe('(BGY, MXP)');
+    },
+  );
   it('removes chips with Backspace and the named remove button, without submitting typed text', async () => {
     const fixture = TestBed.createComponent(Search);
     http.expectOne('/api/catalogue').flush(catalogue);

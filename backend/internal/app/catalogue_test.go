@@ -37,7 +37,7 @@ func TestCatalogueListsSupportedAirportsAndDestinationAirportsCitiesAndCountries
 	for _, a := range body.Airports {
 		airports = append(airports, a.Code)
 	}
-	wantAirports := []string{"BCN", "BGY", "BRU", "CIA", "CRL", "FCO", "GRO", "KRK", "KTW", "MXP", "OSL", "REU"}
+	wantAirports := []string{"BCN", "BGY", "BRU", "CIA", "CRL", "FCO", "GRO", "KRK", "KTW", "MXP", "OSL", "REU", "TRF"}
 	if !slices.Equal(airports, wantAirports) {
 		t.Errorf("airports = %v, want %v", airports, wantAirports)
 	}
@@ -53,7 +53,7 @@ func TestCatalogueListsSupportedAirportsAndDestinationAirportsCitiesAndCountries
 		cities = append(cities, c.Name)
 	}
 	wantCities := []string{"Barcelona", "Bergamo", "Brussels", "Charleroi", "Girona", "Katowice", "Kraków",
-		"Milan", "Oslo", "Reus", "Rome"}
+		"Milan", "Oslo", "Reus", "Rome", "Sandefjord"}
 	if !slices.Equal(cities, wantCities) {
 		t.Errorf("cities = %v, want %v", cities, wantCities)
 	}
@@ -61,6 +61,12 @@ func TestCatalogueListsSupportedAirportsAndDestinationAirportsCitiesAndCountries
 	if i := slices.IndexFunc(body.Cities, func(c cityBody) bool { return c.Code == "MILAN" }); i < 0 ||
 		!reflect.DeepEqual(body.Cities[i], wantMilan) {
 		t.Errorf("cities have no %+v: %+v", wantMilan, body.Cities)
+	}
+	// Ryanair assigns TRF (Oslo Torp) to Sandefjord; we add it to Oslo.
+	wantOslo := cityBody{Code: "OSLO", Name: "Oslo", Country: "no", Airports: []string{"OSL", "TRF"}}
+	if i := slices.IndexFunc(body.Cities, func(c cityBody) bool { return c.Code == "OSLO" }); i < 0 ||
+		!reflect.DeepEqual(body.Cities[i], wantOslo) {
+		t.Errorf("cities have no %+v: %+v", wantOslo, body.Cities)
 	}
 
 	wantCountries := []countryBody{

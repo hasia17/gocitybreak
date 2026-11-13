@@ -20,6 +20,7 @@ var cityAdditions = map[string]string{
 	"CRL": "BRUSSELS",
 	"REU": "BARCELONA",
 	"GRO": "BARCELONA",
+	"TRF": "OSLO",
 }
 
 // Catalogue is every airport we know, with the cities and countries they are grouped into.

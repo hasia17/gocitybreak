@@ -156,7 +156,6 @@
     "airport": "lotnisko",
     "city": "miasto",
     "country": "kraj",
-    "airportCount": "lotniska: {{count}}",
     "remove": "Usuń {{place}}",
     "noMatches": "Brak pasujących miejsc",
     "loading": "Wczytywanie miejsc…",
