@@ -287,6 +287,39 @@ describe('Search destination groups', () => {
     http.expectNone('/api/search');
   });
 
+  it('orders groups by their best offer and offers inside by price or by leave days', async () => {
+    const { root, settle, search, groups, groupNames, rows } = await renderSearch();
+    await search([
+      offer('BGY', 100, 4, 3),
+      offer('BGY', 150, 5, 0),
+      offer('BGY', 120, 6, 0),
+      offer('MXP', 110, 7, 1),
+      offer('MXP', 90, 8, 2),
+    ]);
+    const plain = (el: Element | null | undefined) => el?.textContent?.replace(/\s+/g, ' ').trim();
+    const stamps = () => groups().map((g) => plain(g.querySelector('.stamp')));
+    const prices = () => rows().map((r) => plain(r.querySelector('.price strong')));
+    const openAll = async () => {
+      for (const group of groups()) group.click();
+      await settle();
+    };
+
+    expect(groupNames()).toEqual(['Milan Malpensa', 'Milan Bergamo']);
+    expect(stamps()).toEqual(['PLN 90', 'PLN 100']);
+    await openAll();
+    expect(prices()).toEqual(['PLN 90', 'PLN 110', 'PLN 100', 'PLN 120', 'PLN 150']);
+
+    root
+      .querySelector<HTMLInputElement>('[aria-label="Sort by"] input[value="leaveDays"]')!
+      .click();
+    await settle();
+    // Fewest leave days first, the cheaper on a tie.
+    expect(groupNames()).toEqual(['Milan Bergamo', 'Milan Malpensa']);
+    expect(stamps()).toEqual(['PLN 120', 'PLN 110']);
+    await openAll();
+    expect(prices()).toEqual(['PLN 120', 'PLN 150', 'PLN 100', 'PLN 110', 'PLN 90']);
+  });
+
   it('keeps a flat list of offers for a single destination airport', async () => {
     const { search, groups, rows, heading } = await renderSearch('BUD');
     await search([offer('BUD', 100, 4), offer('BUD', 110, 5)]);
