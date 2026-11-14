@@ -54,6 +54,7 @@
       }
     },
     "filters": "Filters",
+    "filtersActive": "Filters ({{count}})",
     "directOnly": "Direct flights only",
     "localTimes": "Hours in local time at each airport.",
     "moment": {

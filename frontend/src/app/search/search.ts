@@ -8,6 +8,7 @@ import {
   inject,
   Injector,
   signal,
+  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
@@ -146,6 +147,8 @@ export class Search {
   private readonly transloco = inject(TranslocoService);
   private readonly placeTranslations = inject(PlaceTranslations);
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
+  /** The region the search's offers appear in. */
+  private readonly resultsRegion = viewChild<ElementRef<HTMLElement>>('results');
   private readonly injector = inject(Injector);
 
   /** The only source of selectable airports, cities and countries; undefined until loaded. */
@@ -213,6 +216,26 @@ export class Search {
   /** Whether the Leave and Filters sections of the form are open; both start collapsed. */
   protected readonly leaveOpen = signal(false);
   protected readonly filtersOpen = signal(false);
+
+  /** The filters in use: exclusions, direct flights, time ranges and departure days that restrict. */
+  private readonly filterCount = computed(() => {
+    // The form's value changes with every filter; the kind and date mode decide which apply.
+    const { exclusions, filters } = (this.places(), this.form.getRawValue());
+    let count = exclusions.trim() ? 1 : 0;
+    if (filters.directOnly) count++;
+    for (const { name } of moments)
+      if (this.applies(`filters.${name}`) && (filters[name].from || filters[name].to)) count++;
+    for (const name of ['outboundDepartureWeekdays', 'inboundDepartureWeekdays'] as const)
+      if (this.applies(`filters.${name}`) && Object.values(filters[name]).some((ticked) => !ticked))
+        count++;
+    return count;
+  });
+  /** The Filters button's text, with the number of filters in use. */
+  protected readonly filtersLabel = computed(() =>
+    this.filterCount() > 0
+      ? this.t('search.filtersActive', { count: this.filterCount() })
+      : this.t('search.filters'),
+  );
 
   /** One line on the collapsed Leave section: the work hours and the leave limit, or the switch. */
   protected readonly leaveSummary = computed(() => {
@@ -404,6 +427,7 @@ export class Search {
       if (this.form.controls.leave.invalid) this.leaveOpen.set(true);
       if (
         this.form.controls.filters.invalid ||
+        this.form.controls.exclusions.invalid ||
         this.noDayLeft('outboundDepartureWeekdays') ||
         this.noDayLeft('inboundDepartureWeekdays')
       )
@@ -455,9 +479,7 @@ export class Search {
   private focusResults() {
     afterNextRender(
       () => {
-        const target = this.element.nativeElement.querySelector<HTMLElement>(
-          '[data-testid="results"] h2',
-        );
+        const target = this.resultsRegion()?.nativeElement.querySelector<HTMLElement>('h2');
         target?.setAttribute('tabindex', '-1');
         target?.focus();
       },

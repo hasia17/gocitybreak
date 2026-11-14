@@ -58,6 +58,7 @@
       }
     },
     "filters": "Filtry",
+    "filtersActive": "Filtry ({{count}})",
     "directOnly": "Tylko loty bezpośrednie",
     "localTimes": "Godziny w czasie lokalnym każdego lotniska.",
     "moment": {
