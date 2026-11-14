@@ -177,6 +177,32 @@ export class Search {
     },
   );
 
+  private readonly leave = toSignal(this.form.controls.leave.valueChanges, {
+    initialValue: this.form.controls.leave.getRawValue(),
+  });
+  /** Whether the Leave and Filters sections of the form are open; both start collapsed. */
+  protected readonly leaveOpen = signal(false);
+  protected readonly filtersOpen = signal(false);
+
+  /** One line on the collapsed Leave section: the work hours and the leave limit, or the switch. */
+  protected readonly leaveSummary = computed(() => {
+    const texts = this.texts();
+    // The group's value omits disabled controls, so read the raw one to follow every change.
+    const leave = (this.leave(), this.form.controls.leave.getRawValue());
+    if (!texts) return '';
+    if (leave.ignoreLeave) return texts.t('search.ignoreLeave');
+    const hours = (value: string, last: string) =>
+      (workTime.test(value) ? value : last).replace(/^0/, '');
+    const params = {
+      start: hours(leave.workStart, this.lastWorkHours.workStart),
+      end: hours(leave.workEnd, this.lastWorkHours.workEnd),
+    };
+    const limit = leave.maxLeaveDays;
+    return typeof limit === 'number' && Number.isInteger(limit) && limit >= 0
+      ? plural(texts, 'search.leaveSummary.limited', limit, params)
+      : texts.t('search.leaveSummary.unlimited', params);
+  });
+
   protected readonly dateMode = toSignal(this.form.controls.dateMode.valueChanges, {
     initialValue: this.form.controls.dateMode.value,
   });
@@ -293,7 +319,17 @@ export class Search {
     // A form left open over local midnight must not submit yesterday's dates.
     for (const date of [this.form.controls.from, this.form.controls.to])
       date.updateValueAndValidity({ emitEvent: false });
-    if (this.form.invalid || !this.catalogue()) return;
+    if (this.form.invalid || !this.catalogue()) {
+      // A blocking field inside a collapsed section would otherwise stay out of sight.
+      if (this.form.controls.leave.invalid) this.leaveOpen.set(true);
+      if (
+        this.form.controls.filters.invalid ||
+        this.noDayLeft('outboundDepartureWeekdays') ||
+        this.noDayLeft('inboundDepartureWeekdays')
+      )
+        this.filtersOpen.set(true);
+      return;
+    }
     const v = this.form.getRawValue();
     saveSearchSettings(v);
     this.loading.set(true);

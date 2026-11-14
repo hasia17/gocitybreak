@@ -5,17 +5,6 @@
   text-align: left;
   font-size: 0.875rem;
 }
-.filters summary {
-  width: fit-content;
-  margin: 0 auto;
-  padding: 0.5rem 0.75rem;
-  border-radius: 9999px;
-  color: var(--muted);
-  cursor: pointer;
-}
-.filters summary:hover {
-  background: var(--subtle);
-}
 .filters-body {
   display: flex;
   flex-wrap: wrap;

@@ -38,6 +38,16 @@
       "price": "Cena",
       "leaveDays": "Dni urlopu"
     },
+    "leave": "Urlop",
+    "leaveSummary": {
+      "unlimited": "Praca {{start}}–{{end}}, bez limitu urlopu",
+      "limited": {
+        "one": "Praca {{start}}–{{end}}, do {{count}} dnia urlopu",
+        "few": "Praca {{start}}–{{end}}, do {{count}} dni urlopu",
+        "many": "Praca {{start}}–{{end}}, do {{count}} dni urlopu",
+        "other": "Praca {{start}}–{{end}}, do {{count}} dnia urlopu"
+      }
+    },
     "filters": "Filtry",
     "directOnly": "Tylko loty bezpośrednie",
     "localTimes": "Godziny w czasie lokalnym każdego lotniska.",

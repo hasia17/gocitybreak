@@ -50,7 +50,8 @@ describe('Search explanations', () => {
     flushCatalogue();
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
-    root.querySelector('details')!.open = true;
+    root.querySelector<HTMLButtonElement>('button[aria-controls="filters-panel"]')!.click();
+    await fixture.whenStable();
 
     for (const [name, rule] of [
       ['About flexible dates', /travel window.*nights/i],

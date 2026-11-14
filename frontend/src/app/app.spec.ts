@@ -115,7 +115,9 @@ describe('App', () => {
       await fixture.whenStable();
 
       expect(root.querySelector('h1')?.textContent).toBe('Gdzie na weekend?');
-      expect(root.querySelector('.filters summary')?.textContent?.trim()).toBe('Filtry');
+      expect(root.querySelector('button[aria-controls="filters-panel"]')?.textContent?.trim()).toBe(
+        'Filtry',
+      );
       expect(
         root.querySelector<HTMLInputElement>(
           'app-place-chips[formControlName="homeAirports"] input',
