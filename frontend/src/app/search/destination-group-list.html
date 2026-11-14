@@ -1,5 +1,5 @@
 <ol class="groups">
-  @for (group of groups(); track group.airport) {
+  @for (group of visibleGroups(); track group.airport) {
     @let best = group.offers[0];
     @let isOpen = open().has(group.airport);
     <li data-testid="group">
@@ -50,3 +50,8 @@
     </li>
   }
 </ol>
+@if (visibleCount() < groups().length) {
+  <button class="show-more" type="button" (click)="showMore()">
+    {{ texts()?.t('results.showMorePlaces') }}
+  </button>
+}

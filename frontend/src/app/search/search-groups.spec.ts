@@ -235,6 +235,58 @@ describe('Search destination groups', () => {
     expect(fixture.nativeElement.querySelector('h2').textContent).toContain('10 ofert');
   });
 
+  /** One offer to each of `count` airports outside the catalogue, named by their codes. */
+  const placesOffers = (count: number) =>
+    Array.from({ length: count }, (_, i) =>
+      offer(`Z${String(i).padStart(2, '0')}`, 100 + i, 1 + (i % 25), count - i),
+    );
+
+  it('shows 20 groups at a time with "Show more places"', async () => {
+    const { fixture, settle, search, groups, heading, button } = await renderSearch();
+    await search(placesOffers(45));
+
+    expect(groups()).toHaveLength(20);
+    expect(heading()).toBe('45 offers in 45 places, from PLN 100');
+    button('Show more places')!.click();
+    await settle();
+    expect(groups()).toHaveLength(40);
+
+    TestBed.inject(TranslocoService).setActiveLang('pl');
+    await fixture.whenStable();
+    button('Pokaż więcej miejsc')!.click();
+    await settle();
+    expect(groups()).toHaveLength(45);
+    expect(button('Pokaż więcej miejsc')).toBeUndefined();
+  });
+
+  it('starts again from the first 20 groups, all closed, on a new search or sort', async () => {
+    const { root, settle, search, groups, groupNames, rows, button } = await renderSearch();
+    const openFirst = async () => {
+      button('Show more places')!.click();
+      groups()[0].click();
+      await settle();
+      expect(groups()).toHaveLength(40);
+      expect(rows()).toHaveLength(1);
+    };
+    await search(placesOffers(45));
+    await openFirst();
+
+    await search(placesOffers(42));
+    expect(groups()).toHaveLength(20);
+    expect(rows()).toHaveLength(0);
+    expect(groups()[0].getAttribute('aria-expanded')).toBe('false');
+    await openFirst();
+
+    root
+      .querySelector<HTMLInputElement>('[aria-label="Sort by"] input[value="leaveDays"]')!
+      .click();
+    await settle();
+    expect(groups()).toHaveLength(20);
+    expect(rows()).toHaveLength(0);
+    expect(groupNames()[0]).toBe('Z41');
+    http.expectNone('/api/search');
+  });
+
   it('keeps a flat list of offers for a single destination airport', async () => {
     const { search, groups, rows, heading } = await renderSearch('BUD');
     await search([offer('BUD', 100, 4), offer('BUD', 110, 5)]);

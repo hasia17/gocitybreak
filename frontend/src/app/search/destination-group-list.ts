@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component, input, linkedSignal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, linkedSignal } from '@angular/core';
 import { Texts, plural } from '../i18n/texts';
 import { DestinationGroup } from './destination-groups';
 import { OfferItem } from './offer';
 import { OfferView } from './offer-view';
 
+const groupsPerPage = 20;
 /** Offers an open group shows before "Show all". */
 const offersPerGroup = 5;
 
@@ -25,6 +26,16 @@ export class DestinationGroupList {
   readonly pageKey = input<unknown>();
   /** Texts of the interface language; undefined until they have loaded. */
   readonly texts = input<Texts | undefined>();
+
+  protected readonly visibleCount = linkedSignal(() => {
+    this.pageKey();
+    return groupsPerPage;
+  });
+  protected readonly visibleGroups = computed(() => this.groups().slice(0, this.visibleCount()));
+
+  protected showMore() {
+    this.visibleCount.update((count) => count + groupsPerPage);
+  }
 
   /** Airports of the open groups; any number may be open. */
   protected readonly open = linkedSignal<unknown, ReadonlySet<string>>({
