@@ -24,7 +24,7 @@ h1 {
 .composer {
   display: flex;
   align-items: stretch;
-  max-width: 56rem;
+  max-width: var(--content-width);
   margin: 0 auto;
   text-align: left;
   background: var(--surface);
@@ -108,7 +108,7 @@ h1 {
   flex-wrap: wrap;
   justify-content: center;
   gap: 0.25rem;
-  max-width: 44rem;
+  max-width: var(--content-width);
   margin: 0.5rem auto 0;
   text-align: left;
 }

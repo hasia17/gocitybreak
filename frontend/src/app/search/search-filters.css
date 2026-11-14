@@ -1,6 +1,6 @@
 /* The "Filters" panel of the search form. */
 .filters {
-  max-width: 44rem;
+  max-width: var(--content-width);
   margin: 0.75rem auto 0;
   text-align: left;
   font-size: 0.875rem;

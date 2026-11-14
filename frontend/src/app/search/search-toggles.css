@@ -51,7 +51,7 @@
   flex-wrap: wrap;
   justify-content: flex-start;
   gap: 0.5rem;
-  max-width: 56rem;
+  max-width: var(--content-width);
   margin: 0.75rem auto 0;
 }
 .section-toggle {
