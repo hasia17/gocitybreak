@@ -395,6 +395,8 @@ export class Search {
     for (const date of [this.form.controls.from, this.form.controls.to])
       date.updateValueAndValidity({ emitEvent: false });
     if (this.form.invalid || !this.catalogue()) {
+      // A search made while the form is folded away must bring the problem into view.
+      this.collapsed.set(false);
       // A blocking field inside a collapsed section would otherwise stay out of sight.
       if (this.form.controls.leave.invalid) this.leaveOpen.set(true);
       if (
@@ -423,6 +425,8 @@ export class Search {
           error.status === 400 ? rejectedSearchMessage(reason) : 'search.errors.server',
         );
         this.loading.set(false);
+        // A failed search keeps the form open, so the user can fix it.
+        this.collapsed.set(false);
       },
     });
   }

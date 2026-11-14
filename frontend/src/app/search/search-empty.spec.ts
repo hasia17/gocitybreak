@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { TranslocoService } from '@jsverse/transloco';
+import { vi } from 'vitest';
 import { provideTestI18n } from '../i18n/testing';
 import { fillPlace, flushCatalogue } from './place-testing';
 import { Search } from './search';
@@ -169,6 +170,47 @@ describe('Search empty result', () => {
     expect(body.travelWindow).toEqual({ from: '2026-11-28', to: '2026-12-13' });
     expect(body.stayLength).toEqual({ min: 8, max: 10 });
     expect(root.querySelector<HTMLInputElement>('input[value="flexible"]')!.checked).toBe(true);
+  });
+
+  /** The search form is on the page, not folded into the summary. */
+  const formShown = (root: HTMLElement) =>
+    !root.querySelector('section.hero')!.hasAttribute('hidden');
+
+  it('keeps the form open when the search of a suggestion is rejected', async () => {
+    const { fixture, root } = await searchEmpty({ destination: 'BGY' });
+    expect(formShown(root)).toBe(false);
+
+    root.querySelector<HTMLButtonElement>('[data-suggestion="anywhere"]')!.click();
+    http
+      .expectOne('/api/search')
+      .flush('destination is invalid', { status: 400, statusText: 'Bad Request' });
+    await fixture.whenStable();
+
+    expect(formShown(root)).toBe(true);
+    expect(root.querySelector('p[role="alert"]')?.textContent).toBeTruthy();
+  });
+
+  it('keeps the form open when the search of a suggestion fails', async () => {
+    const { fixture, root } = await searchEmpty({ destination: 'BGY' });
+
+    root.querySelector<HTMLButtonElement>('[data-suggestion="anywhere"]')!.click();
+    http.expectOne('/api/search').flush('boom', { status: 500, statusText: 'Server Error' });
+    await fixture.whenStable();
+
+    expect(formShown(root)).toBe(true);
+  });
+
+  it('shows the form with its problem when a suggestion makes the search invalid', async () => {
+    const { fixture, root } = await searchEmpty({ destination: 'BGY', exclusions: 'KTW' });
+    // The dates went past while the summary stood in for the form.
+    vi.spyOn(Date, 'now').mockReturnValue(new Date(2026, 11, 20, 12).getTime());
+
+    root.querySelector<HTMLButtonElement>('[data-suggestion="removeExclusions"]')!.click();
+    await fixture.whenStable();
+
+    http.expectNone('/api/search');
+    expect(formShown(root)).toBe(true);
+    expect(root.textContent).toContain('Choose today or a later date.');
   });
 
   it('offers nothing before a search came back empty', async () => {
