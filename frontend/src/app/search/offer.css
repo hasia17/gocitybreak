@@ -26,6 +26,7 @@
 }
 .route {
   grid-column: 1 / -1;
+  font-family: var(--font-serif);
 }
 .leg {
   width: 100%;
@@ -64,8 +65,9 @@ abbr {
   text-align: right;
 }
 .price strong {
-  font-size: 1.05rem;
-  font-weight: 600;
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 400;
 }
 .price a {
   color: inherit;

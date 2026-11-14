@@ -69,11 +69,13 @@
   cursor: pointer;
 }
 .toggle label:has(input:checked) {
-  background: var(--text);
-  color: var(--page);
+  background: var(--accent);
+  color: var(--on-accent);
 }
 .toggle label:has(input:focus-visible) {
-  box-shadow: 0 0 0 2px var(--ring);
+  box-shadow:
+    0 0 0 2px var(--card),
+    0 0 0 4px var(--ring);
 }
 /* In the results header, pushed to the right edge opposite the offer count. */
 .sort {
