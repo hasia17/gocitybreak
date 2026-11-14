@@ -12,6 +12,7 @@ import {
 import { TranslocoService } from '@jsverse/transloco';
 import { combineLatest, map, merge, switchMap, take } from 'rxjs';
 import { Language, textsIn } from '../i18n/language';
+import { plural } from '../i18n/texts';
 import { PlaceChips } from './place-chips';
 import { PlaceTranslations } from './place-translations';
 import { restorePlaces } from './place-suggestions';
