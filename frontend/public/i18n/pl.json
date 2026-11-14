@@ -39,6 +39,15 @@
       "leaveDays": "Dni urlopu"
     },
     "leave": "Urlop",
+    "change": "Zmień",
+    "summary": {
+      "nights": {
+        "one": "{{range}} noc",
+        "few": "{{range}} noce",
+        "many": "{{range}} nocy",
+        "other": "{{range}} nocy"
+      }
+    },
     "leaveSummary": {
       "unlimited": "Praca {{start}}–{{end}}, bez limitu urlopu",
       "limited": {
