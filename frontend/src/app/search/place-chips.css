@@ -30,6 +30,12 @@ input {
   font-size: 1.05rem;
 }
 /* Once places are chosen, an idle input stays out of the way instead of wrapping onto an empty row. */
+.chips:has(.chip) input:focus {
+  /* A focused input takes only what the chips leave, so it never squeezes a chip. */
+  flex: 1 1 0;
+  width: 0;
+  min-width: 2rem;
+}
 .chips:has(.chip) input:not(:focus) {
   flex: 0 1 1px;
   min-width: 0;
