@@ -29,8 +29,8 @@
         <li app-offer [offer]="offer" [texts]="texts()"></li>
       }
     </ol>
-    @if (visibleCount() < offers().length) {
-      <button class="show-more" type="button" (click)="showMore()">
+    @if (page.shown() < offers().length) {
+      <button class="show-more" type="button" (click)="page.showMore()">
         {{ t('results.showMore') }}
       </button>
     }

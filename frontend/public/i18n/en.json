@@ -54,6 +54,7 @@
       }
     },
     "filters": "Filters",
+    "filtersActive": "Filters ({{count}})",
     "directOnly": "Direct flights only",
     "localTimes": "Hours in local time at each airport.",
     "moment": {
@@ -124,10 +125,9 @@
     "label": "Search results",
     "loading": "Searching for offers…",
     "showMore": "Show more",
-    "empty": {
+    "noOffers": {
       "title": "No offers for {{route}}",
       "tryOne": "Nothing found for {{dates}}. Try one of these changes:",
-      "tryMore": "Nothing found for {{dates}}. Try more airports, or fewer filters: wider time ranges, more weekdays.",
       "widenWindow": "Widen the window by 14 days (until {{date}})",
       "moreNights": "Allow {{min}}–{{max}} nights",
       "removeExclusions": "Remove exclusions",
@@ -147,20 +147,26 @@
     },
     "book": "Book ↗",
     "bookRoute": "{{route}} on Ryanair ↗",
-    "grouped": "{{offers}} in {{places}}, from {{price}}",
-    "places": {
+    "grouped": "{{offers}} in {{groups}}, from {{price}}",
+    "destinationGroups": {
       "one": "{{count}} place",
       "other": "{{count}} places"
     },
-    "moreDates": {
+    "moreOffers": {
       "one": "{{count}} more date",
       "other": "{{count}} more dates"
     },
-    "showAllDates": {
+    "showAllOffers": {
       "one": "Show all {{count}} dates",
       "other": "Show all {{count}} dates"
     },
-    "showMorePlaces": "Show more places"
+    "showMoreGroups": "Show more places",
+    "board": {
+      "destination": "Destination",
+      "nights": "Nights",
+      "leave": "Leave",
+      "from": "From"
+    }
   },
   "offer": {
     "outbound": "Outbound",

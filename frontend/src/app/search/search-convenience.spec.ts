@@ -8,7 +8,7 @@ import { TestBed } from '@angular/core/testing';
 import { TranslocoService } from '@jsverse/transloco';
 import { Search } from './search';
 
-/** Remembered settings, Ryanair links and the empty result (#10). */
+/** Remembered settings, Ryanair links and the no-offers message (#10). */
 useSearchClock();
 
 describe('Search conveniences', () => {

@@ -38,9 +38,24 @@
   border-bottom: 1px solid var(--line);
 }
 
+.board-head,
 .group-row {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto;
+  grid-template-columns: minmax(0, 2.2fr) 1.3fr 1.3fr 0.7fr 1fr 7.5rem;
+  align-items: center;
+  gap: 0.75rem;
+}
+.board-head {
+  position: relative;
+  margin-top: 0.75rem;
+  padding: 0.4rem 1rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.board-head .from {
+  justify-self: end;
+}
+.group-row {
   align-items: center;
   gap: 0.75rem;
   width: 100%;
@@ -58,29 +73,30 @@
 .group-row[aria-expanded='true'] {
   border-bottom: 1px dashed var(--line);
 }
-.place-name {
+.group-name {
   font-family: var(--font-serif);
   font-size: 1.2rem;
   overflow-wrap: anywhere;
 }
-.place-where {
+.group-where {
   margin-left: 0.4rem;
   color: var(--muted);
   font-size: 0.8rem;
 }
-.more-dates {
+.more-offers {
   display: block;
   color: var(--blue);
   font-size: 0.8rem;
 }
 .details {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.1rem 1rem;
+  display: contents;
   font-size: 0.9rem;
   font-variant-numeric: tabular-nums;
 }
-.dates {
+.dash {
+  display: none;
+}
+.days {
   font-weight: 500;
 }
 
@@ -130,21 +146,27 @@
   background: var(--subtle);
 }
 
-/* On a phone each row shows place and price, with the details wrapped underneath. */
+/* On a phone the headings go, and each row shows destination and price, with the details wrapped underneath. */
 @media (max-width: 640px) {
+  .board-head {
+    display: none;
+  }
   .group-row {
     grid-template-columns: minmax(0, 1fr) auto;
     row-gap: 0.25rem;
     padding: 0.75rem;
   }
   .details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.1rem 1rem;
     grid-column: 1 / -1;
     grid-row: 2;
     gap: 0 0.6rem;
     color: var(--muted);
     font-size: 0.85rem;
   }
-  .place-where {
+  .group-where {
     display: block;
     margin-left: 0;
   }

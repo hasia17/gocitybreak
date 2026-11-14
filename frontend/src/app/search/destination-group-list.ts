@@ -1,10 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, input, linkedSignal } from '@angular/core';
 import { Texts, plural } from '../i18n/texts';
+import { Translated } from '../i18n/translated';
 import { DestinationGroup } from './destination-groups';
 import { OfferItem } from './offer';
 import { OfferView } from './offer-view';
+import { pagedBy } from './paging';
 
-const groupsPerPage = 20;
 /** Offers an open group shows before "Show all". */
 const offersPerGroup = 5;
 
@@ -19,7 +20,7 @@ const offersPerGroup = 5;
   styleUrl: './destination-group-list.css',
   templateUrl: './destination-group-list.html',
 })
-export class DestinationGroupList {
+export class DestinationGroupList extends Translated {
   /** Groups in the order to show them. */
   readonly groups = input.required<DestinationGroup[]>();
   /** Changes when the board should start again from the first page, all closed: a new search or sort. */
@@ -27,15 +28,8 @@ export class DestinationGroupList {
   /** Texts of the interface language; undefined until they have loaded. */
   readonly texts = input<Texts | undefined>();
 
-  protected readonly visibleCount = linkedSignal(() => {
-    this.pageKey();
-    return groupsPerPage;
-  });
-  protected readonly visibleGroups = computed(() => this.groups().slice(0, this.visibleCount()));
-
-  protected showMore() {
-    this.visibleCount.update((count) => count + groupsPerPage);
-  }
+  protected readonly page = pagedBy(this.pageKey);
+  protected readonly visibleGroups = computed(() => this.groups().slice(0, this.page.shown()));
 
   /** Airports of the open groups; any number may be open. */
   protected readonly open = linkedSignal<unknown, ReadonlySet<string>>({
@@ -61,11 +55,6 @@ export class DestinationGroupList {
     return this.showingAll().has(group.airport)
       ? group.offers
       : group.offers.slice(0, offersPerGroup);
-  }
-
-  /** The days an offer leaves and comes back, like "pt 4 gru – nd 6 gru". */
-  protected dates(offer: OfferView): string {
-    return offer.legs.map((leg) => leg.flights[0].day).join(' – ');
   }
 
   protected count(key: string, count: number): string {

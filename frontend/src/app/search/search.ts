@@ -8,6 +8,7 @@ import {
   inject,
   Injector,
   signal,
+  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
@@ -22,13 +23,14 @@ import { TranslocoService } from '@jsverse/transloco';
 import { combineLatest, map, merge, switchMap, take } from 'rxjs';
 import { Language, textsIn } from '../i18n/language';
 import { plural } from '../i18n/texts';
+import { Translated } from '../i18n/translated';
 import { PlaceChips } from './place-chips';
 import { PlaceTranslations } from './place-translations';
 import { restorePlaces } from './place-suggestions';
 import { InfoTip } from '../ui/info-tip';
 import { OfferList } from './offer-list';
-import { EmptyResults } from './empty-results';
-import { emptyResult, SuggestionId } from './empty-suggestions';
+import { NoOffersMessage } from './no-offers-message';
+import { describeNoOffers, SuggestionId } from './no-offers';
 import { ResultsSkeleton } from './results-skeleton';
 import { SearchSummary, summarySearch } from './search-summary';
 import { offerView } from './offer-view';
@@ -83,6 +85,11 @@ function localIsoDate(days: number): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
+/** The travel window a new search starts with: tomorrow to eight weeks from today. */
+function defaultTravelWindow(): { from: string; to: string } {
+  return { from: localIsoDate(1), to: localIsoDate(56) };
+}
+
 /** Compare ISO dates with the browser's local calendar, rather than the UTC date. */
 function pastDate(control: AbstractControl): ValidationErrors | null {
   const today = localIsoDate(0);
@@ -128,19 +135,21 @@ function rejectedSearchMessage(reason: string): string {
     PlaceChips,
     OfferList,
     SearchSummary,
-    EmptyResults,
+    NoOffersMessage,
     ResultsSkeleton,
   ],
   styleUrls: ['./search.css', './search-filters.css', './search-results.css'],
   templateUrl: './search.html',
 })
-export class Search {
+export class Search extends Translated {
   private readonly http = inject(HttpClient);
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly destroyRef = inject(DestroyRef);
   private readonly transloco = inject(TranslocoService);
   private readonly placeTranslations = inject(PlaceTranslations);
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
+  /** The region the search's offers appear in. */
+  private readonly resultsRegion = viewChild<ElementRef<HTMLElement>>('results');
   private readonly injector = inject(Injector);
 
   /** The only source of selectable airports, cities and countries; undefined until loaded. */
@@ -154,8 +163,8 @@ export class Search {
       homeAirports: ['', Validators.required],
       destination: ['anywhere', Validators.required],
       exclusions: [''],
-      from: [localIsoDate(1), [Validators.required, pastDate]],
-      to: [localIsoDate(56), [Validators.required, pastDate]],
+      from: [defaultTravelWindow().from, [Validators.required, pastDate]],
+      to: [defaultTravelWindow().to, [Validators.required, pastDate]],
       stayLength: this.fb.group(
         { min: [2, nightCount], max: [3, nightCount] },
         { validators: maxBelowMin },
@@ -208,6 +217,26 @@ export class Search {
   /** Whether the Leave and Filters sections of the form are open; both start collapsed. */
   protected readonly leaveOpen = signal(false);
   protected readonly filtersOpen = signal(false);
+
+  /** The filters in use: exclusions, direct flights, time ranges and departure days that restrict. */
+  private readonly filterCount = computed(() => {
+    // The form's value changes with every filter; the kind and date mode decide which apply.
+    const { exclusions, filters } = (this.places(), this.form.getRawValue());
+    let count = exclusions.trim() ? 1 : 0;
+    if (filters.directOnly) count++;
+    for (const { name } of moments)
+      if (this.applies(`filters.${name}`) && (filters[name].from || filters[name].to)) count++;
+    for (const name of ['outboundDepartureWeekdays', 'inboundDepartureWeekdays'] as const)
+      if (this.applies(`filters.${name}`) && Object.values(filters[name]).some((ticked) => !ticked))
+        count++;
+    return count;
+  });
+  /** The Filters button's text, with the number of filters in use. */
+  protected readonly filtersLabel = computed(() =>
+    this.filterCount() > 0
+      ? this.t('search.filtersActive', { count: this.filterCount() })
+      : this.t('search.filters'),
+  );
 
   /** One line on the collapsed Leave section: the work hours and the leave limit, or the switch. */
   protected readonly leaveSummary = computed(() => {
@@ -283,23 +312,16 @@ export class Search {
     const texts = this.texts();
     const language = this.language();
     if (!this.collapsed() || !searched || !catalogue || !texts || !language) return undefined;
-    return summarySearch(
-      searched,
-      catalogue,
-      texts,
-      language,
-      this.placeTranslations.anywhere(language),
-      this.found()?.at ?? Date.now(),
-    );
+    return summarySearch(searched, catalogue, texts, language, this.found()?.at ?? Date.now());
   });
-  /** What an empty search says and suggests, from the query that was searched; undefined if it found offers. */
-  protected readonly emptyResult = computed(() => {
+  /** What a search that found no offers says and suggests, from the query that was searched; undefined if it found offers. */
+  protected readonly noOffers = computed(() => {
     const found = this.found();
     const searched = this.searched();
     const texts = this.texts();
     const language = this.language();
     return found && searched && texts && language && found.offers.length === 0
-      ? emptyResult(searched, this.catalogue(), language, texts, localIsoDate(0))
+      ? describeNoOffers(searched, this.catalogue(), language, texts, localIsoDate(0))
       : undefined;
   });
   protected readonly loading = signal(false);
@@ -309,6 +331,7 @@ export class Search {
   protected readonly submitted = signal(false);
 
   constructor() {
+    super();
     this.form.controls.sort.valueChanges.pipe(takeUntilDestroyed()).subscribe((sort) => {
       // The sort is chosen over the results, after searching: remember it on its own.
       saveSearchSettings({ ...loadSearchSettings(), sort });
@@ -334,8 +357,8 @@ export class Search {
     const settings = loadSearchSettings();
     if (settings) {
       this.form.patchValue(settings);
-      // A remembered flexible travel window that has ended would make the form open on a failing search.
-      if (this.form.controls.dateMode.value === 'flexible') this.replaceEndedWindow();
+      // A remembered flexible travel window in the past would make the form open on a failing search.
+      if (this.form.controls.dateMode.value === 'flexible') this.dropPastWindow();
     }
     // Departure days used to be all unticked for "any day"; now every ticked day suits.
     for (const days of this.departureDays()) {
@@ -358,10 +381,15 @@ export class Search {
     this.loadCatalogue();
   }
 
-  private replaceEndedWindow() {
+  /** Replaces a window that has ended with the default; starts one that has begun tomorrow. */
+  private dropPastWindow() {
     const { from, to } = this.form.controls;
-    if ((to.value || from.value) < localIsoDate(0))
-      this.form.patchValue({ from: localIsoDate(1), to: localIsoDate(56) });
+    const today = localIsoDate(0);
+    const defaults = defaultTravelWindow();
+    if ((to.value || from.value) < today) this.form.patchValue(defaults);
+    else if (from.value < today)
+      // A window that ends today can only start today.
+      from.setValue(to.value < defaults.from ? today : defaults.from);
   }
 
   /** Retry a failed load; only validated places may be selected or submitted. */
@@ -395,10 +423,13 @@ export class Search {
     for (const date of [this.form.controls.from, this.form.controls.to])
       date.updateValueAndValidity({ emitEvent: false });
     if (this.form.invalid || !this.catalogue()) {
+      // A search made while the form is folded away must bring the problem into view.
+      this.collapsed.set(false);
       // A blocking field inside a collapsed section would otherwise stay out of sight.
       if (this.form.controls.leave.invalid) this.leaveOpen.set(true);
       if (
         this.form.controls.filters.invalid ||
+        this.form.controls.exclusions.invalid ||
         this.noDayLeft('outboundDepartureWeekdays') ||
         this.noDayLeft('inboundDepartureWeekdays')
       )
@@ -423,6 +454,8 @@ export class Search {
           error.status === 400 ? rejectedSearchMessage(reason) : 'search.errors.server',
         );
         this.loading.set(false);
+        // A failed search keeps the form open, so the user can fix it.
+        this.collapsed.set(false);
       },
     });
   }
@@ -438,7 +471,7 @@ export class Search {
 
   /** Applies a suggested change to the form and searches again. */
   protected applySuggestion(id: SuggestionId) {
-    const suggestion = this.emptyResult()?.suggestions.find((s) => s.id === id);
+    const suggestion = this.noOffers()?.suggestions.find((s) => s.id === id);
     if (!suggestion) return;
     this.form.patchValue(suggestion.patch);
     this.submit();
@@ -448,19 +481,12 @@ export class Search {
   private focusResults() {
     afterNextRender(
       () => {
-        const target = this.element.nativeElement.querySelector<HTMLElement>(
-          '[data-testid="results"] h2',
-        );
+        const target = this.resultsRegion()?.nativeElement.querySelector<HTMLElement>('h2');
         target?.setAttribute('tabindex', '-1');
         target?.focus();
       },
       { injector: this.injector },
     );
-  }
-
-  /** The text under `key` in the interface language; empty until the language's texts have loaded. */
-  protected t(key: string, params?: Record<string, unknown>): string {
-    return this.texts()?.t(key, params) ?? '';
   }
 
   private updateApplicableFields() {

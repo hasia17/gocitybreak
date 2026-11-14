@@ -92,12 +92,21 @@ describe('Search first-visit defaults', () => {
     expect(root.querySelector('[data-place-chip="BGY"]')).not.toBeNull();
   });
 
-  it('keeps a remembered travel window that ends today', async () => {
+  it('starts a remembered travel window that has begun tomorrow, keeping its end', async () => {
+    remember({ from: '2026-10-25', to: '2026-12-10' });
+
+    const { root } = await render();
+
+    expect(dateField(root, 'Earliest').value).toBe('2026-11-02');
+    expect(dateField(root, 'Latest').value).toBe('2026-12-10');
+  });
+
+  it('keeps a remembered travel window that ends today, starting it today', async () => {
     remember({ from: '2026-10-25', to: '2026-11-01' });
 
     const { root } = await render();
 
-    expect(dateField(root, 'Earliest').value).toBe('2026-10-25');
+    expect(dateField(root, 'Earliest').value).toBe('2026-11-01');
     expect(dateField(root, 'Latest').value).toBe('2026-11-01');
   });
 

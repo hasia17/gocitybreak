@@ -1,3 +1,12 @@
+<!-- Column headings of the rows below; the rows name their own parts, so the headings stay out of the accessibility tree. -->
+<div class="board-head" data-testid="group-head" aria-hidden="true">
+  <span>{{ t('results.board.destination') }}</span>
+  <span>{{ t('offer.outbound') }}</span>
+  <span>{{ t('offer.return') }}</span>
+  <span>{{ t('results.board.nights') }}</span>
+  <span>{{ t('results.board.leave') }}</span>
+  <span class="from">{{ t('results.board.from') }}</span>
+</div>
 <ol class="groups">
   @for (group of visibleGroups(); track group.airport) {
     @let best = group.offers[0];
@@ -10,25 +19,27 @@
         [attr.aria-controls]="'group-' + group.airport"
         (click)="toggle(group.airport)"
       >
-        <span class="place">
-          <span class="place-name">{{ group.name }}</span>
-          <span class="place-where"
+        <span class="destination">
+          <b class="group-name">{{ group.name }}</b>
+          <span class="group-where"
             >{{ group.airport }}{{ group.country ? ', ' + group.country : '' }}</span
           >
           @if (group.offers.length > 1) {
-            <span class="more-dates">{{
-              count('results.moreDates', group.offers.length - 1)
+            <span class="more-offers">{{
+              count('results.moreOffers', group.offers.length - 1)
             }}</span>
           }
         </span>
         <span class="details">
-          <span class="dates">{{ dates(best) }}</span>
-          @if (best.nights; as nights) {
-            <span>{{ nights }}</span>
+          <span class="days">{{ best.legs[0].flights[0].day }}</span>
+          @if (best.legs[1]; as back) {
+            <span class="dash" aria-hidden="true">–</span>
+            <span class="days">{{ back.flights[0].day }}</span>
+          } @else {
+            <span></span>
           }
-          @if (best.leaveDays; as leaveDays) {
-            <span>{{ leaveDays }}</span>
-          }
+          <span>{{ best.nights }}</span>
+          <span>{{ best.leaveDays }}</span>
         </span>
         <span class="stamp">
           <strong>{{ best.price }}</strong>
@@ -44,7 +55,7 @@
           </ol>
           @if (shown.length < group.offers.length) {
             <button class="show-all" type="button" (click)="showAll(group.airport)">
-              {{ count('results.showAllDates', group.offers.length) }}
+              {{ count('results.showAllOffers', group.offers.length) }}
             </button>
           }
         </div>
@@ -52,8 +63,8 @@
     </li>
   }
 </ol>
-@if (visibleCount() < groups().length) {
-  <button class="show-more" type="button" (click)="showMore()">
-    {{ texts()?.t('results.showMorePlaces') }}
+@if (page.shown() < groups().length) {
+  <button class="show-more" type="button" (click)="page.showMore()">
+    {{ t('results.showMoreGroups') }}
   </button>
 }

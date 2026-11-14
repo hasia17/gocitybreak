@@ -141,6 +141,46 @@ describe('Search sections', () => {
     expect(section(root, 'Filtry')).toBeTruthy();
   });
 
+  it('keeps the Except field in Filters, out of the main form', async () => {
+    const { fixture, root } = await render();
+    const except = () => root.querySelector('[role="combobox"][aria-label="Except"]') ?? undefined;
+    expect(visible(except())).toBe(false);
+
+    section(root, 'Filters').click();
+    await fixture.whenStable();
+    expect(visible(except())).toBe(true);
+  });
+
+  it('counts the active filters on the Filters button, exclusions included', async () => {
+    const { fixture, root } = await render();
+    const filters = (name = 'Filters') => section(root, name).textContent!.trim();
+    expect(filters()).toBe('Filters');
+
+    fillPlace(root, 'Except', 'KTW');
+    await fixture.whenStable();
+    expect(filters()).toBe('Filters (1)');
+
+    field(root, 'Direct flights only')!.click();
+    await fixture.whenStable();
+    expect(filters()).toBe('Filters (2)');
+
+    const from = root.querySelector<HTMLInputElement>('[aria-label="Outbound departure from"]')!;
+    const to = root.querySelector<HTMLInputElement>('[aria-label="Outbound departure to"]')!;
+    for (const [input, value] of [
+      [from, '06:00'],
+      [to, '10:00'],
+    ] as const) {
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+    }
+    await fixture.whenStable();
+    expect(filters()).toBe('Filters (3)');
+
+    TestBed.inject(TranslocoService).setActiveLang('pl');
+    await fixture.whenStable();
+    expect(filters('Filtry')).toBe('Filtry (3)');
+  });
+
   it('hides the Leave section for one way and brings it back for a round trip', async () => {
     const { fixture, root } = await render();
     root.querySelector<HTMLInputElement>('input[value="oneWay"]')!.click();
@@ -204,11 +244,11 @@ describe('Search sections', () => {
     request.flush({ offers: [offer(100, 3), offer(200, 0)] });
     await fixture.whenStable();
 
-    const sort = root.querySelector('.results-head [aria-label="Sort by"]')!;
+    const sort = root.querySelector('[data-testid="results"] [aria-label="Sort by"]')!;
     expect(sort).not.toBeNull();
     expect(root.querySelector('form [aria-label="Sort by"]')).toBeNull();
     const prices = () =>
-      Array.from(root.querySelectorAll('[data-testid="offer"] .price strong')).map((p) =>
+      Array.from(root.querySelectorAll('[data-testid="offer"] strong')).map((p) =>
         p.textContent?.trim(),
       );
     const first = prices()[0];

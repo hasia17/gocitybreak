@@ -193,7 +193,7 @@ describe('Search summary', () => {
     await fixture.whenStable();
     expect(summary()).toBeNull();
     expect(visible(form())).toBe(true);
-    expect(root.querySelector('.error[role="alert"]')).not.toBeNull();
+    expect(root.querySelector('p[role="alert"]')).not.toBeNull();
 
     submit();
     http.expectOne('/api/search').flush('boom', { status: 500, statusText: 'Server Error' });

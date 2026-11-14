@@ -50,10 +50,10 @@ describe('offerView', () => {
       day: 'Sat 5 Dec',
       departureTime: '23:30',
       arrivalTime: '01:20',
-      times: '23:30 → 01:20',
       arrivalDate: '2026-12-06',
       daysLater: 1,
-      route: 'BGY → KRK',
+      from: 'BGY',
+      to: 'KRK',
     });
     expect(plain(view.price)).toBe('≈ PLN 85');
     expect(view.foreignPrices).toEqual(['€19.99']);
@@ -77,9 +77,17 @@ describe('offerView', () => {
 
   it('gives each flight its day and times separately, in both languages', () => {
     const flight = offerView(offer, now).legs[0].flights[0];
-    expect([flight.day, flight.times]).toEqual(['Sat 5 Dec', '23:30 → 01:20']);
+    expect([flight.day, flight.departureTime, flight.arrivalTime]).toEqual([
+      'Sat 5 Dec',
+      '23:30',
+      '01:20',
+    ]);
     const polish = offerView(offer, now, 'pl').legs[0].flights[0];
-    expect([polish.day, polish.times]).toEqual(['sob 5 gru', '23:30 → 01:20']);
+    expect([polish.day, polish.departureTime, polish.arrivalTime]).toEqual([
+      'sob 5 gru',
+      '23:30',
+      '01:20',
+    ]);
   });
 
   it('keeps foreign original prices out of the whole-zloty price', () => {
@@ -153,7 +161,7 @@ describe('offerView', () => {
     };
     const routes = (language: Language) =>
       viewIn(selfTransfer, now, textsIn(transloco, language), catalogue).legs.map((leg) =>
-        leg.flights.map((flight) => flight.route),
+        leg.flights.map((flight) => `${flight.from} → ${flight.to}`),
       );
     expect(routes('en')).toEqual([
       ['KRK Krakow → STN', 'STN → BGY Bergamo'],

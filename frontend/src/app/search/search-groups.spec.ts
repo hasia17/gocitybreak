@@ -128,7 +128,7 @@ describe('Search destination groups', () => {
     /** Each group row: the button naming the place, with its best offer. */
     const groups = () =>
       Array.from(root.querySelectorAll<HTMLButtonElement>('[data-testid="group"] > button'));
-    const groupNames = () => groups().map((g) => g.querySelector('.place-name')?.textContent);
+    const groupNames = () => groups().map((g) => g.querySelector('b')?.textContent);
     const rows = () => Array.from(root.querySelectorAll<HTMLElement>('[data-testid="offer"]'));
     /** Text with every run of spaces, the currency's non-breaking ones too, as one plain space. */
     const plain = (text?: string | null) => text?.replace(/\s+/g, ' ').trim();
@@ -137,7 +137,7 @@ describe('Search destination groups', () => {
       Array.from(root.querySelectorAll<HTMLButtonElement>('[data-testid="results"] button')).find(
         (b) => b.textContent?.trim() === text,
       );
-    return { fixture, root, settle, search, groups, groupNames, rows, heading, button };
+    return { fixture, root, settle, search, groups, groupNames, rows, heading, button, plain };
   }
 
   it('groups offers to Anywhere by the airport the outbound leg lands at', async () => {
@@ -153,6 +153,17 @@ describe('Search destination groups', () => {
     await search([offer('MXP', 90, 4), offer('BGY', 100, 5)]);
 
     expect(groupNames()).toEqual(['Milan Malpensa', 'Milan Bergamo']);
+  });
+
+  it('heads the columns of the board in English and Polish', async () => {
+    const { fixture, root, search, plain } = await renderSearch();
+    const head = () => plain(root.querySelector('[data-testid="group-head"]')?.textContent);
+    await search([offer('BGY', 100, 4), offer('MXP', 120, 5)]);
+    expect(head()).toBe('Destination Outbound Return Nights Leave From');
+
+    TestBed.inject(TranslocoService).setActiveLang('pl');
+    await fixture.whenStable();
+    expect(head()).toBe('Kierunek Wylot Powrót Noce Urlop Od');
   });
 
   it('groups offers to a country', async () => {
@@ -197,11 +208,10 @@ describe('Search destination groups', () => {
   });
 
   it('opens a group on its first 5 offers, shows all on demand and keeps other groups open', async () => {
-    const { fixture, settle, search, groups, rows, button } = await renderSearch();
+    const { fixture, settle, search, groups, rows, button, plain } = await renderSearch();
     await search([...offersTo('BGY', 7, 100), ...offersTo('MXP', 3, 200)]);
     const [bergamo, malpensa] = groups();
-    const prices = () =>
-      rows().map((r) => r.querySelector('.price strong')?.textContent?.replace(/\s+/g, ' '));
+    const prices = () => rows().map((r) => plain(r.querySelector('strong')?.textContent));
 
     expect(bergamo.getAttribute('aria-expanded')).toBe('false');
     expect(rows()).toHaveLength(0);
@@ -210,8 +220,9 @@ describe('Search destination groups', () => {
     await settle();
     expect(bergamo.getAttribute('aria-expanded')).toBe('true');
     expect(prices()).toEqual(['PLN 100', 'PLN 101', 'PLN 102', 'PLN 103', 'PLN 104']);
-    // Inside a group named by its airport, a direct leg does not repeat the destination.
-    expect(rows()[0].querySelector('.route')).toBeNull();
+    // Inside a group named by its airport, a direct leg names the home airport, not the destination.
+    expect(plain(rows()[0].textContent)).toContain('KRK Krakow');
+    expect(plain(rows()[0].textContent)).not.toContain('BGY');
     expect(button('Show all 7 dates')).toBeDefined();
 
     malpensa.click();
@@ -236,14 +247,14 @@ describe('Search destination groups', () => {
   });
 
   /** One offer to each of `count` airports outside the catalogue, named by their codes. */
-  const placesOffers = (count: number) =>
+  const groupsOffers = (count: number) =>
     Array.from({ length: count }, (_, i) =>
       offer(`Z${String(i).padStart(2, '0')}`, 100 + i, 1 + (i % 25), count - i),
     );
 
   it('shows 20 groups at a time with "Show more places"', async () => {
     const { fixture, settle, search, groups, heading, button } = await renderSearch();
-    await search(placesOffers(45));
+    await search(groupsOffers(45));
 
     expect(groups()).toHaveLength(20);
     expect(heading()).toBe('45 offers in 45 places, from PLN 100');
@@ -268,10 +279,10 @@ describe('Search destination groups', () => {
       expect(groups()).toHaveLength(40);
       expect(rows()).toHaveLength(1);
     };
-    await search(placesOffers(45));
+    await search(groupsOffers(45));
     await openFirst();
 
-    await search(placesOffers(42));
+    await search(groupsOffers(42));
     expect(groups()).toHaveLength(20);
     expect(rows()).toHaveLength(0);
     expect(groups()[0].getAttribute('aria-expanded')).toBe('false');
@@ -288,7 +299,7 @@ describe('Search destination groups', () => {
   });
 
   it('orders groups by their best offer and offers inside by price or by leave days', async () => {
-    const { root, settle, search, groups, groupNames, rows } = await renderSearch();
+    const { root, settle, search, groups, groupNames, rows, plain } = await renderSearch();
     await search([
       offer('BGY', 100, 4, 3),
       offer('BGY', 150, 5, 0),
@@ -296,9 +307,8 @@ describe('Search destination groups', () => {
       offer('MXP', 110, 7, 1),
       offer('MXP', 90, 8, 2),
     ]);
-    const plain = (el: Element | null | undefined) => el?.textContent?.replace(/\s+/g, ' ').trim();
-    const stamps = () => groups().map((g) => plain(g.querySelector('.stamp')));
-    const prices = () => rows().map((r) => plain(r.querySelector('.price strong')));
+    const stamps = () => groups().map((g) => plain(g.querySelector('strong')?.textContent));
+    const prices = () => rows().map((r) => plain(r.querySelector('strong')?.textContent));
     const openAll = async () => {
       for (const group of groups()) group.click();
       await settle();
@@ -321,11 +331,14 @@ describe('Search destination groups', () => {
   });
 
   it('keeps a flat list of offers for a single destination airport', async () => {
-    const { search, groups, rows, heading } = await renderSearch('BUD');
+    const { root, search, groups, rows, heading, plain } = await renderSearch('BUD');
     await search([offer('BUD', 100, 4), offer('BUD', 110, 5)]);
 
     expect(groups()).toHaveLength(0);
     expect(rows()).toHaveLength(2);
     expect(heading()).toBe('2 offers');
+    expect(root.querySelector('[data-testid="group-head"]')).toBeNull();
+    // Outside a group each leg names both of its airports.
+    expect(plain(rows()[0].textContent)).toContain('KRK Krakow → BUD Budapest');
   });
 });
