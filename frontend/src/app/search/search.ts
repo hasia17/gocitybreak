@@ -12,11 +12,11 @@ import {
 import { TranslocoService } from '@jsverse/transloco';
 import { combineLatest, map, merge, switchMap, take } from 'rxjs';
 import { Language, textsIn } from '../i18n/language';
-import { ago, plural } from '../i18n/texts';
 import { PlaceChips } from './place-chips';
 import { PlaceTranslations } from './place-translations';
 import { restorePlaces } from './place-suggestions';
 import { InfoTip } from '../ui/info-tip';
+import { OfferList } from './offer-list';
 import { offerView } from './offer-view';
 import { Catalogue, Offer, OfferKind, SearchResponse, SortOrder, sortOrders } from './search-api';
 import { filtersForm } from './search-filters';
@@ -107,7 +107,7 @@ function rejectedSearchMessage(reason: string): string {
 /** Search form for round-trip (default) or one-way offers, and the list of offers it finds. */
 @Component({
   selector: 'app-search',
-  imports: [ReactiveFormsModule, InfoTip, PlaceChips],
+  imports: [ReactiveFormsModule, InfoTip, PlaceChips, OfferList],
   styleUrls: ['./search.css', './search-filters.css', './search-results.css'],
   templateUrl: './search.html',
 })
@@ -162,14 +162,10 @@ export class Search {
     ),
   );
   /** Texts and formats of the interface language; undefined until its texts have loaded. */
-  private readonly texts = computed(() => {
+  protected readonly texts = computed(() => {
     const language = this.language();
     return language ? textsIn(this.transloco, language) : undefined;
   });
-  protected readonly priceAge = (fetchedAt: string) => {
-    const texts = this.texts();
-    return texts ? ago(texts, fetchedAt, Date.now()) : '';
-  };
 
   protected readonly kind = toSignal(this.form.controls.kind.valueChanges, {
     initialValue: this.form.controls.kind.value,
@@ -194,6 +190,8 @@ export class Search {
    * Offers of the last search in the chosen order, shown in the interface language; undefined
    * before the first search. Switching the sort reorders them at once.
    */
+  /** Changes with a new search or sort, not with the language: the list then starts at page one. */
+  protected readonly pageKey = computed(() => ({ found: this.found(), sort: this.sort() }));
   protected readonly offers = computed(() => {
     const found = this.found();
     const texts = this.texts();
@@ -203,13 +201,6 @@ export class Search {
         )
       : undefined;
   });
-  protected readonly visibleCount = signal(20);
-  protected readonly visibleOffers = computed(() => this.offers()?.slice(0, this.visibleCount()));
-
-  protected showMore() {
-    this.visibleCount.update((count) => count + 20);
-  }
-
   protected readonly loading = signal(false);
   /** The translation key of the last search's failure. */
   protected readonly error = signal<string | undefined>(undefined);
@@ -218,7 +209,6 @@ export class Search {
 
   constructor() {
     this.form.controls.sort.valueChanges.pipe(takeUntilDestroyed()).subscribe((sort) => {
-      this.visibleCount.set(20);
       // The sort is chosen over the results, after searching: remember it on its own.
       saveSearchSettings({ ...loadSearchSettings(), sort });
     });
@@ -310,7 +300,6 @@ export class Search {
     this.error.set(undefined);
     this.http.post<SearchResponse>('/api/search', buildSearchQuery(v, this.catalogue())).subscribe({
       next: (resp) => {
-        this.visibleCount.set(20);
         this.found.set({ offers: resp.offers, at: Date.now() });
         this.loading.set(false);
       },
@@ -327,12 +316,6 @@ export class Search {
   /** The text under `key` in the interface language; empty until the language's texts have loaded. */
   protected t(key: string, params?: Record<string, unknown>): string {
     return this.texts()?.t(key, params) ?? '';
-  }
-
-  /** The heading of the results, like "3 offers" or "5 ofert". */
-  protected offerCount(count: number): string {
-    const texts = this.texts();
-    return texts ? plural(texts, 'results.count', count) : '';
   }
 
   private updateApplicableFields() {
