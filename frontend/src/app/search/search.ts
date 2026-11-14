@@ -1,5 +1,14 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  DestroyRef,
+  ElementRef,
+  inject,
+  Injector,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
@@ -18,6 +27,7 @@ import { PlaceTranslations } from './place-translations';
 import { restorePlaces } from './place-suggestions';
 import { InfoTip } from '../ui/info-tip';
 import { OfferList } from './offer-list';
+import { SearchSummary, summarySearch } from './search-summary';
 import { offerView } from './offer-view';
 import { Catalogue, Offer, OfferKind, SearchResponse, SortOrder, sortOrders } from './search-api';
 import { filtersForm } from './search-filters';
@@ -108,7 +118,7 @@ function rejectedSearchMessage(reason: string): string {
 /** Search form for round-trip (default) or one-way offers, and the list of offers it finds. */
 @Component({
   selector: 'app-search',
-  imports: [ReactiveFormsModule, InfoTip, PlaceChips, OfferList],
+  imports: [ReactiveFormsModule, InfoTip, PlaceChips, OfferList, SearchSummary],
   styleUrls: ['./search.css', './search-filters.css', './search-results.css'],
   templateUrl: './search.html',
 })
@@ -118,6 +128,8 @@ export class Search {
   private readonly destroyRef = inject(DestroyRef);
   private readonly transloco = inject(TranslocoService);
   private readonly placeTranslations = inject(PlaceTranslations);
+  private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
 
   /** The only source of selectable airports, cities and countries; undefined until loaded. */
   protected readonly catalogue = signal<Catalogue | undefined>(undefined);
@@ -227,6 +239,26 @@ export class Search {
           offerView(o, found.at, texts, this.catalogue()),
         )
       : undefined;
+  });
+  /** The form as it was when the last successful search was made; undefined before one. */
+  private readonly searched = signal<SearchFormValue | undefined>(undefined);
+  /** Whether the form is folded away into the summary of the last search. */
+  protected readonly collapsed = signal(false);
+  /** The one line that stands in for the form after a search. */
+  protected readonly summary = computed(() => {
+    const searched = this.searched();
+    const catalogue = this.catalogue();
+    const texts = this.texts();
+    const language = this.language();
+    if (!this.collapsed() || !searched || !catalogue || !texts || !language) return undefined;
+    return summarySearch(
+      searched,
+      catalogue,
+      texts,
+      language,
+      this.placeTranslations.anywhere(language),
+      this.found()?.at ?? Date.now(),
+    );
   });
   protected readonly loading = signal(false);
   /** The translation key of the last search's failure. */
@@ -338,7 +370,10 @@ export class Search {
     this.http.post<SearchResponse>('/api/search', buildSearchQuery(v, this.catalogue())).subscribe({
       next: (resp) => {
         this.found.set({ offers: resp.offers, at: Date.now() });
+        this.searched.set(v);
+        this.collapsed.set(true);
         this.loading.set(false);
+        this.focusResults();
       },
       error: (error: HttpErrorResponse) => {
         const reason = typeof error.error === 'string' ? error.error.trim() : '';
@@ -348,6 +383,29 @@ export class Search {
         this.loading.set(false);
       },
     });
+  }
+
+  /** Bring the form back to change the search; every value is still in it. */
+  protected change() {
+    this.collapsed.set(false);
+    afterNextRender(
+      () => this.element.nativeElement.querySelector<HTMLElement>('app-place-chips input')?.focus(),
+      { injector: this.injector },
+    );
+  }
+
+  /** Move focus to the results heading, or to the message of a search that found nothing. */
+  private focusResults() {
+    afterNextRender(
+      () => {
+        const target = this.element.nativeElement.querySelector<HTMLElement>(
+          '[data-testid="results"] h2, [data-testid="results"] .empty',
+        );
+        target?.setAttribute('tabindex', '-1');
+        target?.focus();
+      },
+      { injector: this.injector },
+    );
   }
 
   /** The text under `key` in the interface language; empty until the language's texts have loaded. */
