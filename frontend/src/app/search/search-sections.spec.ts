@@ -204,11 +204,11 @@ describe('Search sections', () => {
     request.flush({ offers: [offer(100, 3), offer(200, 0)] });
     await fixture.whenStable();
 
-    const sort = root.querySelector('.results-head [aria-label="Sort by"]')!;
+    const sort = root.querySelector('[data-testid="results"] [aria-label="Sort by"]')!;
     expect(sort).not.toBeNull();
     expect(root.querySelector('form [aria-label="Sort by"]')).toBeNull();
     const prices = () =>
-      Array.from(root.querySelectorAll('[data-testid="offer"] .price strong')).map((p) =>
+      Array.from(root.querySelectorAll('[data-testid="offer"] strong')).map((p) =>
         p.textContent?.trim(),
       );
     const first = prices()[0];
