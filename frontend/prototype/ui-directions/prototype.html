@@ -2,6 +2,7 @@
 <!--
   PROTOTYPE — throwaway. Question: "What should the gocitybreak search page look like?"
   Three structurally different directions (A board, B postcard, C poster), switchable via ?variant=a|b|c,
+  plus D: A's board layout with C's price-first heading, in B's airmail palette (?variant=d),
   ?state=form|results|empty, ?theme=auto|light|dark. Real data: KRK -> Anywhere, 20 Nov - 13 Dec 2026, 2-3 nights.
 -->
 <html lang="pl">
@@ -228,6 +229,7 @@ button,input{font:inherit;color:inherit}
 [data-v=a]{--sw:var(--accent);--sw-knob:var(--on-accent)}
 [data-v=b]{--sw:var(--blue);--sw-knob:var(--card)}
 [data-v=c]{--sw:var(--accent);--sw-knob:var(--bg)}
+[data-v=d]{--sw:var(--blue);--sw-knob:var(--card)}
 .sw{width:44px;height:24px;border-radius:999px;border:2px solid currentColor;background:transparent;position:relative;padding:0;cursor:pointer;flex:none}
 .sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:currentColor;transition:left .15s}
 .sw[aria-checked=true]{background:var(--sw);border-color:var(--sw)}
@@ -280,6 +282,97 @@ button,input{font:inherit;color:inherit}
 .c-under{align-items:center}
 .c-under>button[aria-expanded=true]{color:var(--accent)}
 .proto .note{color:#aaa;font-size:12px;padding:0 6px}
+/* =====================================================================
+   D — TABLICA W KOPERCIE: A's board layout with C's price-first heading,
+   dressed in B's airmail palette (paper cards, red/blue stripe, price stamps)
+   ===================================================================== */
+[data-v=d]{--bg:#EEF1F4;--card:#FFFFFF;--ink:#1E2430;--muted:#5E6675;--line:#D5DBE3;--red:#C4363F;--blue:#284B9B;--on-blue:#FFFFFF;--focus:#284B9B}
+[data-v=d][data-t=dark]{--bg:#12161F;--card:#1B212D;--ink:#EEEAE2;--muted:#9AA1AE;--line:#2C3443;--red:#EE6A70;--blue:#8EA8F0;--on-blue:#12161F;--focus:#8EA8F0}
+[data-v=d]{background:var(--bg);color:var(--ink);font-family:'Figtree',system-ui,sans-serif;font-variant-numeric:tabular-nums}
+[data-v=d] .serif{font-family:'Young Serif',serif;font-weight:400}
+/* the airmail edge marks the results board (and the empty state that stands in for it) */
+.d-card{border-radius:3px;background:var(--card);box-shadow:0 1px 0 var(--line)}
+.d-air{position:relative;border-radius:3px;background:var(--card);box-shadow:0 1px 0 var(--line)}
+.d-air::before{content:"";position:absolute;left:0;right:0;top:0;height:6px;border-radius:3px 3px 0 0;z-index:1;
+  background:repeating-linear-gradient(-45deg,var(--red) 0 12px,var(--card) 12px 18px,var(--blue) 18px 30px,var(--card) 30px 36px)}
+.d-top{display:flex;justify-content:space-between;align-items:center;padding-block:20px;font-size:15px}
+.d-top>b{font-family:'Young Serif',serif;font-weight:400;font-size:19px}
+.d-lang{color:var(--muted)} .d-lang b{font-weight:600;color:var(--ink)}
+.d-hero{padding:44px 0 18px}
+.d-hero h1{font-family:'Young Serif',serif;font-weight:400;font-size:clamp(30px,5vw,46px);line-height:1.1;margin:0 0 8px}
+.d-hero p{margin:0;color:var(--muted);font-size:16px}
+.d-modes{display:flex;gap:8px;flex-wrap:wrap;margin:20px 0 12px}
+.d-seg{display:inline-flex;gap:2px;padding:3px;border-radius:4px;background:var(--card);box-shadow:0 1px 0 var(--line)}
+.d-seg button{border:0;background:transparent;padding:7px 13px;border-radius:3px;cursor:pointer;color:var(--muted);font-size:15px}
+.d-seg button[aria-pressed=true]{background:var(--blue);color:var(--on-blue)}
+.d-form{display:grid;grid-template-columns:var(--cols)}
+.d-cell{padding:12px 14px 11px;border-right:1px solid var(--line);min-width:0}
+.d-cell label{display:block;font-size:13px;color:var(--muted);margin-bottom:3px}
+.d-cell .v{font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.d-cell .ph{color:var(--muted)}
+.d-chip{display:inline-block;background:var(--bg);border-radius:3px;padding:1px 7px;margin-right:4px;color:var(--blue)}
+.d-go{border:0;background:var(--red);color:#fff;font-weight:600;padding:0 28px;cursor:pointer;font-size:16px;border-radius:0 3px 3px 0}
+[data-t=dark] .d-go{color:#1B0E10}
+.d-more{display:flex;gap:20px;margin-top:12px;color:var(--muted);font-size:15px;flex-wrap:wrap}
+.d-more button{background:none;border:0;padding:0;color:var(--blue);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.d-more button[aria-expanded=true]{text-decoration-color:var(--red);text-decoration-thickness:2px}
+@media (max-width:760px){.d-form{grid-template-columns:1fr 1fr}.d-cell{border-bottom:1px solid var(--line)}.d-cell:nth-child(2n){border-right:0}.d-cell.wide{grid-column:span 2}.d-go{grid-column:span 2;padding:14px;border-radius:0 0 3px 3px}}
+
+.d-sum{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line)}
+.d-sum .wrap{display:flex;gap:18px;align-items:center;padding-top:11px;padding-bottom:11px;font-size:15px;flex-wrap:wrap}
+.d-sum .route{font-family:'Young Serif',serif;font-size:18px}
+.d-sum span:not(.route){color:var(--blue);font-weight:600}
+.d-sum button{margin-left:auto;background:var(--card);border:1px solid var(--line);border-radius:4px;padding:6px 12px;cursor:pointer;color:var(--ink)}
+.d-head{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;padding:30px 0 14px}
+.d-head h2{font-family:'Young Serif',serif;font-weight:400;margin:0;font-size:clamp(26px,3.6vw,32px);line-height:1.15}
+.d-head small{color:var(--muted);display:block;font-size:14px;margin-top:4px}
+.d-board{padding-top:6px}
+.d-row,.d-th{display:grid;grid-template-columns:minmax(0,2.2fr) 1.3fr 1.3fr .6fr .7fr 7.5rem;align-items:center;gap:12px;padding:0 16px}
+.d-th{font-size:13px;color:var(--muted);height:38px;border-bottom:1px solid var(--line)}
+.d-row{min-height:64px;border-bottom:1px solid var(--line);width:100%;background:none;border-left:0;border-right:0;border-top:0;text-align:left;cursor:pointer;font-size:15px;color:inherit}
+.d-row:hover{background:color-mix(in srgb,var(--blue) 5%,transparent)}
+.d-row[aria-expanded=true]{border-bottom-style:dashed}
+.d-dest b{font-family:'Young Serif',serif;font-weight:400;font-size:19px}
+.d-dest span{color:var(--muted);font-size:13px;margin-left:6px}
+.d-dest .n{display:block;margin-left:0;font-size:13px;color:var(--blue)}
+/* the price stamp: the one loud thing on each row */
+.d-stamp{justify-self:end;display:inline-flex;align-items:baseline;gap:3px;padding:4px 9px;color:var(--red);background:var(--bg);
+  border:2px dashed color-mix(in srgb,var(--red) 55%,transparent);transform:rotate(-2deg);line-height:1}
+.d-row:nth-child(odd) .d-stamp{transform:rotate(2deg)}
+.d-stamp b{font-family:'Young Serif',serif;font-weight:400;font-size:24px}
+.d-stamp small{font-size:12px;color:var(--muted)}
+.d-sub{background:color-mix(in srgb,var(--bg) 55%,var(--card));border-bottom:1px solid var(--line)}
+.d-sub .d-row{cursor:default;min-height:46px;font-size:14px;border-bottom-color:color-mix(in srgb,var(--line) 70%,transparent)}
+.d-sub .d-row:hover{background:none}
+.d-sub .t{color:var(--muted)}
+.d-row>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.d-row>.d-dest{white-space:normal}
+.d-book{justify-self:end;color:var(--blue);font-weight:600;text-decoration:none;font-size:15px;white-space:nowrap}
+.d-book b{color:var(--ink);font-weight:600;margin-right:6px}
+.d-moreRow{padding:10px 16px;font-size:14px}
+.d-moreRow button,.d-showmore{background:var(--card);border:1px solid var(--line);border-radius:4px;padding:8px 14px;cursor:pointer;color:var(--ink)}
+.d-showmore{display:block;margin:18px auto 0}
+.d-mob{display:none}
+@media (max-width:760px){
+  .d-th{display:none}
+  .d-row{grid-template-columns:1fr auto;padding:12px 14px;row-gap:3px}
+  .d-row>.c-out,.d-row>.c-in,.d-row>.c-n,.d-row>.c-l{display:none}
+  .d-dest>span:not(.n){display:block;margin-left:0}
+  .d-row>.d-mob{display:block;grid-column:1/-1;color:var(--muted);font-size:13px;white-space:normal}
+  .d-sub .d-row{grid-template-columns:1fr auto}
+}
+.d-empty{padding:30px 22px 24px;margin-top:30px}
+.d-empty h2{font-family:'Young Serif',serif;font-weight:400;margin:0 0 8px;font-size:26px}
+.d-empty p{margin:0 0 18px;color:var(--muted)}
+.d-empty .acts{display:flex;gap:8px;flex-wrap:wrap}
+.d-empty .acts button{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:3px;padding:10px 14px;cursor:pointer;color:var(--ink)}
+/* D panels: paper card like B */
+.d-pan{margin-top:12px;background:var(--card);border-radius:3px;padding:20px;box-shadow:0 1px 0 var(--line)}
+.d-pan h3{font-family:'Young Serif',serif;font-weight:400;font-size:18px}
+.d-pan .tbox,.d-pan .lgrid>div{border-bottom:2px solid var(--line)}
+.d-pan .day{border:1px solid var(--line);border-radius:3px;background:var(--card);color:var(--ink)}
+.d-pan .day[aria-pressed=true]{background:var(--blue);border-color:var(--blue);color:var(--on-blue)}
+
 </style>
 </head>
 <body>
@@ -336,7 +429,7 @@ const lPanel=p=>`<div class="pan ${p}-pan" id="leave-${p}">
    :`<div class="lgrid"><div><label>Początek pracy</label><div class="v">9:00</div></div><div><label>Koniec pracy</label><div class="v">17:00</div></div><div><label>Maks. dni urlopu</label><div class="v">dowolnie</div></div></div>`}
  </div>`;
 const panels=p=>`${S.fOpen?fPanel(p):''}${S.lOpen&&rt()?lPanel(p):''}`;
-const VN={a:'A · Tablica odlotów',b:'B · Pocztówka',c:'C · Plakat'};
+const VN={a:'A · Tablica odlotów',b:'B · Pocztówka',c:'C · Plakat',d:'D · Tablica w kopercie'};
 const sysDark=()=>{const h=document.documentElement.dataset.theme;return h?h==='dark':matchMedia('(prefers-color-scheme: dark)').matches};
 
 function sync(){
@@ -457,12 +550,52 @@ R.c.empty=()=>`${cTop()}<div class="c-sum"><div class="wrap"><span class="r">Kra
  <div class="c-empty"><h2>Zero lotów do Triestu w tych dniach</h2><p>Między 20 a 30 listopada żadna para lotów nie daje 4–5 nocy. Zmień jedno z poniższych:</p>
  <div class="acts"><button>Poszerz daty do 13 gru</button><button>2–5 nocy</button><button>Gdziekolwiek z Krakowa</button></div></div></main>`;
 
+/* ---------------- D ---------------- */
+R.d={};
+const dTop=()=>`<div class="wrap d-top"><b>gocitybreak</b><span class="d-lang"><b>PL</b> | EN</span></div>`;
+R.d.form=()=>`${dTop()}<main class="wrap">
+ <div class="d-hero"><h1>Gdzie na weekend?</h1><p>Tanie loty Ryanair na krótki wyjazd do miasta.</p></div>
+ <div class="d-modes"><div class="d-seg"><button aria-pressed="${rt()}" onclick="set('kind','rt')">Tam i z powrotem</button><button aria-pressed="${!rt()}" onclick="set('kind','ow')">W jedną stronę</button></div>
+ <div class="d-seg"><button aria-pressed="${S.dm==='flex'}" onclick="set('dm','flex')">Elastyczne daty</button><button aria-pressed="${S.dm==='fixed'}" onclick="set('dm','fixed')">Stałe daty</button></div></div>
+ <form class="d-form d-card" style="--cols:1.4fr 1.4fr ${dateFields().map(()=> '1fr').join(' ')} auto" onsubmit="event.preventDefault();go('results')">
+  <div class="d-cell"><label>Skąd</label><div class="v ph">Wybierz lotnisko</div></div>
+  <div class="d-cell"><label>Dokąd</label><div class="v"><span class="d-chip">Gdziekolwiek</span></div></div>
+  ${dateFields().map(([l,v],i,a)=>`<div class="d-cell ${a.length%2&&i===a.length-1?'wide':''}"><label>${l}</label><div class="v">${v}</div></div>`).join('')}
+  <button class="d-go">Szukaj</button>
+ </form>
+ <div class="d-more"><button type="button" aria-expanded="${S.fOpen}" onclick="tg('fOpen')">Filtry</button>${rt()?`<button type="button" aria-expanded="${S.lOpen}" onclick="tg('lOpen')">Urlop</button><span>${leaveSum()}</span>`:''}</div>
+ ${panels('d')}
+</main>`;
+const dSum=(route,dates,n)=>`<div class="d-sum"><div class="wrap"><span class="route">${route}</span><span>${dates}</span><span>${n}</span><button onclick="go('form')">Zmień</button></div></div>`;
+const cheapest=()=>Math.min(...DATA.groups.map(g=>Math.min(...g.offers.map(o=>o.price))));
+R.d.results=()=>`${dTop()}${dSum(SUM.route,SUM.dates,SUM.n)}<main class="wrap">
+ <div class="d-head"><div><h2>${DATA.places} miejsc od ${zl(cheapest())} zł</h2><small>${zl(DATA.total)} ofert, ceny za osobę, bez bagażu kabinowego, ${ago}</small></div>
+ <div class="d-seg">${sortBtns()}</div></div>
+ <div class="d-board d-air" role="table">
+  <div class="d-th" role="row"><span>Kierunek</span><span>Wylot</span><span>Powrót</span><span>Noce</span><span>Urlop</span><span style="justify-self:end">Od</span></div>
+  ${groups().map(g=>{const o=g.offers[0],op=S.open.has(g.code);return `
+  <button class="d-row" aria-expanded="${op}" onclick="tog('${g.code}')">
+   <span class="d-dest"><b>${nm(g)}</b><span>${g.code}, ${g.countryPl}</span><span class="n">${terms(g.count)}</span></span>
+   <span class="c-out">${d(o.out.d)} ${o.out.t1}</span><span class="c-in">${d(o.in.d)} ${o.in.t1}</span><span class="c-n">${o.nights}</span><span class="c-l">${o.leave}</span>
+   <span class="d-stamp"><b>${zl(o.price)}</b><small>zł</small></span>
+   <span class="d-mob">${d(o.out.d)} – ${d(o.in.d)}, ${nights(o.nights)}, ${leave(o.leave)}</span>
+  </button>${op?`<div class="d-sub">${g.offers.slice(0,5).map(x=>`
+   <div class="d-row"><span>${d(x.out.d)} – ${d(x.in.d)}</span><span class="c-out t">${x.out.t1}–${x.out.t2}</span><span class="c-in t">${x.in.t1}–${x.in.t2}</span><span class="c-n">${x.nights}</span><span class="c-l">${x.leave}</span><a class="d-book" href="#"><b>${zl(x.price)} zł</b>Rezerwuj ↗</a>
+   <span class="d-mob">${x.out.t1}–${x.out.t2} tam, ${x.in.t1}–${x.in.t2} z powrotem, ${nights(x.nights)}, ${leave(x.leave)}</span></div>`).join('')}
+   <div class="d-moreRow"><button>Pokaż wszystkie ${terms(g.count)}</button></div></div>`:''}`}).join('')}
+ </div>
+ <button class="d-showmore" onclick="more()">Pokaż więcej miejsc</button>
+</main>`;
+R.d.empty=()=>`${dTop()}${dSum('Kraków → Triest','20 lis – 30 lis','4–5 nocy')}<main class="wrap">
+ <div class="d-empty d-air"><h2>Brak lotów Kraków → Triest w tych dniach</h2><p>Żadna para lotów nie daje 4–5 nocy między 20 a 30 listopada. Spróbuj jednej z tych zmian:</p>
+ <div class="acts"><button>Poszerz daty do 13 gru</button><button>Pozwól na 2–5 nocy</button><button>Szukaj gdziekolwiek</button></div></div></main>`;
+
 function go(s){S.state=s;sync()}
 function tog(c){S.open.has(c)?S.open.delete(c):S.open.add(c);const y=scrollY;sync();scrollTo(0,y)}
 function more(){S.shown+=8;const y=scrollY;sync();scrollTo(0,y)}
-const order=['a','b','c'];
-document.getElementById('prev').onclick=()=>{S.v=order[(order.indexOf(S.v)+2)%3];sync()};
-document.getElementById('next').onclick=()=>{S.v=order[(order.indexOf(S.v)+1)%3];sync()};
+const order=['a','b','c','d'];
+document.getElementById('prev').onclick=()=>{S.v=order[(order.indexOf(S.v)+order.length-1)%order.length];sync()};
+document.getElementById('next').onclick=()=>{S.v=order[(order.indexOf(S.v)+1)%order.length];sync()};
 document.querySelectorAll('[data-state]').forEach(b=>b.onclick=()=>go(b.dataset.state));
 document.querySelectorAll('[data-theme]').forEach(b=>b.onclick=()=>{S.theme=b.dataset.theme;sync()});
 addEventListener('keydown',e=>{if(e.target.closest('input,textarea,[contenteditable]'))return;if(e.key==='ArrowLeft')document.getElementById('prev').click();if(e.key==='ArrowRight')document.getElementById('next').click()});
