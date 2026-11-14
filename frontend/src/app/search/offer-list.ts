@@ -66,7 +66,11 @@ export class OfferList {
       offers,
       places: plural(texts, 'results.places', groups.length),
       // "From" already says the price is a bound; the approximate mark is left to the offers.
-      price: money(texts, { amount: cheapest.amount, currency: cheapest.currency }, { whole: true }),
+      price: money(
+        texts,
+        { amount: cheapest.amount, currency: cheapest.currency },
+        { whole: true },
+      ),
     });
   }
 }

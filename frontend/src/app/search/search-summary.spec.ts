@@ -180,7 +180,7 @@ describe('Search summary', () => {
     const { root, found } = await render();
     await found(3);
     const heading = root.querySelector<HTMLElement>('[data-testid="results"] h2')!;
-    expect(heading.textContent).toBe('3 offers');
+    expect(heading.textContent?.replace(/\s+/g, ' ')).toBe('3 offers in 1 place, from PLN 100');
     expect(document.activeElement).toBe(heading);
   });
 

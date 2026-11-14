@@ -239,7 +239,12 @@ export class Search {
     if (!found || !texts || !searched) return undefined;
     if (!coversSeveralAirports(searched.destination, searched.exclusions, this.catalogue()))
       return undefined;
-    return destinationGroups(sortOffers(found.offers, this.sort()), found.at, texts, this.catalogue());
+    return destinationGroups(
+      sortOffers(found.offers, this.sort()),
+      found.at,
+      texts,
+      this.catalogue(),
+    );
   });
   /**
    * Offers of the last search in the chosen order, shown in the interface language; undefined

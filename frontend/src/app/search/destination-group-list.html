@@ -16,7 +16,9 @@
             >{{ group.airport }}{{ group.country ? ', ' + group.country : '' }}</span
           >
           @if (group.offers.length > 1) {
-            <span class="more-dates">{{ count('results.moreDates', group.offers.length - 1) }}</span>
+            <span class="more-dates">{{
+              count('results.moreDates', group.offers.length - 1)
+            }}</span>
           }
         </span>
         <span class="details">
