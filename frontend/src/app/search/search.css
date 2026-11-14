@@ -167,23 +167,6 @@ h1 {
 .leave input {
   width: 6.5rem;
 }
-/* In the results header, pushed to the right edge opposite the offer count. */
-.sort {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-left: auto;
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-.sort .toggle {
-  padding: 0.15rem;
-}
-.sort .toggle label {
-  min-height: 2rem;
-  padding: 0 0.75rem;
-  font-size: 0.8rem;
-}
 .arrow {
   margin-top: 1.4rem;
   color: var(--muted);
