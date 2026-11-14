@@ -18,6 +18,9 @@ import { PlaceTranslations } from './place-translations';
 import { restorePlaces } from './place-suggestions';
 import { InfoTip } from '../ui/info-tip';
 import { OfferList } from './offer-list';
+import { EmptyResults } from './empty-results';
+import { emptyResult, SuggestionId } from './empty-suggestions';
+import { ResultsSkeleton } from './results-skeleton';
 import { offerView } from './offer-view';
 import { Catalogue, Offer, OfferKind, SearchResponse, SortOrder, sortOrders } from './search-api';
 import { filtersForm } from './search-filters';
@@ -108,7 +111,14 @@ function rejectedSearchMessage(reason: string): string {
 /** Search form for round-trip (default) or one-way offers, and the list of offers it finds. */
 @Component({
   selector: 'app-search',
-  imports: [ReactiveFormsModule, InfoTip, PlaceChips, OfferList],
+  imports: [
+    ReactiveFormsModule,
+    InfoTip,
+    PlaceChips,
+    OfferList,
+    EmptyResults,
+    ResultsSkeleton,
+  ],
   styleUrls: ['./search.css', './search-filters.css', './search-results.css'],
   templateUrl: './search.html',
 })
@@ -209,7 +219,9 @@ export class Search {
   });
 
   /** Offers of the last search and when they arrived; undefined before the first search. */
-  private readonly found = signal<{ offers: Offer[]; at: number } | undefined>(undefined);
+  private readonly found = signal<
+    { offers: Offer[]; at: number; searched: SearchFormValue } | undefined
+  >(undefined);
   private readonly sort = toSignal(this.form.controls.sort.valueChanges, {
     initialValue: this.form.controls.sort.value,
   });
@@ -226,6 +238,15 @@ export class Search {
       ? sortOffers(found.offers, this.sort()).map((o) =>
           offerView(o, found.at, texts, this.catalogue()),
         )
+      : undefined;
+  });
+  /** What an empty search says and suggests, from the query that was searched; undefined if it found offers. */
+  protected readonly emptyResult = computed(() => {
+    const found = this.found();
+    const texts = this.texts();
+    const language = this.language();
+    return found && texts && language && found.offers.length === 0
+      ? emptyResult(found.searched, this.catalogue(), language, texts, localIsoDate(0))
       : undefined;
   });
   protected readonly loading = signal(false);
@@ -337,7 +358,7 @@ export class Search {
     this.error.set(undefined);
     this.http.post<SearchResponse>('/api/search', buildSearchQuery(v, this.catalogue())).subscribe({
       next: (resp) => {
-        this.found.set({ offers: resp.offers, at: Date.now() });
+        this.found.set({ offers: resp.offers, at: Date.now(), searched: v });
         this.loading.set(false);
       },
       error: (error: HttpErrorResponse) => {
@@ -348,6 +369,14 @@ export class Search {
         this.loading.set(false);
       },
     });
+  }
+
+  /** Applies a suggested change to the form and searches again. */
+  protected applySuggestion(id: SuggestionId) {
+    const suggestion = this.emptyResult()?.suggestions.find((s) => s.id === id);
+    if (!suggestion) return;
+    this.form.patchValue(suggestion.patch);
+    this.submit();
   }
 
   /** The text under `key` in the interface language; empty until the language's texts have loaded. */

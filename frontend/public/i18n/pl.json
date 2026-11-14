@@ -119,8 +119,16 @@
     "label": "Wyniki wyszukiwania",
     "loading": "Szukamy ofert…",
     "showMore": "Pokaż więcej",
-    "emptyRoundTrip": "Żadna oferta nie pasuje do wyszukiwania. Spróbuj je poluzować: szersze okno podróży, więcej lotnisk, większy zakres nocy, więcej dni urlopu albo mniej filtrów: szersze przedziały godzin, więcej dni tygodnia.",
-    "emptyOneWay": "Żadna oferta nie pasuje do wyszukiwania. Spróbuj je poluzować: szersze okno podróży, więcej lotnisk albo mniej filtrów: szersze przedziały godzin, więcej dni tygodnia.",
+    "empty": {
+      "title": "Brak ofert na trasie {{route}}",
+      "tryOne": "Nic nie znaleziono dla terminu {{dates}}. Spróbuj jednej z tych zmian:",
+      "tryMore": "Nic nie znaleziono dla terminu {{dates}}. Spróbuj dodać lotniska albo poluzować filtry: szersze przedziały godzin, więcej dni tygodnia.",
+      "widenWindow": "Poszerz okno o 14 dni (do {{date}})",
+      "moreNights": "Dopuść {{min}}–{{max}} nocy",
+      "removeExclusions": "Usuń wykluczenia",
+      "anywhere": "Szukaj gdziekolwiek",
+      "flexibleDates": "Szukaj elastycznie, 3 dni przed i po"
+    },
     "count": {
       "one": "{{count}} oferta",
       "few": "{{count}} oferty",

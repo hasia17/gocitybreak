@@ -117,8 +117,16 @@
     "label": "Search results",
     "loading": "Searching for offers…",
     "showMore": "Show more",
-    "emptyRoundTrip": "No offers match your search. Try loosening it: a wider travel window, more airports, more nights to choose from, more leave days, or fewer filters: wider time ranges, more weekdays.",
-    "emptyOneWay": "No offers match your search. Try loosening it: a wider travel window, more airports, or fewer filters: wider time ranges, more weekdays.",
+    "empty": {
+      "title": "No offers for {{route}}",
+      "tryOne": "Nothing found for {{dates}}. Try one of these changes:",
+      "tryMore": "Nothing found for {{dates}}. Try more airports, or fewer filters: wider time ranges, more weekdays.",
+      "widenWindow": "Widen the window by 14 days (until {{date}})",
+      "moreNights": "Allow {{min}}–{{max}} nights",
+      "removeExclusions": "Remove exclusions",
+      "anywhere": "Search Anywhere",
+      "flexibleDates": "Search flexible dates, 3 days either side"
+    },
     "count": {
       "one": "{{count}} offer",
       "other": "{{count}} offers"
