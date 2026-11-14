@@ -10,9 +10,14 @@ export interface Texts {
  * The text for a count: the key's plural form for `count` in the locale (`one`, `few`, `many` or
  * `other`, as `Intl.PluralRules` names them), with `{{count}}` filled in.
  */
-export function plural(texts: Texts, key: string, count: number): string {
+export function plural(
+  texts: Texts,
+  key: string,
+  count: number,
+  params: Record<string, unknown> = {},
+): string {
   const form = new Intl.PluralRules(texts.locale).select(count);
-  return texts.t(`${key}.${form}`, { count });
+  return texts.t(`${key}.${form}`, { ...params, count });
 }
 
 /** A price like "123,45 zł" or "PLN 123.45", prefixed with "≈ " when approximate. */

@@ -158,8 +158,31 @@
         </svg>
       </button>
     </div>
+    <div class="sections">
+      @if (applies('leave')) {
+        <button
+          class="section-toggle"
+          type="button"
+          aria-controls="leave-panel"
+          [attr.aria-expanded]="leaveOpen()"
+          (click)="leaveOpen.set(!leaveOpen())"
+        >
+          <span class="section-name">{{ t('search.leave') }}</span>
+          <span class="section-summary">{{ leaveSummary() }}</span>
+        </button>
+      }
+      <button
+        class="section-toggle"
+        type="button"
+        aria-controls="filters-panel"
+        [attr.aria-expanded]="filtersOpen()"
+        (click)="filtersOpen.set(!filtersOpen())"
+      >
+        <span class="section-name">{{ t('search.filters') }}</span>
+      </button>
+    </div>
     @if (applies('leave')) {
-      <div class="options">
+      <div class="options" id="leave-panel" [hidden]="!leaveOpen()">
         <ng-container formGroupName="leave">
           <label class="check leave-switch">
             <input type="checkbox" role="switch" formControlName="ignoreLeave" />
@@ -226,8 +249,7 @@
         </ng-container>
       </div>
     }
-    <details class="filters" formGroupName="filters">
-      <summary>{{ t('search.filters') }}</summary>
+    <div class="filters" id="filters-panel" formGroupName="filters" [hidden]="!filtersOpen()">
       <div class="filters-body">
         <label class="check"
           ><input type="checkbox" formControlName="directOnly" />{{ t('search.directOnly') }}</label
@@ -348,7 +370,7 @@
           </fieldset>
         }
       </div>
-    </details>
+    </div>
   </form>
 </section>
 

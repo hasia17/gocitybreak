@@ -38,6 +38,14 @@
       "price": "Price",
       "leaveDays": "Leave days"
     },
+    "leave": "Leave",
+    "leaveSummary": {
+      "unlimited": "Work {{start}}–{{end}}, no leave limit",
+      "limited": {
+        "one": "Work {{start}}–{{end}}, up to {{count}} leave day",
+        "other": "Work {{start}}–{{end}}, up to {{count}} leave days"
+      }
+    },
     "filters": "Filters",
     "directOnly": "Direct flights only",
     "localTimes": "Hours in local time at each airport.",
