@@ -16,7 +16,9 @@
 *{box-sizing:border-box}
 html,body{margin:0}
 html{overflow-x:hidden}
-body{background:var(--bg);font-family:inherit;font-size:16px;line-height:normal}
+body{background:var(--bg);color:var(--ink);font-family:inherit;font-size:16px;line-height:normal}
+:root{color-scheme:light}
+:root[data-t=dark]{color-scheme:dark}
 body{min-height:100vh;-webkit-font-smoothing:antialiased}
 button,input{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
