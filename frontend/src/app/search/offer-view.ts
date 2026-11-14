@@ -34,12 +34,12 @@ export function offerView(offer: Offer, now: number, texts: Texts, catalogue?: C
           day: shortDay(texts, flight.departure.date, dateYear !== year),
           departureTime: flight.departure.time,
           arrivalTime: flight.arrival.time,
-          times: `${flight.departure.time} → ${flight.arrival.time}`,
           arrivalDate: flight.arrival.date,
           daysLater: Math.round(
             (Date.parse(flight.arrival.date) - Date.parse(flight.departure.date)) / 86_400_000,
           ),
-          route: `${airportName(flight.departureAirport)} → ${airportName(flight.arrivalAirport)}`,
+          from: airportName(flight.departureAirport),
+          to: airportName(flight.arrivalAirport),
         };
       }),
     })),

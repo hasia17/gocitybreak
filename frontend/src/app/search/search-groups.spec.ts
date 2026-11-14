@@ -137,7 +137,7 @@ describe('Search destination groups', () => {
       Array.from(root.querySelectorAll<HTMLButtonElement>('[data-testid="results"] button')).find(
         (b) => b.textContent?.trim() === text,
       );
-    return { fixture, root, settle, search, groups, groupNames, rows, heading, button };
+    return { fixture, root, settle, search, groups, groupNames, rows, heading, button, plain };
   }
 
   it('groups offers to Anywhere by the airport the outbound leg lands at', async () => {
@@ -197,7 +197,7 @@ describe('Search destination groups', () => {
   });
 
   it('opens a group on its first 5 offers, shows all on demand and keeps other groups open', async () => {
-    const { fixture, settle, search, groups, rows, button } = await renderSearch();
+    const { fixture, settle, search, groups, rows, button, plain } = await renderSearch();
     await search([...offersTo('BGY', 7, 100), ...offersTo('MXP', 3, 200)]);
     const [bergamo, malpensa] = groups();
     const prices = () =>
@@ -210,8 +210,9 @@ describe('Search destination groups', () => {
     await settle();
     expect(bergamo.getAttribute('aria-expanded')).toBe('true');
     expect(prices()).toEqual(['PLN 100', 'PLN 101', 'PLN 102', 'PLN 103', 'PLN 104']);
-    // Inside a group named by its airport, a direct leg does not repeat the destination.
-    expect(rows()[0].querySelector('.route')).toBeNull();
+    // Inside a group named by its airport, a direct leg names the home airport, not the destination.
+    expect(plain(rows()[0].textContent)).toContain('KRK Krakow');
+    expect(plain(rows()[0].textContent)).not.toContain('BGY');
     expect(button('Show all 7 dates')).toBeDefined();
 
     malpensa.click();
@@ -321,11 +322,13 @@ describe('Search destination groups', () => {
   });
 
   it('keeps a flat list of offers for a single destination airport', async () => {
-    const { search, groups, rows, heading } = await renderSearch('BUD');
+    const { search, groups, rows, heading, plain } = await renderSearch('BUD');
     await search([offer('BUD', 100, 4), offer('BUD', 110, 5)]);
 
     expect(groups()).toHaveLength(0);
     expect(rows()).toHaveLength(2);
     expect(heading()).toBe('2 offers');
+    // Outside a group each leg names both of its airports.
+    expect(plain(rows()[0].textContent)).toContain('KRK Krakow → BUD Budapest');
   });
 });
