@@ -34,6 +34,7 @@ export function offerView(offer: Offer, now: number, texts: Texts, catalogue?: C
           day: shortDay(texts, flight.departure.date, dateYear !== year),
           departureTime: flight.departure.time,
           arrivalTime: flight.arrival.time,
+          times: `${flight.departure.time} → ${flight.arrival.time}`,
           arrivalDate: flight.arrival.date,
           daysLater: Math.round(
             (Date.parse(flight.arrival.date) - Date.parse(flight.departure.date)) / 86_400_000,
@@ -52,13 +53,21 @@ export function offerView(offer: Offer, now: number, texts: Texts, catalogue?: C
     freeLeave: offer.leaveDays === 0,
     separateTickets:
       tickets.length > 1 ? plural(texts, 'results.separateTickets', tickets.length) : undefined,
-    price: money(texts, offer.price),
+    price: money(texts, offer.price, { whole: true }),
     approximatePrice: !!offer.price.approximate,
     foreignPrices: legs
       .flatMap((leg) => leg.flights)
       .map((flight) => flight.originalPrice)
       .filter((price) => price.currency !== 'PLN')
       .map((price) => money(texts, price)),
+    /** What the one ⓘ says: the exchange rate (if converted), the stored-price age, ticket risk. */
+    priceInfo: [
+      offer.price.approximate ? texts.t('tips.approximatePrice.text') : undefined,
+      texts.t('tips.priceAge.text'),
+      tickets.length > 1 ? texts.t('tips.separateTickets.text') : undefined,
+    ]
+      .filter(Boolean)
+      .join(' '),
     priceFetchedAt: offer.priceFetchedAt,
     priceAge: ago(texts, offer.priceFetchedAt, now),
     tickets,

@@ -50,14 +50,65 @@ describe('offerView', () => {
       day: 'Sat 5 Dec',
       departureTime: '23:30',
       arrivalTime: '01:20',
+      times: '23:30 → 01:20',
       arrivalDate: '2026-12-06',
       daysLater: 1,
       route: 'BGY → KRK',
     });
-    expect(plain(view.price)).toBe('≈ PLN 84.98');
+    expect(plain(view.price)).toBe('≈ PLN 85');
     expect(view.foreignPrices).toEqual(['€19.99']);
     expect(view.priceAge).toBe('3 hr ago');
     expect(view.tickets[0].url).toContain('originIata=BGY');
+  });
+
+  it('rounds the price to whole zloty, half up, keeping the approximate mark', () => {
+    const priced = (amount: number, approximate: boolean, language: Language = 'en') =>
+      plain(
+        offerView({ ...offer, price: { amount, currency: 'PLN', approximate } }, now, language)
+          .price,
+      );
+    expect(priced(156.5, true)).toBe('≈ PLN 157');
+    expect(priced(156.49, true)).toBe('≈ PLN 156');
+    expect(priced(89.99, false)).toBe('PLN 90');
+    expect(priced(0.5, false)).toBe('PLN 1');
+    expect(priced(1234.5, false, 'pl')).toBe('1235 zł');
+    expect(priced(156.5, true, 'pl')).toBe('≈ 157 zł');
+  });
+
+  it('gives each flight its day and times separately, in both languages', () => {
+    const flight = offerView(offer, now).legs[0].flights[0];
+    expect([flight.day, flight.times]).toEqual(['Sat 5 Dec', '23:30 → 01:20']);
+    const polish = offerView(offer, now, 'pl').legs[0].flights[0];
+    expect([polish.day, polish.times]).toEqual(['sob 5 gru', '23:30 → 01:20']);
+  });
+
+  it('keeps foreign original prices out of the whole-zloty price', () => {
+    const view = offerView(offer, now);
+    expect(view.foreignPrices).toEqual(['€19.99']);
+    expect(offerView(offer, now, 'pl').foreignPrices.map(plain)).toEqual(['19,99 €']);
+    const home: Offer = {
+      ...offer,
+      price: { amount: 19.99, currency: 'PLN', approximate: false },
+      outbound: {
+        isDirect: true,
+        flights: [
+          { ...offer.outbound.flights[0], originalPrice: { amount: 19.99, currency: 'PLN' } },
+        ],
+      },
+    };
+    expect(offerView(home, now).foreignPrices).toEqual([]);
+  });
+
+  it('explains the exchange rate only when approximate, always the stored-price age', () => {
+    const approximate = offerView(offer, now).priceInfo;
+    expect(approximate).toMatch(/NBP mid-market rate.*stored price.*may have changed/);
+    const exact = offerView(
+      { ...offer, price: { amount: 85, currency: 'PLN', approximate: false } },
+      now,
+    ).priceInfo;
+    expect(exact).not.toContain('NBP');
+    expect(exact).toContain('stored price');
+    expect(offerView(offer, now, 'pl').priceInfo).toContain('NBP');
   });
 
   it('labels the outbound and return legs in the interface language', () => {
@@ -155,6 +206,7 @@ describe('offerView', () => {
     expect(view.freeLeave).toBe(true);
     expect(view.priceAge).toBe('27 days ago');
     expect(view.separateTickets).toBe('Booked as 3 separate one-way tickets');
+    expect(view.priceInfo).toMatch(/self-transfer.*own risk/);
     expect(view.tickets).toHaveLength(3);
   });
 
@@ -178,7 +230,7 @@ describe('offerView', () => {
       );
     const two = view(2, 2);
     expect(two.legs[0].flights[0].day).toBe('sob 5 gru');
-    expect(plain(two.price)).toBe('≈ 84,98 zł');
+    expect(plain(two.price)).toBe('≈ 85 zł');
     expect(two.foreignPrices.map(plain)).toEqual(['19,99 €', '19,99 €', '19,99 €']);
     expect(two.priceAge).toBe('2 dni temu');
     expect(two.nights).toBe('2 noce');
