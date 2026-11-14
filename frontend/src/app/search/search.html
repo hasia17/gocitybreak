@@ -1,4 +1,8 @@
-<section class="hero" [class.compact]="offers() !== undefined">
+@if (summary(); as summary) {
+  <app-search-summary [summary]="summary" [changeLabel]="t('search.change')" (change)="change()" />
+}
+
+<section class="hero" [class.compact]="offers() !== undefined" [hidden]="collapsed()">
   <h1>{{ t('search.title') }}</h1>
   <p class="lede">{{ t('search.lede') }}</p>
 
@@ -57,7 +61,6 @@
           [error]="validationMessage('homeAirports')"
           [class.invalid]="invalid('homeAirports')"
         />
-        <span class="arrow" aria-hidden="true">→</span>
         <app-place-chips
           class="field"
           formControlName="destination"
@@ -71,18 +74,6 @@
           [error]="validationMessage('destination')"
           [class.invalid]="invalid('destination')"
         />
-        <app-place-chips
-          class="field"
-          formControlName="exclusions"
-          field="exclusions"
-          [catalogue]="catalogue()"
-          [language]="language() ?? 'en'"
-          [label]="t('search.except')"
-          [placeholder]="t('search.exceptPlaceholder')"
-          [invalid]="invalid('exclusions')"
-          [error]="validationMessage('exclusions')"
-        />
-        <span class="divider" aria-hidden="true"></span>
         <label class="field" [class.invalid]="invalid('from')">
           {{ t(dateMode() === 'fixed' ? 'search.outboundDate' : 'search.earliest') }}
           <input
@@ -151,15 +142,35 @@
         type="submit"
         [disabled]="loading() || !catalogue()"
         [attr.aria-busy]="loading()"
-        [attr.aria-label]="t('search.submit')"
       >
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-          <path d="M5 12h14M13 6l6 6-6 6" />
-        </svg>
+        {{ t('search.submit') }}
+      </button>
+    </div>
+    <div class="sections">
+      @if (applies('leave')) {
+        <button
+          class="section-toggle"
+          type="button"
+          aria-controls="leave-panel"
+          [attr.aria-expanded]="leaveOpen()"
+          (click)="leaveOpen.set(!leaveOpen())"
+        >
+          <span class="section-name">{{ t('search.leave') }}</span>
+          <span class="section-summary">{{ leaveSummary() }}</span>
+        </button>
+      }
+      <button
+        class="section-toggle"
+        type="button"
+        aria-controls="filters-panel"
+        [attr.aria-expanded]="filtersOpen()"
+        (click)="filtersOpen.set(!filtersOpen())"
+      >
+        <span class="section-name">{{ filtersLabel() }}</span>
       </button>
     </div>
     @if (applies('leave')) {
-      <div class="options">
+      <div class="options" id="leave-panel" [hidden]="!leaveOpen()">
         <ng-container formGroupName="leave">
           <label class="check leave-switch">
             <input type="checkbox" role="switch" formControlName="ignoreLeave" />
@@ -226,129 +237,150 @@
         </ng-container>
       </div>
     }
-    <details class="filters" formGroupName="filters">
-      <summary>{{ t('search.filters') }}</summary>
+    <div class="filters" id="filters-panel" [hidden]="!filtersOpen()">
       <div class="filters-body">
-        <label class="check"
-          ><input type="checkbox" formControlName="directOnly" />{{ t('search.directOnly') }}</label
-        >
-        <div class="time-ranges">
-          <p class="note">{{ t('search.localTimes') }}</p>
-          @for (moment of moments; track moment.name) {
-            @if (applies('filters.' + moment.name)) {
-              @let rangeInvalid = invalid('filters.' + moment.name);
-              @let label = t('search.moment.' + moment.name);
-              <div class="time-range" [formGroupName]="moment.name" [class.invalid]="rangeInvalid">
-                <span class="field-heading"
-                  >{{ label }}
-                  <app-info-tip
-                    [label]="t('tips.' + moment.name + '.label')"
-                    [text]="t('tips.localTimes.text')"
+        <app-place-chips
+          class="field"
+          formControlName="exclusions"
+          field="exclusions"
+          [catalogue]="catalogue()"
+          [language]="language() ?? 'en'"
+          [label]="t('search.except')"
+          [placeholder]="t('search.exceptPlaceholder')"
+          [invalid]="invalid('exclusions')"
+          [error]="validationMessage('exclusions')"
+        />
+        <ng-container formGroupName="filters">
+          <label class="check"
+            ><input type="checkbox" formControlName="directOnly" />{{
+              t('search.directOnly')
+            }}</label
+          >
+          <div class="time-ranges">
+            <p class="note">{{ t('search.localTimes') }}</p>
+            @for (moment of moments; track moment.name) {
+              @if (applies('filters.' + moment.name)) {
+                @let rangeInvalid = invalid('filters.' + moment.name);
+                @let label = t('search.moment.' + moment.name);
+                <div
+                  class="time-range"
+                  [formGroupName]="moment.name"
+                  [class.invalid]="rangeInvalid"
+                >
+                  <span class="field-heading"
+                    >{{ label }}
+                    <app-info-tip
+                      [label]="t('tips.' + moment.name + '.label')"
+                      [text]="t('tips.localTimes.text')"
+                    />
+                  </span>
+                  <input
+                    type="time"
+                    formControlName="from"
+                    [attr.aria-label]="t('search.rangeFrom', { moment: label })"
+                    [attr.aria-invalid]="rangeInvalid"
+                    [attr.aria-describedby]="errorId('filters.' + moment.name)"
                   />
-                </span>
-                <input
-                  type="time"
-                  formControlName="from"
-                  [attr.aria-label]="t('search.rangeFrom', { moment: label })"
-                  [attr.aria-invalid]="rangeInvalid"
-                  [attr.aria-describedby]="errorId('filters.' + moment.name)"
-                />
-                <span aria-hidden="true">–</span>
-                <input
-                  type="time"
-                  formControlName="to"
-                  [attr.aria-label]="t('search.rangeTo', { moment: label })"
-                  [attr.aria-invalid]="rangeInvalid"
-                  [attr.aria-describedby]="errorId('filters.' + moment.name)"
-                />
-                @if (validationMessage('filters.' + moment.name); as message) {
-                  <span class="field-error" [id]="errorId('filters.' + moment.name)" role="alert">{{
-                    message
-                  }}</span>
-                }
-              </div>
+                  <span aria-hidden="true">–</span>
+                  <input
+                    type="time"
+                    formControlName="to"
+                    [attr.aria-label]="t('search.rangeTo', { moment: label })"
+                    [attr.aria-invalid]="rangeInvalid"
+                    [attr.aria-describedby]="errorId('filters.' + moment.name)"
+                  />
+                  @if (validationMessage('filters.' + moment.name); as message) {
+                    <span
+                      class="field-error"
+                      [id]="errorId('filters.' + moment.name)"
+                      role="alert"
+                      >{{ message }}</span
+                    >
+                  }
+                </div>
+              }
             }
+          </div>
+          @if (applies('filters.outboundDepartureWeekdays')) {
+            <fieldset
+              class="days"
+              formGroupName="outboundDepartureWeekdays"
+              [class.invalid]="noDayLeft('outboundDepartureWeekdays')"
+              [attr.aria-describedby]="errorId('filters.outboundDepartureWeekdays')"
+            >
+              <legend>
+                {{ t('search.outboundDays') }}
+                <app-info-tip [label]="t('search.daysInfo')" [text]="t('search.daysNote')" />
+              </legend>
+              @for (day of weekdays; track day.value) {
+                <label
+                  ><input
+                    type="checkbox"
+                    [formControlName]="day.value"
+                    [attr.aria-invalid]="
+                      noDayLeft('outboundDepartureWeekdays') &&
+                      !form.controls.filters.controls.outboundDepartureWeekdays.controls[day.value]
+                        .disabled
+                    "
+                    [attr.aria-describedby]="
+                      form.controls.filters.controls.outboundDepartureWeekdays.controls[day.value]
+                        .disabled
+                        ? null
+                        : errorId('filters.outboundDepartureWeekdays')
+                    "
+                  />{{ t('search.weekday.' + day.value) }}</label
+                >
+              }
+              @if (validationMessage('filters.outboundDepartureWeekdays'); as message) {
+                <span
+                  class="field-error"
+                  [id]="errorId('filters.outboundDepartureWeekdays')"
+                  role="alert"
+                  >{{ message }}</span
+                >
+              }
+            </fieldset>
           }
-        </div>
-        @if (applies('filters.outboundDepartureWeekdays')) {
-          <fieldset
-            class="days"
-            formGroupName="outboundDepartureWeekdays"
-            [class.invalid]="noDayLeft('outboundDepartureWeekdays')"
-            [attr.aria-describedby]="errorId('filters.outboundDepartureWeekdays')"
-          >
-            <legend>
-              {{ t('search.outboundDays') }}
-              <app-info-tip [label]="t('search.daysInfo')" [text]="t('search.daysNote')" />
-            </legend>
-            @for (day of weekdays; track day.value) {
-              <label
-                ><input
-                  type="checkbox"
-                  [formControlName]="day.value"
-                  [attr.aria-invalid]="
-                    noDayLeft('outboundDepartureWeekdays') &&
-                    !form.controls.filters.controls.outboundDepartureWeekdays.controls[day.value]
-                      .disabled
-                  "
-                  [attr.aria-describedby]="
-                    form.controls.filters.controls.outboundDepartureWeekdays.controls[day.value]
-                      .disabled
-                      ? null
-                      : errorId('filters.outboundDepartureWeekdays')
-                  "
-                />{{ t('search.weekday.' + day.value) }}</label
-              >
-            }
-            @if (validationMessage('filters.outboundDepartureWeekdays'); as message) {
-              <span
-                class="field-error"
-                [id]="errorId('filters.outboundDepartureWeekdays')"
-                role="alert"
-                >{{ message }}</span
-              >
-            }
-          </fieldset>
-        }
-        @if (applies('filters.inboundDepartureWeekdays')) {
-          <fieldset
-            class="days"
-            formGroupName="inboundDepartureWeekdays"
-            [class.invalid]="noDayLeft('inboundDepartureWeekdays')"
-            [attr.aria-describedby]="errorId('filters.inboundDepartureWeekdays')"
-          >
-            <legend>{{ t('search.inboundDays') }}</legend>
-            @for (day of weekdays; track day.value) {
-              <label
-                ><input
-                  type="checkbox"
-                  [formControlName]="day.value"
-                  [attr.aria-invalid]="
-                    noDayLeft('inboundDepartureWeekdays') &&
-                    !form.controls.filters.controls.inboundDepartureWeekdays.controls[day.value]
-                      .disabled
-                  "
-                  [attr.aria-describedby]="
-                    form.controls.filters.controls.inboundDepartureWeekdays.controls[day.value]
-                      .disabled
-                      ? null
-                      : errorId('filters.inboundDepartureWeekdays')
-                  "
-                />{{ t('search.weekday.' + day.value) }}</label
-              >
-            }
-            @if (validationMessage('filters.inboundDepartureWeekdays'); as message) {
-              <span
-                class="field-error"
-                [id]="errorId('filters.inboundDepartureWeekdays')"
-                role="alert"
-                >{{ message }}</span
-              >
-            }
-          </fieldset>
-        }
+          @if (applies('filters.inboundDepartureWeekdays')) {
+            <fieldset
+              class="days"
+              formGroupName="inboundDepartureWeekdays"
+              [class.invalid]="noDayLeft('inboundDepartureWeekdays')"
+              [attr.aria-describedby]="errorId('filters.inboundDepartureWeekdays')"
+            >
+              <legend>{{ t('search.inboundDays') }}</legend>
+              @for (day of weekdays; track day.value) {
+                <label
+                  ><input
+                    type="checkbox"
+                    [formControlName]="day.value"
+                    [attr.aria-invalid]="
+                      noDayLeft('inboundDepartureWeekdays') &&
+                      !form.controls.filters.controls.inboundDepartureWeekdays.controls[day.value]
+                        .disabled
+                    "
+                    [attr.aria-describedby]="
+                      form.controls.filters.controls.inboundDepartureWeekdays.controls[day.value]
+                        .disabled
+                        ? null
+                        : errorId('filters.inboundDepartureWeekdays')
+                    "
+                  />{{ t('search.weekday.' + day.value) }}</label
+                >
+              }
+              @if (validationMessage('filters.inboundDepartureWeekdays'); as message) {
+                <span
+                  class="field-error"
+                  [id]="errorId('filters.inboundDepartureWeekdays')"
+                  role="alert"
+                  >{{ message }}</span
+                >
+              }
+            </fieldset>
+          }
+        </ng-container>
       </div>
-    </details>
+    </div>
   </form>
 </section>
 
@@ -360,133 +392,26 @@
   <!-- Keep progress outside the busy region so its live announcement is not deferred. -->
   <p class="search-progress" role="status">{{ loading() ? t('results.loading') : '' }}</p>
   <section
+    #results
     data-testid="results"
     role="region"
     [attr.aria-label]="t('results.label')"
     [attr.aria-busy]="loading()"
     aria-live="polite"
   >
-    @if (offers(); as offers) {
-      @if (offers.length === 0) {
-        <p class="empty">
-          {{ t(kind() === 'roundTrip' ? 'results.emptyRoundTrip' : 'results.emptyOneWay') }}
-        </p>
-      } @else {
-        <header class="results-head">
-          <h2>{{ offerCount(offers.length) }}</h2>
-          <span>{{ t('results.perPerson') }}</span>
-          @if (applies('sort')) {
-            <!-- Sorting reorders the found offers at once, so it sits with them, not in the form. -->
-            <div class="sort">
-              <span aria-hidden="true">{{ t('search.sort') }}</span>
-              <div class="toggle" role="radiogroup" [attr.aria-label]="t('search.sortBy')">
-                <label
-                  ><input
-                    type="radio"
-                    name="sort"
-                    [formControl]="form.controls.sort"
-                    value="price"
-                  />{{ t('search.sortOrder.price') }}</label
-                >
-                <label
-                  ><input
-                    type="radio"
-                    name="sort"
-                    [formControl]="form.controls.sort"
-                    value="leaveDays"
-                  />{{ t('search.sortOrder.leaveDays') }}</label
-                >
-              </div>
-            </div>
-          }
-        </header>
-        <ol class="offers">
-          @for (offer of visibleOffers(); track $index) {
-            <li class="offer" data-testid="offer">
-              <div class="legs">
-                @for (leg of offer.legs; track $index) {
-                  <div class="leg" role="group" [attr.aria-label]="leg.label">
-                    <span class="leg-label">{{ leg.label }}</span>
-                    @for (flight of leg.flights; track $index) {
-                      <div class="flight">
-                        <time class="date" [attr.datetime]="flight.departureDate">
-                          {{ flight.day }}
-                        </time>
-                        <span class="times">
-                          {{ flight.departureTime }} – {{ flight.arrivalTime }}
-                          @if (flight.daysLater; as days) {
-                            <abbr [title]="t('results.arrives', { date: flight.arrivalDate })"
-                              >+{{ days }}</abbr
-                            >
-                          }
-                        </span>
-                        <span class="route">{{ flight.route }}</span>
-                      </div>
-                    }
-                    @if (leg.stops; as stops) {
-                      <span class="badge">{{ stops }}</span>
-                    }
-                  </div>
-                }
-                @if (offer.nights; as nights) {
-                  <span class="badge"
-                    >{{ nights }}
-                    <app-info-tip [label]="t('tips.nights.label')" [text]="t('tips.nights.text')" />
-                  </span>
-                }
-                @if (offer.leaveDays; as leaveDays) {
-                  <span class="badge" [class.free]="offer.freeLeave">{{ leaveDays }}</span>
-                }
-              </div>
-              <div class="price">
-                <span class="price-heading">
-                  <strong>{{ offer.price }}</strong>
-                  @if (offer.approximatePrice) {
-                    <app-info-tip
-                      [label]="t('tips.approximatePrice.label')"
-                      [text]="t('tips.approximatePrice.text')"
-                    />
-                  }
-                </span>
-                <small>
-                  @for (original of offer.foreignPrices; track $index) {
-                    {{ original }} ·
-                  }
-                  {{ t('results.checked', { age: priceAge(offer.priceFetchedAt) }) }}
-                  <app-info-tip
-                    [label]="t('tips.priceAge.label')"
-                    [text]="t('tips.priceAge.text')"
-                  />
-                </small>
-                @let tickets = offer.tickets;
-                @if (offer.separateTickets; as separate) {
-                  <small
-                    >{{ separate }}
-                    <app-info-tip
-                      [label]="t('tips.separateTickets.label')"
-                      [text]="t('tips.separateTickets.text')"
-                    />
-                  </small>
-                }
-                @for (ticket of tickets; track ticket.url) {
-                  <a [href]="ticket.url" target="_blank" rel="noopener">
-                    {{
-                      tickets.length > 1
-                        ? t('results.bookRoute', { route: ticket.route })
-                        : t('results.book')
-                    }}
-                  </a>
-                }
-              </div>
-            </li>
-          }
-        </ol>
-        @if (visibleCount() < offers.length) {
-          <button class="show-more" type="button" (click)="showMore()">
-            {{ t('results.showMore') }}
-          </button>
-        }
-      }
+    @if (loading()) {
+      <app-results-skeleton />
+    } @else if (noOffers(); as noOffers) {
+      <app-no-offers-message [noOffers]="noOffers" (chosen)="applySuggestion($event)" />
+    } @else if (offers(); as offers) {
+      <app-offer-list
+        [offers]="offers"
+        [groups]="groups()"
+        [pageKey]="pageKey()"
+        [sort]="form.controls.sort"
+        [showSort]="applies('sort')"
+        [texts]="texts()"
+      />
     }
   </section>
 </div>

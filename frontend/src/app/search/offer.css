@@ -1,0 +1,152 @@
+:host {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+
+:host(:hover) {
+  background: var(--subtle);
+}
+.legs {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.75rem;
+  min-width: 0;
+}
+.leg {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.1rem 0.5rem;
+  width: 100%;
+  min-width: 0;
+}
+.leg-label {
+  flex: none;
+  min-width: 3.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.flights {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.flight {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.5rem;
+}
+.date,
+.times,
+.price {
+  font-variant-numeric: tabular-nums;
+}
+.times {
+  font-weight: 500;
+}
+.route {
+  font-family: var(--font-serif);
+  overflow-wrap: anywhere;
+}
+abbr {
+  font-size: 0.7rem;
+  text-decoration: none;
+  vertical-align: super;
+}
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+.badge {
+  padding: 0 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 9999px;
+  font-size: 0.75rem;
+}
+.badge.free {
+  border-color: var(--text);
+  color: var(--text);
+  font-weight: 500;
+}
+.date,
+.route,
+.price small {
+  color: var(--muted);
+}
+
+.price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+  text-align: right;
+}
+.price-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+/* Direction D's price stamp: the one loud thing on each row. */
+.stamp {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border: 2px dashed color-mix(in srgb, var(--red) 55%, transparent);
+  background: var(--bg);
+  color: var(--red);
+  line-height: 1;
+  transform: rotate(-2deg);
+}
+:host(:nth-child(odd)) .stamp {
+  transform: rotate(2deg);
+}
+.price strong {
+  font-family: var(--font-serif);
+  font-size: 1.4rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.price small {
+  font-size: 0.8rem;
+}
+.bookings {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.book {
+  color: var(--blue);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.book:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  :host {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.5rem 0.25rem;
+  }
+  .price,
+  .bookings {
+    align-items: flex-start;
+    text-align: left;
+  }
+  .route {
+    font-size: 0.85rem;
+  }
+  .book {
+    white-space: normal;
+  }
+}

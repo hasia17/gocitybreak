@@ -139,10 +139,11 @@ import { cataloguePlaces, PlaceField, PlaceSuggestion, suggestPlaces } from './p
             tabindex="-1"
             [id]="id + '-option-' + i"
             [attr.aria-selected]="active() === i"
+            [attr.aria-label]="optionLabel(place)"
             (mousedown)="$event.preventDefault()"
             (click)="choose(place)"
           >
-            {{ optionLabel(place) }}
+            {{ optionText(place) }}
           </button>
         } @empty {
           <span class="no-matches">{{ t('places.noMatches') }}</span>
@@ -240,6 +241,12 @@ export class PlaceChips implements ControlValueAccessor, Validator {
   /** The codes of a city's airports, so the user sees what choosing the city covers. */
   protected cityAirports(place: PlaceSuggestion): string {
     return place.airports.join(', ');
+  }
+  /** Visible text: an airport reads "KRK Kraków, Polska"; its kind lives in the accessible name. */
+  protected optionText(place: PlaceSuggestion): string {
+    return place.kind === 'airport'
+      ? [this.shortLabel(place), place.context].filter(Boolean).join(', ')
+      : this.optionLabel(place);
   }
   protected optionLabel(place: PlaceSuggestion): string {
     const name = [this.shortLabel(place), place.context].filter(Boolean).join(', ');

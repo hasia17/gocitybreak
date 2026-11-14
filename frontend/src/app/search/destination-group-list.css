@@ -1,0 +1,175 @@
+/* Direction D's results board: paper rows under the airmail edge, one per destination group. */
+:host {
+  display: block;
+}
+.groups {
+  position: relative;
+  margin-top: 0.75rem;
+  padding-top: 6px;
+  border-radius: 3px;
+  background: var(--card);
+  box-shadow: 0 1px 0 var(--line);
+}
+/* The airmail edge: red and blue diagonal stripes across the top of the board. */
+.groups::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 6px;
+  border-radius: 3px 3px 0 0;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--red) 0 12px,
+    var(--card) 12px 18px,
+    var(--blue) 18px 30px,
+    var(--card) 30px 36px
+  );
+}
+.groups,
+.offers {
+  margin-bottom: 0;
+  padding-left: 0;
+  list-style: none;
+}
+.offers {
+  margin-top: 0;
+}
+.groups > li {
+  border-bottom: 1px solid var(--line);
+}
+
+.board-head,
+.group-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) 1.3fr 1.3fr 0.7fr 1fr 7.5rem;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+}
+.board-head {
+  position: relative;
+  margin-top: 0.75rem;
+  padding: 0.4rem 1rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.board-head .from {
+  justify-self: end;
+}
+.group-row {
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  width: 100%;
+  min-height: 4rem;
+  padding: 0.5rem 1rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.group-row:hover {
+  background: color-mix(in srgb, var(--blue) 5%, transparent);
+}
+.group-row[aria-expanded='true'] {
+  border-bottom: 1px dashed var(--line);
+}
+.group-name {
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  overflow-wrap: anywhere;
+}
+.group-where {
+  display: block;
+  margin-left: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.more-offers {
+  display: block;
+  color: var(--blue);
+  font-size: 0.8rem;
+}
+.details {
+  display: contents;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.dash {
+  display: none;
+}
+.days {
+  font-weight: 500;
+}
+
+/* The price stamp of the group's best offer, tilted the other way on every other row. */
+.stamp {
+  justify-self: end;
+  padding: 0.25rem 0.55rem;
+  border: 2px dashed color-mix(in srgb, var(--red) 55%, transparent);
+  background: var(--bg);
+  color: var(--red);
+  line-height: 1;
+  transform: rotate(-2deg);
+}
+.groups > li:nth-child(odd) .stamp {
+  transform: rotate(2deg);
+}
+.stamp strong {
+  font-family: var(--font-serif);
+  font-size: 1.4rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.group-offers {
+  padding: 0 0.5rem 0.5rem;
+  background: color-mix(in srgb, var(--bg) 55%, var(--card));
+}
+.show-all,
+.show-more {
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+}
+.show-all {
+  margin: 0.5rem 0.5rem 0;
+}
+.show-more {
+  display: block;
+  margin: 1rem auto;
+}
+.show-all:hover,
+.show-more:hover {
+  background: var(--subtle);
+}
+
+/* On a phone the headings go, and each row shows destination and price, with the details wrapped underneath. */
+@media (max-width: 640px) {
+  .board-head {
+    display: none;
+  }
+  .group-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 0.25rem;
+    padding: 0.75rem;
+  }
+  .details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.1rem 1rem;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    gap: 0 0.6rem;
+    white-space: normal;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  .group-offers {
+    padding: 0 0.25rem 0.5rem;
+  }
+}

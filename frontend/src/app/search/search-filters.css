@@ -1,20 +1,9 @@
 /* The "Filters" panel of the search form. */
 .filters {
-  max-width: 44rem;
+  max-width: var(--content-width);
   margin: 0.75rem auto 0;
   text-align: left;
   font-size: 0.875rem;
-}
-.filters summary {
-  width: fit-content;
-  margin: 0 auto;
-  padding: 0.5rem 0.75rem;
-  border-radius: 9999px;
-  color: var(--muted);
-  cursor: pointer;
-}
-.filters summary:hover {
-  background: var(--subtle);
 }
 .filters-body {
   display: flex;
@@ -63,11 +52,11 @@
   content: '';
 }
 .leave-switch input:checked {
-  background: var(--text);
+  background: var(--accent);
 }
 .leave-switch input:checked::before {
   transform: translateX(1rem);
-  background: var(--page);
+  background: var(--on-accent);
 }
 .leave-switch input:focus-visible {
   outline: 2px solid var(--ring);
@@ -94,6 +83,10 @@
   align-items: center;
   justify-content: start;
   min-height: 2.75rem;
+}
+/* Keep a label such as "Outbound departure" on one line; the narrow layout below lets it wrap. */
+.time-range .field-heading {
+  white-space: nowrap;
 }
 .time-range input {
   min-height: 2.25rem;
@@ -134,9 +127,7 @@
   padding: 0 0.6rem;
   border: 1px solid var(--line);
   border-radius: 9999px;
-  /* An unticked day is excluded from the search: crossed out. */
   color: var(--muted);
-  text-decoration: line-through;
   cursor: pointer;
 }
 .days label:hover {
@@ -144,9 +135,8 @@
 }
 .days label:has(input:checked) {
   border-color: transparent;
-  background: var(--subtle);
-  color: var(--text);
-  text-decoration: none;
+  background: var(--accent);
+  color: var(--on-accent);
 }
 .days input {
   position: absolute;
@@ -156,7 +146,9 @@
   cursor: inherit;
 }
 .days label:has(input:focus-visible) {
-  box-shadow: 0 0 0 2px var(--ring);
+  box-shadow:
+    0 0 0 2px var(--card),
+    0 0 0 4px var(--ring);
 }
 /* A day outside the travel window: neither ticked nor unticked counts, so it shows neither. */
 .days label:has(input:disabled) {
@@ -176,6 +168,9 @@
 @media (max-width: 640px) {
   .time-ranges {
     grid-template-columns: 1fr auto auto auto;
+  }
+  .time-range .field-heading {
+    white-space: normal;
   }
 }
 

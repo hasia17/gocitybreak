@@ -191,10 +191,10 @@ describe('Search', () => {
 
     const offer = root.querySelector('[data-testid="offer"]')?.textContent?.replace(/\s+/g, ' ');
     expect(offer).toMatch(
-      /Fri 4 Dec 18:00 – 19:55 KRK Kraków → BGY Bergamo.*Sun 6 Dec 20:00 – 21:50 BGY Bergamo → KTW Katowice/,
+      /Fri 4 Dec, 18:00 → 19:55 KRK Kraków → BGY Bergamo.*Sun 6 Dec, 20:00 → 21:50 BGY Bergamo → KTW Katowice/,
     );
     expect(offer).toContain('2 nights');
-    expect(offer).toContain('≈ PLN 173.98');
+    expect(offer).toContain('≈ PLN 174');
     expect(offer).toContain('€19.99');
     expect(offer).not.toContain('89.00 PLN ·');
   });
@@ -536,9 +536,9 @@ describe('Search', () => {
     expect(offer).toContain('BGY Bergamo → KRK Kraków');
     expect(offer).toContain('Sat 5 Dec');
     expect(offer).not.toContain('2026');
-    expect(offer).toContain('09:00 – 10:50');
+    expect(offer).toContain('09:00 → 10:50');
     expect(root.querySelector('[data-testid="offer"] abbr')).toBeNull();
-    expect(offer).toContain('≈ PLN 84.98');
+    expect(offer).toContain('≈ PLN 85');
     expect(offer).toContain('€19.99');
     expect(offer).toContain('checked 3 hr ago');
     const clock = vi
@@ -564,6 +564,12 @@ describe('Search', () => {
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
 
+    // A first visit starts with a travel window; clear it so that the dates are invalid.
+    for (const name of ['from', 'to']) {
+      const date = root.querySelector<HTMLInputElement>(`input[formControlName="${name}"]`)!;
+      date.value = '';
+      date.dispatchEvent(new Event('input'));
+    }
     fill(root, 'From', 'KRK');
     fill(root, 'To', 'Atlantis');
     root.querySelectorAll('input').forEach((i) => i.dispatchEvent(new Event('blur')));
@@ -657,7 +663,7 @@ describe('Search', () => {
     await fixture.whenStable();
 
     const offer = root.querySelector('[data-testid="offer"]')!;
-    expect(offer.textContent?.replace(/\s+/g, ' ')).toContain('23:30 – 01:20 +1');
+    expect(offer.textContent?.replace(/\s+/g, ' ')).toContain('23:30 → 01:20 +1');
     expect(offer.querySelector('abbr')?.getAttribute('title')).toBe('arrives 2026-12-11');
   });
 

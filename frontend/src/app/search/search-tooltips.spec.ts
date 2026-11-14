@@ -50,7 +50,8 @@ describe('Search explanations', () => {
     flushCatalogue();
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
-    root.querySelector('details')!.open = true;
+    root.querySelector<HTMLButtonElement>('button[aria-controls="filters-panel"]')!.click();
+    await fixture.whenStable();
 
     for (const [name, rule] of [
       ['About flexible dates', /travel window.*nights/i],
@@ -123,30 +124,23 @@ describe('Search explanations', () => {
     await fixture.whenStable();
     const offers = root.querySelectorAll<HTMLElement>('[data-testid="offer"]');
     const approximate = Array.from(offers).find((o) => o.textContent!.includes('≈'))!;
-    expect(explanation(approximate, 'About approximate prices').tip.textContent).toMatch(
-      /PLN.*NBP mid-market rate.*another currency/i,
-    );
-    expect(explanation(approximate, 'About price age').tip.textContent).toMatch(
-      /stored price.*may have changed.*Ryanair/i,
-    );
-    expect(explanation(approximate, 'About separate tickets').tip.textContent).toMatch(
-      /self-transfer.*own risk.*next flight.*late/i,
-    );
+    expect(approximate.querySelectorAll('app-info-tip')).toHaveLength(1);
+    const info = explanation(approximate, 'About this price').tip.textContent!;
+    expect(info).toMatch(/PLN.*NBP mid-market rate.*another currency/i);
+    expect(info).toMatch(/stored price.*may have changed.*Ryanair/i);
+    expect(info).toMatch(/self-transfer.*own risk.*next flight.*late/i);
     const direct = Array.from(offers).find((o) => !o.textContent!.includes('≈'))!;
-    expect(direct.querySelector('button[aria-label="About approximate prices"]')).toBeNull();
-    expect(direct.querySelector('button[aria-label="About separate tickets"]')).toBeNull();
-    expect(explanation(direct, 'About price age').tip.textContent).toContain('Ryanair');
+    expect(direct.querySelectorAll('app-info-tip')).toHaveLength(1);
+    const directInfo = explanation(direct, 'About this price').tip.textContent!;
+    expect(directInfo).toContain('Ryanair');
+    expect(directInfo).not.toContain('NBP');
+    expect(directInfo).not.toContain('self-transfer');
 
     TestBed.inject(TranslocoService).setActiveLang('pl');
     await fixture.whenStable();
-    expect(explanation(approximate, 'O przybliżonej cenie').tip.textContent).toMatch(
-      /PLN.*średnim kursie NBP.*innej walucie/i,
-    );
-    expect(explanation(approximate, 'O czasie sprawdzenia ceny').tip.textContent).toMatch(
-      /zapisana cena.*zmienić.*Ryanair/i,
-    );
-    expect(explanation(approximate, 'O osobnych biletach').tip.textContent).toMatch(
-      /przesiadka.*własne ryzyko.*kolejnego lotu.*spóźni/i,
-    );
+    const polish = explanation(approximate, 'O tej cenie').tip.textContent!;
+    expect(polish).toMatch(/PLN.*średnim kursie NBP.*innej walucie/i);
+    expect(polish).toMatch(/zapisana cena.*zmienić.*Ryanair/i);
+    expect(polish).toMatch(/przesiadka.*własne ryzyko.*kolejnego lotu.*spóźni/i);
   });
 });

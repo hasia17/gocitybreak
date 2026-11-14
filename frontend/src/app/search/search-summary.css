@@ -1,0 +1,36 @@
+/* Stays at the top of the page while the results scroll under it. */
+:host {
+  display: block;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+}
+.wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+  padding: 0.6rem 0;
+  font-size: 0.9rem;
+}
+.route {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+}
+.accent {
+  color: var(--blue);
+  font-weight: 600;
+}
+button {
+  min-height: 2.75rem;
+  margin-left: auto;
+  padding: 0 0.75rem;
+  background: var(--card);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font: inherit;
+  cursor: pointer;
+}

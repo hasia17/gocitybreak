@@ -6,6 +6,7 @@ import { TranslocoService } from '@jsverse/transloco';
 import { provideTestI18n } from '../i18n/testing';
 import { Search } from './search';
 import { Catalogue } from './search-api';
+import { removeAnywhere } from './place-testing';
 
 const catalogue: Catalogue = {
   supportedAirports: [
@@ -99,6 +100,8 @@ describe('Search place chips', () => {
     http.expectOne('/api/catalogue').flush(catalogue);
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
+    removeAnywhere(root);
+    await fixture.whenStable();
     const from = root.querySelector<HTMLInputElement>('[role="combobox"][aria-label="From"]');
     expect(from).not.toBeNull();
     from!.value = 'Pol';
@@ -147,6 +150,8 @@ describe('Search place chips', () => {
       });
       await fixture.whenStable();
       const root = fixture.nativeElement as HTMLElement;
+      removeAnywhere(root);
+      await fixture.whenStable();
       const input = root.querySelector<HTMLInputElement>(
         `[role="combobox"][aria-label="${field}"]`,
       )!;
@@ -164,11 +169,63 @@ describe('Search place chips', () => {
       expect(chip.querySelector('.city-airports')?.textContent).toBe('(BGY, MXP)');
     },
   );
+  it.each(['en', 'pl'])(
+    'shows each airport suggestion once as code, name and country in %s, announced as an airport',
+    async (language) => {
+      const fixture = TestBed.createComponent(Search);
+      http.expectOne('/api/catalogue').flush({
+        ...catalogue,
+        airports: [
+          ...catalogue.airports,
+          { code: 'MXP', name: 'Milan Malpensa', cities: ['MILAN'], country: 'it' },
+        ],
+      });
+      TestBed.inject(TranslocoService).setActiveLang(language);
+      await fixture.whenStable();
+      const root = fixture.nativeElement as HTMLElement;
+      removeAnywhere(root);
+      const to = root.querySelector<HTMLInputElement>(
+        'app-place-chips[field="destination"] input',
+      )!;
+      to.value = 'MXP';
+      to.dispatchEvent(new Event('input'));
+      await fixture.whenStable();
+      const option = root.querySelector<HTMLButtonElement>('[role="option"]')!;
+      const text = option.textContent?.trim();
+      expect(text).toBe(
+        language === 'en' ? 'MXP Milan Malpensa, Italy' : 'MXP Milan Malpensa, Włochy',
+      );
+      expect(option.getAttribute('aria-label')).toBe(
+        language === 'en' ? `${text} — airport` : `${text} — lotnisko`,
+      );
+    },
+  );
+  it('shows a place field placeholder only while the field holds no place', async () => {
+    const fixture = TestBed.createComponent(Search);
+    http.expectOne('/api/catalogue').flush(catalogue);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    const from = root.querySelector<HTMLInputElement>(
+      'app-place-chips[field="homeAirports"] input',
+    )!;
+    expect(from.placeholder).not.toBe('');
+    from.value = 'KRK';
+    from.dispatchEvent(new Event('input'));
+    await fixture.whenStable();
+    root.querySelector<HTMLButtonElement>('[role="option"]')!.click();
+    await fixture.whenStable();
+    expect(from.placeholder).toBe('');
+    root.querySelector<HTMLButtonElement>('[data-place-chip="KRK"] button')!.click();
+    await fixture.whenStable();
+    expect(from.placeholder).not.toBe('');
+  });
   it('removes chips with Backspace and the named remove button, without submitting typed text', async () => {
     const fixture = TestBed.createComponent(Search);
     http.expectOne('/api/catalogue').flush(catalogue);
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
+    removeAnywhere(root);
+    await fixture.whenStable();
     const from = root.querySelector<HTMLInputElement>('[aria-label="From"]')!;
     from.value = 'KRK';
     from.dispatchEvent(new Event('input'));
@@ -219,6 +276,8 @@ describe('Search place chips', () => {
     http.expectOne('/api/catalogue').flush(catalogue);
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
+    removeAnywhere(root);
+    await fixture.whenStable();
     const to = root.querySelector<HTMLInputElement>('[aria-label="To"]')!;
     const field = to.closest('app-place-chips')!;
     const choose = async (name: string) => {
@@ -281,6 +340,8 @@ describe('Search place chips', () => {
     http.expectOne('/api/catalogue').flush(catalogue);
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
+    removeAnywhere(root);
+    await fixture.whenStable();
     for (const language of ['en', 'pl']) {
       translations.setActiveLang(language);
       await fixture.whenStable();
@@ -309,6 +370,8 @@ describe('Search place chips', () => {
     http.expectOne('/api/catalogue').flush(catalogue);
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
+    removeAnywhere(root);
+    await fixture.whenStable();
     const to = root.querySelector<HTMLInputElement>('[aria-label="To"]')!;
     for (const text of ['Milan', 'any']) {
       to.value = text;
@@ -355,6 +418,8 @@ describe('Search place chips', () => {
     http.expectOne('/api/catalogue').flush(catalogue);
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
+    removeAnywhere(root);
+    await fixture.whenStable();
     const except = root.querySelector<HTMLInputElement>('[aria-label="Except"]')!;
     except.value = 'Italy';
     except.dispatchEvent(new Event('input'));

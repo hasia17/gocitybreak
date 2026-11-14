@@ -34,14 +34,14 @@ describe('Search loading', () => {
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
     fillPlace(root, 'From', 'KRK');
-    fillPlace(root, 'To', 'anywhere');
+    // A single destination airport keeps a flat list, so its offers show without opening a group.
+    fillPlace(root, 'To', 'BGY');
     for (const [name, value] of Object.entries({ from: '2026-12-01', to: '2026-12-10' })) {
       const input = root.querySelector<HTMLInputElement>(`input[formControlName="${name}"]`)!;
       input.value = value;
       input.dispatchEvent(new Event('input'));
     }
     const submit = root.querySelector<HTMLButtonElement>('button[type="submit"]')!;
-    let hasOffers = false;
 
     // Both the first request and requests following a success/failure must show progress.
     for (const failure of [true, false, true, false]) {
@@ -57,21 +57,22 @@ describe('Search loading', () => {
       // A busy ancestor can defer live announcements until the request has already ended.
       expect(progress?.closest('[aria-busy="true"]')).toBeNull();
       expect(submit.disabled).toBe(true);
-      expect(root.querySelectorAll('[data-testid="offer"]')).toHaveLength(hasOffers ? 1 : 0);
-      if (hasOffers) expect(results?.querySelector('h2')?.textContent).toBe('1 offer');
+      // A skeleton shows where the results will appear, instead of the previous ones or a spinner.
+      expect(results?.querySelector('[data-testid="skeleton"]')?.getAttribute('aria-hidden')).toBe(
+        'true',
+      );
+      expect(root.querySelectorAll('[data-testid="offer"]')).toHaveLength(0);
 
       TestBed.inject(TranslocoService).setActiveLang('pl');
       await fixture.whenStable();
       expect(progress?.textContent?.trim()).toBe('Szukamy ofert…');
 
       if (failure) request.flush({}, { status: 500, statusText: 'Server error' });
-      else {
-        request.flush(roundTripResponse);
-        hasOffers = true;
-      }
+      else request.flush(roundTripResponse);
       await fixture.whenStable();
 
       expect(results?.getAttribute('aria-busy')).toBe('false');
+      expect(results?.querySelector('[data-testid="skeleton"]')).toBeNull();
       expect(progress?.textContent?.trim()).toBe('');
       expect(submit.disabled).toBe(false);
       if (failure) expect(root.querySelector('[role="alert"]')?.textContent).toBeTruthy();

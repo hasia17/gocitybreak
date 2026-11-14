@@ -38,7 +38,23 @@
       "price": "Price",
       "leaveDays": "Leave days"
     },
+    "leave": "Leave",
+    "change": "Change",
+    "summary": {
+      "nights": {
+        "one": "{{range}} night",
+        "other": "{{range}} nights"
+      }
+    },
+    "leaveSummary": {
+      "unlimited": "Work {{start}}–{{end}}, no leave limit",
+      "limited": {
+        "one": "Work {{start}}–{{end}}, up to {{count}} leave day",
+        "other": "Work {{start}}–{{end}}, up to {{count}} leave days"
+      }
+    },
     "filters": "Filters",
+    "filtersActive": "Filters ({{count}})",
     "directOnly": "Direct flights only",
     "localTimes": "Hours in local time at each airport.",
     "moment": {
@@ -109,8 +125,15 @@
     "label": "Search results",
     "loading": "Searching for offers…",
     "showMore": "Show more",
-    "emptyRoundTrip": "No offers match your search. Try loosening it: a wider travel window, more airports, more nights to choose from, more leave days, or fewer filters: wider time ranges, more weekdays.",
-    "emptyOneWay": "No offers match your search. Try loosening it: a wider travel window, more airports, or fewer filters: wider time ranges, more weekdays.",
+    "noOffers": {
+      "title": "No offers for {{route}}",
+      "tryOne": "Nothing found for {{dates}}. Try one of these changes:",
+      "widenWindow": "Widen the window by 14 days (until {{date}})",
+      "moreNights": "Allow {{min}}–{{max}} nights",
+      "removeExclusions": "Remove exclusions",
+      "anywhere": "Search Anywhere",
+      "flexibleDates": "Search flexible dates, 3 days either side"
+    },
     "count": {
       "one": "{{count}} offer",
       "other": "{{count}} offers"
@@ -122,8 +145,28 @@
       "one": "Booked as {{count}} separate one-way ticket",
       "other": "Booked as {{count}} separate one-way tickets"
     },
-    "book": "Book on Ryanair ↗",
-    "bookRoute": "{{route}} on Ryanair ↗"
+    "book": "Book ↗",
+    "bookRoute": "{{route}} on Ryanair ↗",
+    "grouped": "{{offers}} in {{groups}}, from {{price}}",
+    "destinationGroups": {
+      "one": "{{count}} place",
+      "other": "{{count}} places"
+    },
+    "moreOffers": {
+      "one": "{{count}} more date",
+      "other": "{{count}} more dates"
+    },
+    "showAllOffers": {
+      "one": "Show all {{count}} dates",
+      "other": "Show all {{count}} dates"
+    },
+    "showMoreGroups": "Show more places",
+    "board": {
+      "destination": "Destination",
+      "nights": "Nights",
+      "leave": "Leave",
+      "from": "From"
+    }
   },
   "offer": {
     "outbound": "Outbound",
@@ -197,16 +240,16 @@
     "inboundArrival": {
       "label": "About inbound arrival time"
     },
+    "price": {
+      "label": "About this price"
+    },
     "approximatePrice": {
-      "label": "About approximate prices",
       "text": "Converted into PLN at the NBP mid-market rate because a flight is priced in another currency."
     },
     "priceAge": {
-      "label": "About price age",
       "text": "This is a stored price and may have changed. Check the current price on Ryanair’s site."
     },
     "separateTickets": {
-      "label": "About separate tickets",
       "text": "A self-transfer is at your own risk. Nobody guarantees the next flight if the first is late."
     }
   }

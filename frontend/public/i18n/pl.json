@@ -38,7 +38,27 @@
       "price": "Cena",
       "leaveDays": "Dni urlopu"
     },
+    "leave": "Urlop",
+    "change": "Zmień",
+    "summary": {
+      "nights": {
+        "one": "{{range}} noc",
+        "few": "{{range}} noce",
+        "many": "{{range}} nocy",
+        "other": "{{range}} nocy"
+      }
+    },
+    "leaveSummary": {
+      "unlimited": "Praca {{start}}–{{end}}, bez limitu urlopu",
+      "limited": {
+        "one": "Praca {{start}}–{{end}}, do {{count}} dnia urlopu",
+        "few": "Praca {{start}}–{{end}}, do {{count}} dni urlopu",
+        "many": "Praca {{start}}–{{end}}, do {{count}} dni urlopu",
+        "other": "Praca {{start}}–{{end}}, do {{count}} dnia urlopu"
+      }
+    },
     "filters": "Filtry",
+    "filtersActive": "Filtry ({{count}})",
     "directOnly": "Tylko loty bezpośrednie",
     "localTimes": "Godziny w czasie lokalnym każdego lotniska.",
     "moment": {
@@ -109,8 +129,15 @@
     "label": "Wyniki wyszukiwania",
     "loading": "Szukamy ofert…",
     "showMore": "Pokaż więcej",
-    "emptyRoundTrip": "Żadna oferta nie pasuje do wyszukiwania. Spróbuj je poluzować: szersze okno podróży, więcej lotnisk, większy zakres nocy, więcej dni urlopu albo mniej filtrów: szersze przedziały godzin, więcej dni tygodnia.",
-    "emptyOneWay": "Żadna oferta nie pasuje do wyszukiwania. Spróbuj je poluzować: szersze okno podróży, więcej lotnisk albo mniej filtrów: szersze przedziały godzin, więcej dni tygodnia.",
+    "noOffers": {
+      "title": "Brak ofert na trasie {{route}}",
+      "tryOne": "Nic nie znaleziono dla terminu {{dates}}. Spróbuj jednej z tych zmian:",
+      "widenWindow": "Poszerz okno o 14 dni (do {{date}})",
+      "moreNights": "Dopuść {{min}}–{{max}} nocy",
+      "removeExclusions": "Usuń wykluczenia",
+      "anywhere": "Szukaj gdziekolwiek",
+      "flexibleDates": "Szukaj elastycznie, 3 dni przed i po"
+    },
     "count": {
       "one": "{{count}} oferta",
       "few": "{{count}} oferty",
@@ -126,8 +153,34 @@
       "many": "Kupowane jako {{count}} osobnych biletów w jedną stronę",
       "other": "Kupowane jako {{count}} osobnego biletu w jedną stronę"
     },
-    "book": "Zarezerwuj w Ryanair ↗",
-    "bookRoute": "{{route}} w Ryanair ↗"
+    "book": "Rezerwuj ↗",
+    "bookRoute": "{{route}} w Ryanair ↗",
+    "grouped": "{{offers}} w {{groups}}, od {{price}}",
+    "destinationGroups": {
+      "one": "{{count}} miejscu",
+      "few": "{{count}} miejscach",
+      "many": "{{count}} miejscach",
+      "other": "{{count}} miejscach"
+    },
+    "moreOffers": {
+      "one": "jeszcze {{count}} termin",
+      "few": "jeszcze {{count}} terminy",
+      "many": "jeszcze {{count}} terminów",
+      "other": "jeszcze {{count}} terminu"
+    },
+    "showAllOffers": {
+      "one": "Pokaż wszystkie {{count}} termin",
+      "few": "Pokaż wszystkie {{count}} terminy",
+      "many": "Pokaż wszystkie {{count}} terminów",
+      "other": "Pokaż wszystkie {{count}} terminu"
+    },
+    "showMoreGroups": "Pokaż więcej miejsc",
+    "board": {
+      "destination": "Kierunek",
+      "nights": "Noce",
+      "leave": "Urlop",
+      "from": "Od"
+    }
   },
   "offer": {
     "outbound": "Wylot",
@@ -207,16 +260,16 @@
     "inboundArrival": {
       "label": "O godzinie przylotu z powrotem"
     },
+    "price": {
+      "label": "O tej cenie"
+    },
     "approximatePrice": {
-      "label": "O przybliżonej cenie",
       "text": "Przeliczono na PLN po średnim kursie NBP, ponieważ lot jest wyceniony w innej walucie."
     },
     "priceAge": {
-      "label": "O czasie sprawdzenia ceny",
       "text": "To zapisana cena, która mogła się zmienić. Aktualną cenę sprawdzisz na stronie Ryanair."
     },
     "separateTickets": {
-      "label": "O osobnych biletach",
       "text": "Samodzielna przesiadka odbywa się na własne ryzyko. Nikt nie gwarantuje kolejnego lotu, jeśli pierwszy się spóźni."
     }
   }

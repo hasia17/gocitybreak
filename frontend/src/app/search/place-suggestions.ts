@@ -53,12 +53,7 @@ export function cataloguePlaces(
       kind: 'airport' as const,
       code: a.code,
       name: catalogueName(a, language),
-      context: [catalogue.cities.find((c) => a.cities.includes(c.code))]
-        .filter((c) => !!c)
-        .map((c) => catalogueName(c, language))
-        .concat(countryName(a.country))
-        .filter(Boolean)
-        .join(', '),
+      context: countryName(a.country),
       airports: [a.code],
       names: names(a),
     }));

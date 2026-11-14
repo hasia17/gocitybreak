@@ -1,6 +1,7 @@
 import { Texts, ago, money, plural, shortDay } from '../i18n/texts';
 import { Catalogue, Offer } from './search-api';
-import { catalogueName } from './catalogue-names';
+import { daysBetween } from './calendar-days';
+import { byCode, catalogueName } from './catalogue-names';
 import { ryanairTickets } from './ryanair-booking';
 
 /** Display values for one result, including its booking links. */
@@ -16,9 +17,9 @@ export function offerView(offer: Offer, now: number, texts: Texts, catalogue?: C
   const year = new Date(now).getFullYear();
   const language = new Intl.Locale(texts.locale).language;
   const airportName = (code: string) => {
-    const airport = catalogue?.airports.find((a) => a.code === code);
+    const airport = byCode(catalogue?.airports, code);
     // The first city is Ryanair's own; later cities are nearby search groups (e.g. Milan for BGY).
-    const city = catalogue?.cities.find((c) => c.code === airport?.cities[0]);
+    const city = byCode(catalogue?.cities, airport?.cities[0]);
     return city ? `${code} ${catalogueName(city, language)}` : code;
   };
   const legs = [offer.outbound, ...(offer.inbound ? [offer.inbound] : [])];
@@ -35,10 +36,9 @@ export function offerView(offer: Offer, now: number, texts: Texts, catalogue?: C
           departureTime: flight.departure.time,
           arrivalTime: flight.arrival.time,
           arrivalDate: flight.arrival.date,
-          daysLater: Math.round(
-            (Date.parse(flight.arrival.date) - Date.parse(flight.departure.date)) / 86_400_000,
-          ),
-          route: `${airportName(flight.departureAirport)} → ${airportName(flight.arrivalAirport)}`,
+          daysLater: daysBetween(flight.departure.date, flight.arrival.date),
+          from: airportName(flight.departureAirport),
+          to: airportName(flight.arrivalAirport),
         };
       }),
     })),
@@ -52,13 +52,21 @@ export function offerView(offer: Offer, now: number, texts: Texts, catalogue?: C
     freeLeave: offer.leaveDays === 0,
     separateTickets:
       tickets.length > 1 ? plural(texts, 'results.separateTickets', tickets.length) : undefined,
-    price: money(texts, offer.price),
+    price: money(texts, offer.price, { whole: true }),
     approximatePrice: !!offer.price.approximate,
     foreignPrices: legs
       .flatMap((leg) => leg.flights)
       .map((flight) => flight.originalPrice)
       .filter((price) => price.currency !== 'PLN')
       .map((price) => money(texts, price)),
+    /** What the one ⓘ says: the exchange rate (if converted), the stored-price age, ticket risk. */
+    priceInfo: [
+      offer.price.approximate ? texts.t('tips.approximatePrice.text') : undefined,
+      texts.t('tips.priceAge.text'),
+      tickets.length > 1 ? texts.t('tips.separateTickets.text') : undefined,
+    ]
+      .filter(Boolean)
+      .join(' '),
     priceFetchedAt: offer.priceFetchedAt,
     priceAge: ago(texts, offer.priceFetchedAt, now),
     tickets,

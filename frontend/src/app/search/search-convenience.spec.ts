@@ -8,7 +8,7 @@ import { TestBed } from '@angular/core/testing';
 import { TranslocoService } from '@jsverse/transloco';
 import { Search } from './search';
 
-/** Remembered settings, Ryanair links and the empty result (#10). */
+/** Remembered settings, Ryanair links and the no-offers message (#10). */
 useSearchClock();
 
 describe('Search conveniences', () => {
@@ -257,7 +257,7 @@ describe('Search conveniences', () => {
     expect(url.searchParams.get('dateIn')).toBe('2026-12-06');
     expect(url.searchParams.get('isReturn')).toBe('true');
     expect(url.searchParams.get('adults')).toBe('1');
-    expect(text).toContain('Ryanair');
+    expect(text).toBe('Book ↗');
     expect(target).toBe('_blank');
   });
 
@@ -305,7 +305,7 @@ describe('Search conveniences', () => {
     const text = document.querySelector('[data-testid="offer"]')!.textContent!;
     expect(text).toContain('pt 4 gru');
     expect(text).toContain('2 noce');
-    expect(text).toContain('200,00 zł');
+    expect(text).toContain('200 zł');
     expect(text).toContain('Kupowane jako 2 osobne bilety w jedną stronę');
     expect(text).toContain('sprawdzono 0 min temu');
   });
@@ -315,7 +315,7 @@ describe('Search conveniences', () => {
 
     expect(links).toHaveLength(1);
     const [{ url, text }] = links;
-    expect(text).toBe('Book on Ryanair ↗');
+    expect(text).toBe('Book ↗');
     expect(url.searchParams.get('originIata')).toBe('KRK');
     expect(url.searchParams.get('destinationIata')).toBe('BGY');
     expect(url.searchParams.get('dateOut')).toBe('2026-12-04');
@@ -330,23 +330,5 @@ describe('Search conveniences', () => {
 
     expect(links.map((l) => l.text)).toEqual(['KRK → STN on Ryanair ↗', 'STN → BGY on Ryanair ↗']);
     expect(rendered.textContent).toContain('Booked as 2 separate one-way tickets');
-  });
-
-  it('suggests loosening the criteria when no offer matches', async () => {
-    const { fixture, root } = await render();
-    fill(root, 'From', 'KRK');
-    fill(root, 'To', 'BGY');
-    fill(root, 'Earliest', '2026-12-01');
-    fill(root, 'Latest', '2026-12-02');
-    search(root);
-    httpTesting.expectOne('/api/search').flush({ offers: [] });
-    await fixture.whenStable();
-
-    const results = root.querySelector('[data-testid="results"]')!.textContent!;
-    expect(results).toContain('No offers match');
-    expect(results).toMatch(/loosen/i);
-    expect(results).toContain('leave days');
-    expect(results).toContain('time ranges');
-    expect(results).toContain('weekdays');
   });
 });
