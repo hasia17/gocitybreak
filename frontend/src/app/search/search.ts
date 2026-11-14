@@ -138,7 +138,12 @@ function rejectedSearchMessage(reason: string): string {
     NoOffersMessage,
     ResultsSkeleton,
   ],
-  styleUrls: ['./search.css', './search-filters.css', './search-results.css'],
+  styleUrls: [
+    './search.css',
+    './search-toggles.css',
+    './search-filters.css',
+    './search-results.css',
+  ],
   templateUrl: './search.html',
 })
 export class Search extends Translated {

@@ -20,78 +20,36 @@ h1 {
   color: var(--muted);
 }
 
-/* A pill of mutually exclusive choices: the kind of offer and the sort order. */
-.toggle {
-  display: inline-flex;
-  gap: 0.25rem;
-  padding: 0.2rem;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 9999px;
-}
-.toggle label {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  min-height: 2.75rem;
-  padding: 0 1rem;
-  border-radius: 9999px;
-  color: var(--muted);
-  font-size: 0.875rem;
-  cursor: pointer;
-}
-.toggle label:hover {
-  background: var(--subtle);
-}
-.toggle input {
-  position: absolute;
-  inset: 0;
-  margin: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-.toggle label:has(input:checked) {
-  background: var(--accent);
-  color: var(--on-accent);
-}
-.toggle label:has(input:focus-visible) {
-  box-shadow:
-    0 0 0 2px var(--card),
-    0 0 0 4px var(--ring);
-}
-.kind {
-  margin: 0 0 0.75rem;
-}
-
-.date-mode {
-  margin: 0 0 0.75rem 0.5rem;
-}
-
+/* The form card: labelled cells in one row, with the search button as its last cell. */
 .composer {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  max-width: 44rem;
+  align-items: stretch;
+  max-width: 56rem;
   margin: 0 auto;
-  padding: 0.6rem 0.6rem 0.6rem 0.9rem;
   text-align: left;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-composer);
 }
 .fields {
-  display: flex;
+  display: grid;
   flex: 1;
-  flex-wrap: wrap;
-  /* Top-aligned, so a field that grows with chosen places doesn't push its neighbours down. */
-  align-items: flex-start;
-  gap: 0.25rem;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  /* Top-aligned, so a cell that grows with chosen places doesn't push its neighbours down. */
+  align-items: start;
+}
+.fields > .field {
+  min-width: 0;
+  min-height: 4rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 0;
+  border-right: 1px solid var(--line);
 }
 .field {
   display: flex;
   flex-direction: column;
-  min-height: 2.75rem;
   padding: 0.3rem 0.6rem;
   border-radius: var(--radius-md);
   color: var(--muted);
@@ -125,19 +83,6 @@ h1 {
   color: var(--faint);
   font-weight: 400;
 }
-.code input,
-.codes input {
-  width: 3.25rem;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-.codes input {
-  width: 7.5rem;
-}
-.names input {
-  width: 10rem;
-}
 .range {
   display: flex;
   align-items: center;
@@ -158,51 +103,6 @@ h1 {
 [hidden] {
   display: none !important;
 }
-/* The disclosure buttons of the Leave and Filters sections, side by side under the composer. */
-.sections {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.5rem;
-  max-width: 44rem;
-  margin: 0.75rem auto 0;
-}
-.section-toggle {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.1rem 0.5rem;
-  min-height: 2.75rem;
-  padding: 0.4rem 0.9rem;
-  border: 1px solid var(--line);
-  border-radius: 9999px;
-  background: none;
-  color: var(--muted);
-  font: inherit;
-  font-size: 0.875rem;
-  text-align: left;
-  cursor: pointer;
-}
-.section-toggle::before {
-  content: '▸';
-  align-self: center;
-}
-.section-toggle[aria-expanded='true']::before {
-  content: '▾';
-}
-.section-toggle:hover {
-  background: var(--subtle);
-}
-.section-toggle:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
-.section-name {
-  color: var(--text);
-}
-.section-summary {
-  font-size: 0.8rem;
-}
 .options {
   display: flex;
   flex-wrap: wrap;
@@ -219,34 +119,16 @@ h1 {
 .leave input {
   width: 6.5rem;
 }
-.arrow {
-  margin-top: 1.4rem;
-  color: var(--muted);
-}
-.divider {
-  width: 1px;
-  height: 2rem;
-  margin: 0.4rem 0.25rem 0;
-  background: var(--line);
-}
 .send {
-  display: grid;
   flex: none;
-  place-items: center;
-  width: 2.75rem;
-  height: 2.75rem;
+  padding: 0 1.75rem;
   border: 0;
-  border-radius: 50%;
-  background: var(--text);
-  color: var(--page);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background: var(--accent);
+  color: var(--on-accent);
+  font: inherit;
+  font-weight: 600;
   cursor: pointer;
-}
-.send svg {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 .send:hover {
   opacity: 0.85;
@@ -255,26 +137,17 @@ h1 {
   opacity: 0.4;
   cursor: not-allowed;
 }
-.hint,
 .error {
   color: var(--danger);
   font-size: 0.875rem;
 }
-.error,
-.empty {
+.error {
   text-align: center;
 }
 
 @media (max-width: 640px) {
   .hero {
     padding-top: 8vh;
-  }
-  .composer {
-    align-items: flex-end;
-  }
-  .divider,
-  .arrow {
-    display: none;
   }
 }
 
@@ -323,8 +196,29 @@ h1 {
     width: 100%;
     min-width: 0;
   }
-  .sections {
+}
+
+/* Below the tablet breakpoint the cells sit two per row; an odd last cell takes the whole row. */
+@media (max-width: 760px) {
+  .composer {
     flex-direction: column;
-    align-items: stretch;
+  }
+  .fields {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .fields > .field {
+    border-bottom: 1px solid var(--line);
+  }
+  .fields > .field:nth-child(2n) {
+    border-right: 0;
+  }
+  .fields > .field:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+    border-right: 0;
+  }
+  .send {
+    padding: 0.9rem;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
   }
 }
