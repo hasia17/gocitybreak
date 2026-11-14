@@ -27,8 +27,8 @@ import { PlaceTranslations } from './place-translations';
 import { restorePlaces } from './place-suggestions';
 import { InfoTip } from '../ui/info-tip';
 import { OfferList } from './offer-list';
-import { EmptyResults } from './empty-results';
-import { emptyResult, SuggestionId } from './empty-suggestions';
+import { NoOffersMessage } from './no-offers-message';
+import { describeNoOffers, SuggestionId } from './no-offers';
 import { ResultsSkeleton } from './results-skeleton';
 import { SearchSummary, summarySearch } from './search-summary';
 import { offerView } from './offer-view';
@@ -133,7 +133,7 @@ function rejectedSearchMessage(reason: string): string {
     PlaceChips,
     OfferList,
     SearchSummary,
-    EmptyResults,
+    NoOffersMessage,
     ResultsSkeleton,
   ],
   styleUrls: ['./search.css', './search-filters.css', './search-results.css'],
@@ -290,14 +290,14 @@ export class Search {
     if (!this.collapsed() || !searched || !catalogue || !texts || !language) return undefined;
     return summarySearch(searched, catalogue, texts, language, this.found()?.at ?? Date.now());
   });
-  /** What an empty search says and suggests, from the query that was searched; undefined if it found offers. */
-  protected readonly emptyResult = computed(() => {
+  /** What a search that found no offers says and suggests, from the query that was searched; undefined if it found offers. */
+  protected readonly noOffers = computed(() => {
     const found = this.found();
     const searched = this.searched();
     const texts = this.texts();
     const language = this.language();
     return found && searched && texts && language && found.offers.length === 0
-      ? emptyResult(searched, this.catalogue(), language, texts, localIsoDate(0))
+      ? describeNoOffers(searched, this.catalogue(), language, texts, localIsoDate(0))
       : undefined;
   });
   protected readonly loading = signal(false);
@@ -445,7 +445,7 @@ export class Search {
 
   /** Applies a suggested change to the form and searches again. */
   protected applySuggestion(id: SuggestionId) {
-    const suggestion = this.emptyResult()?.suggestions.find((s) => s.id === id);
+    const suggestion = this.noOffers()?.suggestions.find((s) => s.id === id);
     if (!suggestion) return;
     this.form.patchValue(suggestion.patch);
     this.submit();

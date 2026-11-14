@@ -16,8 +16,8 @@ export interface Suggestion {
   patch: Partial<SearchFormValue>;
 }
 
-/** What the page says about a search that found nothing. */
-export interface EmptyResult {
+/** What the page says about a search that found no offers. */
+export interface NoOffers {
   title: string;
   text: string;
   suggestions: Suggestion[];
@@ -31,13 +31,13 @@ const aroundDays = 3;
  * that query. Nothing is checked ahead of time; each suggestion is only a change to try.
  * `today` is the browser's local date, which a flexible window never starts before.
  */
-export function emptyResult(
+export function describeNoOffers(
   v: SearchFormValue,
   catalogue: Catalogue | undefined,
   language: string,
   texts: Texts,
   today: string,
-): EmptyResult {
+): NoOffers {
   const fixed = v.dateMode === 'fixed';
   const roundTrip = v.kind === 'roundTrip';
   const day = (iso: string) => shortDay(texts, iso, true);
@@ -48,7 +48,7 @@ export function emptyResult(
 
   const suggestions: Suggestion[] = [];
   const add = (id: SuggestionId, patch: Partial<SearchFormValue>, params = {}) =>
-    suggestions.push({ id, patch, label: texts.t(`results.empty.${id}`, params) });
+    suggestions.push({ id, patch, label: texts.t(`results.noOffers.${id}`, params) });
 
   if (fixed) {
     const earliest = addDays(v.from, -aroundDays);
@@ -76,8 +76,8 @@ export function emptyResult(
     add('anywhere', { destination: 'anywhere' });
 
   return {
-    title: texts.t('results.empty.title', { route }),
-    text: texts.t('results.empty.tryOne', { dates }),
+    title: texts.t('results.noOffers.title', { route }),
+    text: texts.t('results.noOffers.tryOne', { dates }),
     suggestions,
   };
 }

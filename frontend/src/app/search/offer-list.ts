@@ -1,13 +1,12 @@
-import { ChangeDetectionStrategy, Component, input, linkedSignal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Texts, money, plural } from '../i18n/texts';
 import { DestinationGroupList } from './destination-group-list';
 import { DestinationGroup } from './destination-groups';
 import { OfferItem } from './offer';
 import { OfferView } from './offer-view';
+import { pagedBy } from './paging';
 import { SortOrder } from './search-api';
-
-const pageSize = 20;
 
 /** The heading, sort and offers of a search's results, shown 20 at a time. */
 @Component({
@@ -30,17 +29,10 @@ export class OfferList {
   /** Texts of the interface language; undefined until they have loaded. */
   readonly texts = input<Texts | undefined>();
 
-  protected readonly visibleCount = linkedSignal(() => {
-    this.pageKey();
-    return pageSize;
-  });
+  protected readonly page = pagedBy(this.pageKey);
 
   protected visibleOffers() {
-    return this.offers().slice(0, this.visibleCount());
-  }
-
-  protected showMore() {
-    this.visibleCount.update((count) => count + pageSize);
+    return this.offers().slice(0, this.page.shown());
   }
 
   protected t(key: string, params?: Record<string, unknown>): string {
@@ -62,7 +54,7 @@ export class OfferList {
       .reduce((low, price) => (price.amount < low.amount ? price : low));
     return texts.t('results.grouped', {
       offers,
-      places: plural(texts, 'results.places', groups.length),
+      groups: plural(texts, 'results.destinationGroups', groups.length),
       // "From" already says the price is a bound; the approximate mark is left to the offers.
       price: money(
         texts,

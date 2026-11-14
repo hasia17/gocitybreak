@@ -128,7 +128,7 @@
     "label": "Wyniki wyszukiwania",
     "loading": "Szukamy ofert…",
     "showMore": "Pokaż więcej",
-    "empty": {
+    "noOffers": {
       "title": "Brak ofert na trasie {{route}}",
       "tryOne": "Nic nie znaleziono dla terminu {{dates}}. Spróbuj jednej z tych zmian:",
       "widenWindow": "Poszerz okno o 14 dni (do {{date}})",
@@ -154,26 +154,32 @@
     },
     "book": "Rezerwuj ↗",
     "bookRoute": "{{route}} w Ryanair ↗",
-    "grouped": "{{offers}} w {{places}}, od {{price}}",
-    "places": {
+    "grouped": "{{offers}} w {{groups}}, od {{price}}",
+    "destinationGroups": {
       "one": "{{count}} miejscu",
       "few": "{{count}} miejscach",
       "many": "{{count}} miejscach",
       "other": "{{count}} miejscach"
     },
-    "moreDates": {
+    "moreOffers": {
       "one": "jeszcze {{count}} termin",
       "few": "jeszcze {{count}} terminy",
       "many": "jeszcze {{count}} terminów",
       "other": "jeszcze {{count}} terminu"
     },
-    "showAllDates": {
+    "showAllOffers": {
       "one": "Pokaż wszystkie {{count}} termin",
       "few": "Pokaż wszystkie {{count}} terminy",
       "many": "Pokaż wszystkie {{count}} terminów",
       "other": "Pokaż wszystkie {{count}} terminu"
     },
-    "showMorePlaces": "Pokaż więcej miejsc"
+    "showMoreGroups": "Pokaż więcej miejsc",
+    "board": {
+      "destination": "Kierunek",
+      "nights": "Noce",
+      "leave": "Urlop",
+      "from": "Od"
+    }
   },
   "offer": {
     "outbound": "Wylot",

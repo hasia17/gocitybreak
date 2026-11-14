@@ -1,18 +1,18 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
-import { EmptyResult, SuggestionId } from './empty-suggestions';
+import { NoOffers, SuggestionId } from './no-offers';
 
 /** A search that found nothing: what was searched, and changes to try instead. */
 @Component({
-  selector: 'app-empty-results',
+  selector: 'app-no-offers-message',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styleUrl: './empty-results.css',
-  host: { 'data-testid': 'empty' },
+  styleUrl: './no-offers-message.css',
+  host: { 'data-testid': 'no-offers' },
   template: `
-    <h2>{{ empty().title }}</h2>
-    <p>{{ empty().text }}</p>
-    @if (empty().suggestions.length > 0) {
+    <h2>{{ noOffers().title }}</h2>
+    <p>{{ noOffers().text }}</p>
+    @if (noOffers().suggestions.length > 0) {
       <ul class="suggestions">
-        @for (suggestion of empty().suggestions; track suggestion.id) {
+        @for (suggestion of noOffers().suggestions; track suggestion.id) {
           <li>
             <button
               type="button"
@@ -28,8 +28,8 @@ import { EmptyResult, SuggestionId } from './empty-suggestions';
     }
   `,
 })
-export class EmptyResults {
-  readonly empty = input.required<EmptyResult>();
+export class NoOffersMessage {
+  readonly noOffers = input.required<NoOffers>();
   /** The suggestion the user pressed. */
   readonly chosen = output<SuggestionId>();
 }

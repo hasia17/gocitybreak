@@ -394,8 +394,8 @@
   >
     @if (loading()) {
       <app-results-skeleton />
-    } @else if (emptyResult(); as empty) {
-      <app-empty-results [empty]="empty" (chosen)="applySuggestion($event)" />
+    } @else if (noOffers(); as noOffers) {
+      <app-no-offers-message [noOffers]="noOffers" (chosen)="applySuggestion($event)" />
     } @else if (offers(); as offers) {
       <app-offer-list
         [offers]="offers"
