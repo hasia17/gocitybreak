@@ -4,7 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { TranslocoService } from '@jsverse/transloco';
 import { provideTestI18n } from '../i18n/testing';
-import { fillPlace, flushCatalogue } from './place-testing';
+import { fillPlace, flushCatalogue, removeAnywhere } from './place-testing';
 import { Search } from './search';
 
 useSearchClock();
@@ -47,6 +47,13 @@ describe('Search field validation', () => {
     const to = input(root, '[role="combobox"][aria-label="To"]');
     const earliest = input(root, 'input[formControlName="from"]');
     const latest = input(root, 'input[formControlName="to"]');
+    // A first visit starts with a travel window and Anywhere; clear them to test the empty form.
+    removeAnywhere(root);
+    for (const date of [earliest, latest]) {
+      date.value = '';
+      date.dispatchEvent(new Event('input'));
+    }
+    await fixture.whenStable();
     expect(root.querySelector('[role="alert"]')).toBeNull();
     expect(message(root, from)).toBe('');
     submit(root);
