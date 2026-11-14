@@ -1,4 +1,8 @@
-<section class="hero" [class.compact]="offers() !== undefined">
+@if (summary(); as summary) {
+  <app-search-summary [summary]="summary" [changeLabel]="t('search.change')" (change)="change()" />
+}
+
+<section class="hero" [class.compact]="offers() !== undefined" [hidden]="collapsed()">
   <h1>{{ t('search.title') }}</h1>
   <p class="lede">{{ t('search.lede') }}</p>
 

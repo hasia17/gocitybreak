@@ -113,6 +113,8 @@ describe('shared search HTTP contract', () => {
       headers: { 'Content-Type': 'text/plain' },
     });
     await fixture.whenStable();
-    expect(root.textContent).toContain('Check the minimum and maximum nights; fixed dates do not use a stay length.');
+    expect(root.textContent).toContain(
+      'Check the minimum and maximum nights; fixed dates do not use a stay length.',
+    );
   });
 });

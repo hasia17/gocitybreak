@@ -6,11 +6,7 @@ import { SearchFormValue } from './search-query';
 
 /** The changes offered for a search that found nothing. */
 export type SuggestionId =
-  | 'widenWindow'
-  | 'moreNights'
-  | 'removeExclusions'
-  | 'anywhere'
-  | 'flexibleDates';
+  'widenWindow' | 'moreNights' | 'removeExclusions' | 'anywhere' | 'flexibleDates';
 
 /** A suggestion's button text and the change it makes to the search form. */
 export interface Suggestion {

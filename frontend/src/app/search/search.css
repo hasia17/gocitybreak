@@ -55,7 +55,9 @@ h1 {
   color: var(--on-accent);
 }
 .toggle label:has(input:focus-visible) {
-  box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ring);
+  box-shadow:
+    0 0 0 2px var(--card),
+    0 0 0 4px var(--ring);
 }
 .kind {
   margin: 0 0 0.75rem;
@@ -101,7 +103,9 @@ h1 {
 }
 .field:focus-within {
   background: var(--subtle);
-  box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ring);
+  box-shadow:
+    0 0 0 2px var(--card),
+    0 0 0 4px var(--ring);
 }
 .field.invalid {
   color: var(--danger);

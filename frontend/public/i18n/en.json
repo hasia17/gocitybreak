@@ -39,6 +39,13 @@
       "leaveDays": "Leave days"
     },
     "leave": "Leave",
+    "change": "Change",
+    "summary": {
+      "nights": {
+        "one": "{{range}} night",
+        "other": "{{range}} nights"
+      }
+    },
     "leaveSummary": {
       "unlimited": "Work {{start}}–{{end}}, no leave limit",
       "limited": {

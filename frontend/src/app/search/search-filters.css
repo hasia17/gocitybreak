@@ -146,7 +146,9 @@
   cursor: inherit;
 }
 .days label:has(input:focus-visible) {
-  box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ring);
+  box-shadow:
+    0 0 0 2px var(--card),
+    0 0 0 4px var(--ring);
 }
 /* A day outside the travel window: neither ticked nor unticked counts, so it shows neither. */
 .days label:has(input:disabled) {
