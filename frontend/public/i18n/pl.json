@@ -146,7 +146,27 @@
       "other": "Kupowane jako {{count}} osobnego biletu w jedną stronę"
     },
     "book": "Rezerwuj ↗",
-    "bookRoute": "{{route}} w Ryanair ↗"
+    "bookRoute": "{{route}} w Ryanair ↗",
+    "grouped": "{{offers}} w {{places}}, od {{price}}",
+    "places": {
+      "one": "{{count}} miejscu",
+      "few": "{{count}} miejscach",
+      "many": "{{count}} miejscach",
+      "other": "{{count}} miejscach"
+    },
+    "moreDates": {
+      "one": "jeszcze {{count}} termin",
+      "few": "jeszcze {{count}} terminy",
+      "many": "jeszcze {{count}} terminów",
+      "other": "jeszcze {{count}} terminu"
+    },
+    "showAllDates": {
+      "one": "Pokaż wszystkie {{count}} termin",
+      "few": "Pokaż wszystkie {{count}} terminy",
+      "many": "Pokaż wszystkie {{count}} terminów",
+      "other": "Pokaż wszystkie {{count}} terminu"
+    },
+    "showMorePlaces": "Pokaż więcej miejsc"
   },
   "offer": {
     "outbound": "Wylot",

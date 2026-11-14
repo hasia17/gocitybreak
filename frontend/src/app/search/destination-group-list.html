@@ -1,8 +1,29 @@
 <ol class="groups">
   @for (group of groups(); track group.airport) {
+    @let best = group.offers[0];
     <li data-testid="group">
-      <button type="button">
-        <span class="place-name">{{ group.name }}</span>
+      <button type="button" class="group-row">
+        <span class="place">
+          <span class="place-name">{{ group.name }}</span>
+          <span class="place-where"
+            >{{ group.airport }}{{ group.country ? ', ' + group.country : '' }}</span
+          >
+          @if (group.offers.length > 1) {
+            <span class="more-dates">{{ count('results.moreDates', group.offers.length - 1) }}</span>
+          }
+        </span>
+        <span class="details">
+          <span class="dates">{{ dates(best) }}</span>
+          @if (best.nights; as nights) {
+            <span>{{ nights }}</span>
+          }
+          @if (best.leaveDays; as leaveDays) {
+            <span>{{ leaveDays }}</span>
+          }
+        </span>
+        <span class="stamp">
+          <strong>{{ best.price }}</strong>
+        </span>
       </button>
     </li>
   }

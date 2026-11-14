@@ -4,7 +4,7 @@
   </p>
 } @else {
   <header class="results-head">
-    <h2>{{ offerCount(offers().length) }}</h2>
+    <h2>{{ heading() }}</h2>
     <span>{{ t('results.perPerson') }}</span>
     @if (showSort()) {
       <!-- Sorting reorders the found offers at once, so it sits with them, not in the form. -->

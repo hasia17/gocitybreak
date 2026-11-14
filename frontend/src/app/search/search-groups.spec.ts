@@ -130,7 +130,9 @@ describe('Search destination groups', () => {
       Array.from(root.querySelectorAll<HTMLButtonElement>('[data-testid="group"] > button'));
     const groupNames = () => groups().map((g) => g.querySelector('.place-name')?.textContent);
     const rows = () => Array.from(root.querySelectorAll<HTMLElement>('[data-testid="offer"]'));
-    const heading = () => root.querySelector('[data-testid="results"] h2')?.textContent?.trim();
+    /** Text with every run of spaces, the currency's non-breaking ones too, as one plain space. */
+    const plain = (text?: string | null) => text?.replace(/\s+/g, ' ').trim();
+    const heading = () => plain(root.querySelector('[data-testid="results"] h2')?.textContent);
     const button = (text: string) =>
       Array.from(root.querySelectorAll<HTMLButtonElement>('[data-testid="results"] button')).find(
         (b) => b.textContent?.trim() === text,
@@ -158,6 +160,40 @@ describe('Search destination groups', () => {
     await search([offer('BGY', 100, 4)]);
 
     expect(groupNames()).toEqual(['Milan Bergamo']);
+  });
+
+  it('shows each group with its place, best offer and other dates, in English and Polish', async () => {
+    const { fixture, search, groups, heading } = await renderSearch();
+    await search([
+      offer('BGY', 100, 4, 1),
+      offer('MXP', 157.5, 11, 0),
+      offer('BGY', 130, 5, 2),
+      offer('BGY', 140, 6, 2),
+    ]);
+    const text = () => groups().map((g) => g.textContent!.replace(/\s+/g, ' ').trim());
+
+    expect(heading()).toBe('4 offers in 2 places, from PLN 100');
+    expect(text()).toEqual([
+      'Milan Bergamo BGY, Italy 2 more dates Fri 4 Dec – Sun 6 Dec 2 nights 1 leave day PLN 100',
+      'Milan Malpensa MXP, Italy Fri 11 Dec – Sun 13 Dec 2 nights no leave days PLN 158',
+    ]);
+
+    TestBed.inject(TranslocoService).setActiveLang('pl');
+    await fixture.whenStable();
+    expect(heading()).toBe('4 oferty w 2 miejscach, od 100 zł');
+    expect(text()).toEqual([
+      'Mediolan-Bergamo BGY, Włochy jeszcze 2 terminy pt 4 gru – niedz 6 gru 2 noce 1 dzień urlopu 100 zł',
+      'Mediolan-Malpensa MXP, Włochy pt 11 gru – niedz 13 gru 2 noce bez urlopu 158 zł',
+    ]);
+  });
+
+  it('counts offers and places in the heading in Polish plural forms', async () => {
+    const { fixture, search, heading } = await renderSearch();
+    TestBed.inject(TranslocoService).setActiveLang('pl');
+    await fixture.whenStable();
+    await search([offer('BGY', 210, 4)]);
+
+    expect(heading()).toBe('1 oferta w 1 miejscu, od 210 zł');
   });
 
   it('keeps a flat list of offers for a single destination airport', async () => {

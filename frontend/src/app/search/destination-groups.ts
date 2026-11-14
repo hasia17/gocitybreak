@@ -4,7 +4,7 @@
  */
 import { Texts } from '../i18n/texts';
 import { catalogueName } from './catalogue-names';
-import { Catalogue, CatalogueCodes, Offer } from './search-api';
+import { Catalogue, CatalogueCodes, Offer, Price } from './search-api';
 import { offerView, OfferView } from './offer-view';
 import { readTypedNames } from './typed-names';
 
@@ -18,6 +18,8 @@ export interface DestinationGroup {
   country: string;
   /** Offers to the airport in the sort order; the first is the group's best offer. */
   offers: OfferView[];
+  /** The lowest offer price of the group, whatever the sort. */
+  cheapest: Price;
 }
 
 /**
@@ -71,10 +73,12 @@ export function destinationGroups(
         name: airport ? catalogueName(airport, language).trim() : code,
         country: country ? catalogueName(country, language) : '',
         offers: [],
+        cheapest: offer.price,
       };
       groups.set(code, group);
     }
     group.offers.push(offerView(offer, now, texts, catalogue));
+    if (offer.price.amount < group.cheapest.amount) group.cheapest = offer.price;
   }
   return [...groups.values()];
 }
