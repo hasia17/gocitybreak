@@ -331,22 +331,4 @@ describe('Search conveniences', () => {
     expect(links.map((l) => l.text)).toEqual(['KRK → STN on Ryanair ↗', 'STN → BGY on Ryanair ↗']);
     expect(rendered.textContent).toContain('Booked as 2 separate one-way tickets');
   });
-
-  it('suggests loosening the criteria when no offer matches', async () => {
-    const { fixture, root } = await render();
-    fill(root, 'From', 'KRK');
-    fill(root, 'To', 'BGY');
-    fill(root, 'Earliest', '2026-12-01');
-    fill(root, 'Latest', '2026-12-02');
-    search(root);
-    httpTesting.expectOne('/api/search').flush({ offers: [] });
-    await fixture.whenStable();
-
-    const results = root.querySelector('[data-testid="results"]')!.textContent!;
-    expect(results).toContain('No offers match');
-    expect(results).toMatch(/loosen/i);
-    expect(results).toContain('leave days');
-    expect(results).toContain('time ranges');
-    expect(results).toContain('weekdays');
-  });
 });

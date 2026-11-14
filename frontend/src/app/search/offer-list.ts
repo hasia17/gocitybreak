@@ -27,8 +27,6 @@ export class OfferList {
   readonly pageKey = input<unknown>();
   readonly sort = input.required<FormControl<SortOrder>>();
   readonly showSort = input(true);
-  /** The message for a search that found nothing. */
-  readonly emptyText = input('');
   /** Texts of the interface language; undefined until they have loaded. */
   readonly texts = input<Texts | undefined>();
 

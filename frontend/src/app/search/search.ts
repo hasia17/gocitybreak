@@ -27,6 +27,9 @@ import { PlaceTranslations } from './place-translations';
 import { restorePlaces } from './place-suggestions';
 import { InfoTip } from '../ui/info-tip';
 import { OfferList } from './offer-list';
+import { EmptyResults } from './empty-results';
+import { emptyResult, SuggestionId } from './empty-suggestions';
+import { ResultsSkeleton } from './results-skeleton';
 import { SearchSummary, summarySearch } from './search-summary';
 import { offerView } from './offer-view';
 import { coversSeveralAirports, destinationGroups } from './destination-groups';
@@ -119,7 +122,15 @@ function rejectedSearchMessage(reason: string): string {
 /** Search form for round-trip (default) or one-way offers, and the list of offers it finds. */
 @Component({
   selector: 'app-search',
-  imports: [ReactiveFormsModule, InfoTip, PlaceChips, OfferList, SearchSummary],
+  imports: [
+    ReactiveFormsModule,
+    InfoTip,
+    PlaceChips,
+    OfferList,
+    SearchSummary,
+    EmptyResults,
+    ResultsSkeleton,
+  ],
   styleUrls: ['./search.css', './search-filters.css', './search-results.css'],
   templateUrl: './search.html',
 })
@@ -281,6 +292,16 @@ export class Search {
       this.found()?.at ?? Date.now(),
     );
   });
+  /** What an empty search says and suggests, from the query that was searched; undefined if it found offers. */
+  protected readonly emptyResult = computed(() => {
+    const found = this.found();
+    const searched = this.searched();
+    const texts = this.texts();
+    const language = this.language();
+    return found && searched && texts && language && found.offers.length === 0
+      ? emptyResult(searched, this.catalogue(), language, texts, localIsoDate(0))
+      : undefined;
+  });
   protected readonly loading = signal(false);
   /** The translation key of the last search's failure. */
   protected readonly error = signal<string | undefined>(undefined);
@@ -415,12 +436,20 @@ export class Search {
     );
   }
 
+  /** Applies a suggested change to the form and searches again. */
+  protected applySuggestion(id: SuggestionId) {
+    const suggestion = this.emptyResult()?.suggestions.find((s) => s.id === id);
+    if (!suggestion) return;
+    this.form.patchValue(suggestion.patch);
+    this.submit();
+  }
+
   /** Move focus to the results heading, or to the message of a search that found nothing. */
   private focusResults() {
     afterNextRender(
       () => {
         const target = this.element.nativeElement.querySelector<HTMLElement>(
-          '[data-testid="results"] h2, [data-testid="results"] .empty',
+          '[data-testid="results"] h2',
         );
         target?.setAttribute('tabindex', '-1');
         target?.focus();

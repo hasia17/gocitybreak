@@ -1,8 +1,4 @@
-@if (offers().length === 0) {
-  <p class="empty">
-    {{ emptyText() }}
-  </p>
-} @else {
+@if (offers().length > 0) {
   <header class="results-head">
     <h2>{{ heading() }}</h2>
     <span>{{ t('results.perPerson') }}</span>

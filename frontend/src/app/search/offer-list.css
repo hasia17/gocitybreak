@@ -10,8 +10,7 @@
   margin: 0;
   font: 400 1.5rem var(--font-serif);
 }
-.results-head span,
-.empty {
+.results-head span {
   color: var(--muted);
 }
 .results-head span {
@@ -93,7 +92,4 @@
   min-height: 2rem;
   padding: 0 0.75rem;
   font-size: 0.8rem;
-}
-.empty {
-  text-align: center;
 }
