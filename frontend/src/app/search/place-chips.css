@@ -30,6 +30,16 @@ input {
   font-size: 1.05rem;
 }
 /* Once places are chosen, an idle input stays out of the way instead of wrapping onto an empty row. */
+.chips:has(.chip) input:focus:placeholder-shown {
+  /* Until the user types, a focused input is a caret's width, so it never squeezes a chip. */
+  flex: 0 0 1ch;
+  width: 1ch;
+  min-width: 0;
+}
+.chips:has(.chip) input:focus:not(:placeholder-shown) {
+  flex: 1 1 3rem;
+  min-width: 3rem;
+}
 .chips:has(.chip) input:not(:focus) {
   flex: 0 1 1px;
   min-width: 0;

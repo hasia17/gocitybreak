@@ -1,6 +1,6 @@
 /* The list of offers the search found. */
 .results {
-  max-width: 44rem;
+  max-width: var(--content-width);
   margin: 0 auto;
 }
 /* The skeleton shows progress; the status text stays for screen readers only. */

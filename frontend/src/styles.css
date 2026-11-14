@@ -1,5 +1,7 @@
 /* Design tokens: direction D, airmail paper (GitHub #57, spec #55). */
 :root {
+  /* One content width for the whole search page: form, panels and results. */
+  --content-width: 68rem;
   --bg: #eef1f4;
   --card: #fff;
   --ink: #1e2430;
@@ -32,6 +34,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
+  /* One content width for the whole search page: form, panels and results. */
+  --content-width: 68rem;
     --bg: #12161f;
     --card: #1b212d;
     --ink: #eeeae2;
