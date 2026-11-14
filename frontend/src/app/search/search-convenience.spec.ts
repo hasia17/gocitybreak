@@ -257,7 +257,7 @@ describe('Search conveniences', () => {
     expect(url.searchParams.get('dateIn')).toBe('2026-12-06');
     expect(url.searchParams.get('isReturn')).toBe('true');
     expect(url.searchParams.get('adults')).toBe('1');
-    expect(text).toContain('Ryanair');
+    expect(text).toBe('Book ↗');
     expect(target).toBe('_blank');
   });
 
@@ -305,7 +305,7 @@ describe('Search conveniences', () => {
     const text = document.querySelector('[data-testid="offer"]')!.textContent!;
     expect(text).toContain('pt 4 gru');
     expect(text).toContain('2 noce');
-    expect(text).toContain('200,00 zł');
+    expect(text).toContain('200 zł');
     expect(text).toContain('Kupowane jako 2 osobne bilety w jedną stronę');
     expect(text).toContain('sprawdzono 0 min temu');
   });
@@ -315,7 +315,7 @@ describe('Search conveniences', () => {
 
     expect(links).toHaveLength(1);
     const [{ url, text }] = links;
-    expect(text).toBe('Book on Ryanair ↗');
+    expect(text).toBe('Book ↗');
     expect(url.searchParams.get('originIata')).toBe('KRK');
     expect(url.searchParams.get('destinationIata')).toBe('BGY');
     expect(url.searchParams.get('dateOut')).toBe('2026-12-04');

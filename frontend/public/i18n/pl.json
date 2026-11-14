@@ -145,7 +145,7 @@
       "many": "Kupowane jako {{count}} osobnych biletów w jedną stronę",
       "other": "Kupowane jako {{count}} osobnego biletu w jedną stronę"
     },
-    "book": "Zarezerwuj w Ryanair ↗",
+    "book": "Rezerwuj ↗",
     "bookRoute": "{{route}} w Ryanair ↗"
   },
   "offer": {
@@ -226,16 +226,16 @@
     "inboundArrival": {
       "label": "O godzinie przylotu z powrotem"
     },
+    "price": {
+      "label": "O tej cenie"
+    },
     "approximatePrice": {
-      "label": "O przybliżonej cenie",
       "text": "Przeliczono na PLN po średnim kursie NBP, ponieważ lot jest wyceniony w innej walucie."
     },
     "priceAge": {
-      "label": "O czasie sprawdzenia ceny",
       "text": "To zapisana cena, która mogła się zmienić. Aktualną cenę sprawdzisz na stronie Ryanair."
     },
     "separateTickets": {
-      "label": "O osobnych biletach",
       "text": "Samodzielna przesiadka odbywa się na własne ryzyko. Nikt nie gwarantuje kolejnego lotu, jeśli pierwszy się spóźni."
     }
   }

@@ -76,7 +76,7 @@ describe('shared search HTTP contract', () => {
     expect(offer).toContain('KRK Kraków → BGY Bergamo');
     expect(offer).toContain('BGY Bergamo → KRK Kraków');
     expect(offer).toContain('2 nights');
-    expect(offer).toContain('PLN 90.00');
+    expect(offer).toContain('PLN 90');
   });
 
   it('sends the one-way request and renders the shared response', async () => {
@@ -87,7 +87,7 @@ describe('shared search HTTP contract', () => {
     await fixture.whenStable();
     const offer = root.querySelector('[data-testid="offer"]')!.textContent!;
     expect(offer).toContain('KRK Kraków → BGY Bergamo');
-    expect(offer).toContain('PLN 89.00');
+    expect(offer).toContain('PLN 89');
     expect(offer).not.toContain('nights');
   });
 
@@ -98,7 +98,7 @@ describe('shared search HTTP contract', () => {
     req.flush(foreignCurrencyResponse);
     await fixture.whenStable();
     const offer = root.querySelector('[data-testid="offer"]')!.textContent!;
-    expect(offer).toContain('≈ PLN 134.98');
+    expect(offer).toContain('≈ PLN 135');
     expect(offer).toContain('€19.99');
   });
 
@@ -113,6 +113,8 @@ describe('shared search HTTP contract', () => {
       headers: { 'Content-Type': 'text/plain' },
     });
     await fixture.whenStable();
-    expect(root.textContent).toContain('Check the minimum and maximum nights; fixed dates do not use a stay length.');
+    expect(root.textContent).toContain(
+      'Check the minimum and maximum nights; fixed dates do not use a stay length.',
+    );
   });
 });

@@ -20,14 +20,23 @@ export function plural(
   return texts.t(`${key}.${form}`, { ...params, count });
 }
 
-/** A price like "123,45 zł" or "PLN 123.45", prefixed with "≈ " when approximate. */
+/**
+ * A price like "123,45 zł" or "PLN 123.45", prefixed with "≈ " when approximate. With `whole` the
+ * amount is rounded half up to whole units, like "123 zł".
+ */
 export function money(
   texts: Texts,
   price: { amount: number; currency: string; approximate?: boolean },
+  { whole = false }: { whole?: boolean } = {},
 ): string {
   const amount = new Intl.NumberFormat(texts.locale, {
     style: 'currency',
     currency: price.currency,
+    ...(whole && {
+      maximumFractionDigits: 0,
+      minimumFractionDigits: 0,
+      roundingMode: 'halfExpand',
+    }),
   }).format(price.amount);
   return price.approximate ? `≈ ${amount}` : amount;
 }
