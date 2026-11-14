@@ -146,7 +146,7 @@
   background: var(--subtle);
 }
 
-/* On a phone the headings go, and each row shows place and price, with the details wrapped underneath. */
+/* On a phone the headings go, and each row shows destination and price, with the details wrapped underneath. */
 @media (max-width: 640px) {
   .board-head {
     display: none;

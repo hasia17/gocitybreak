@@ -1,11 +1,11 @@
 <!-- Column headings of the rows below; the rows name their own parts, so the headings stay out of the accessibility tree. -->
 <div class="board-head" data-testid="group-head" aria-hidden="true">
-  <span>{{ texts()?.t('results.board.destination') }}</span>
-  <span>{{ texts()?.t('offer.outbound') }}</span>
-  <span>{{ texts()?.t('offer.return') }}</span>
-  <span>{{ texts()?.t('results.board.nights') }}</span>
-  <span>{{ texts()?.t('results.board.leave') }}</span>
-  <span class="from">{{ texts()?.t('results.board.from') }}</span>
+  <span>{{ t('results.board.destination') }}</span>
+  <span>{{ t('offer.outbound') }}</span>
+  <span>{{ t('offer.return') }}</span>
+  <span>{{ t('results.board.nights') }}</span>
+  <span>{{ t('results.board.leave') }}</span>
+  <span class="from">{{ t('results.board.from') }}</span>
 </div>
 <ol class="groups">
   @for (group of visibleGroups(); track group.airport) {
@@ -65,6 +65,6 @@
 </ol>
 @if (page.shown() < groups().length) {
   <button class="show-more" type="button" (click)="page.showMore()">
-    {{ texts()?.t('results.showMoreGroups') }}
+    {{ t('results.showMoreGroups') }}
   </button>
 }

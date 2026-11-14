@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, linkedSignal } from '@angular/core';
 import { Texts, plural } from '../i18n/texts';
+import { Translated } from '../i18n/translated';
 import { DestinationGroup } from './destination-groups';
 import { OfferItem } from './offer';
 import { OfferView } from './offer-view';
@@ -19,7 +20,7 @@ const offersPerGroup = 5;
   styleUrl: './destination-group-list.css',
   templateUrl: './destination-group-list.html',
 })
-export class DestinationGroupList {
+export class DestinationGroupList extends Translated {
   /** Groups in the order to show them. */
   readonly groups = input.required<DestinationGroup[]>();
   /** Changes when the board should start again from the first page, all closed: a new search or sort. */

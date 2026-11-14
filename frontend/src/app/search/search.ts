@@ -23,6 +23,7 @@ import { TranslocoService } from '@jsverse/transloco';
 import { combineLatest, map, merge, switchMap, take } from 'rxjs';
 import { Language, textsIn } from '../i18n/language';
 import { plural } from '../i18n/texts';
+import { Translated } from '../i18n/translated';
 import { PlaceChips } from './place-chips';
 import { PlaceTranslations } from './place-translations';
 import { restorePlaces } from './place-suggestions';
@@ -140,7 +141,7 @@ function rejectedSearchMessage(reason: string): string {
   styleUrls: ['./search.css', './search-filters.css', './search-results.css'],
   templateUrl: './search.html',
 })
-export class Search {
+export class Search extends Translated {
   private readonly http = inject(HttpClient);
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly destroyRef = inject(DestroyRef);
@@ -330,6 +331,7 @@ export class Search {
   protected readonly submitted = signal(false);
 
   constructor() {
+    super();
     this.form.controls.sort.valueChanges.pipe(takeUntilDestroyed()).subscribe((sort) => {
       // The sort is chosen over the results, after searching: remember it on its own.
       saveSearchSettings({ ...loadSearchSettings(), sort });
@@ -485,11 +487,6 @@ export class Search {
       },
       { injector: this.injector },
     );
-  }
-
-  /** The text under `key` in the interface language; empty until the language's texts have loaded. */
-  protected t(key: string, params?: Record<string, unknown>): string {
-    return this.texts()?.t(key, params) ?? '';
   }
 
   private updateApplicableFields() {

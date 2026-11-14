@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Texts, money, plural } from '../i18n/texts';
+import { Translated } from '../i18n/translated';
 import { DestinationGroupList } from './destination-group-list';
 import { DestinationGroup } from './destination-groups';
 import { OfferItem } from './offer';
@@ -17,7 +18,7 @@ import { SortOrder } from './search-api';
   styleUrl: './offer-list.css',
   templateUrl: './offer-list.html',
 })
-export class OfferList {
+export class OfferList extends Translated {
   /** Offers in the order to show them. */
   readonly offers = input.required<OfferView[]>();
   /** The offers in destination groups, shown instead of a flat list; undefined for a flat list. */
@@ -33,10 +34,6 @@ export class OfferList {
 
   protected visibleOffers() {
     return this.offers().slice(0, this.page.shown());
-  }
-
-  protected t(key: string, params?: Record<string, unknown>): string {
-    return this.texts()?.t(key, params) ?? '';
   }
 
   /**

@@ -24,7 +24,7 @@ export interface DestinationGroup {
 
 /**
  * Whether the typed destination less the typed exclusions covers more than one airport:
- * Anywhere, a country, a city of several airports or several places.
+ * Anywhere, a country, a city of several airports or several destinations.
  */
 export function coversSeveralAirports(
   destination: string,

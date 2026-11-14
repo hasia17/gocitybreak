@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { Texts, ago } from '../i18n/texts';
+import { Translated } from '../i18n/translated';
 import { InfoTip } from '../ui/info-tip';
 import { OfferView } from './offer-view';
 
@@ -13,7 +14,7 @@ import { OfferView } from './offer-view';
   styleUrl: './offer.css',
   templateUrl: './offer.html',
 })
-export class OfferItem {
+export class OfferItem extends Translated {
   readonly offer = input.required<OfferView>();
   /** False inside a group that names the destination: a single-flight leg then drops its route. */
   readonly showDestination = input(true);
@@ -24,9 +25,5 @@ export class OfferItem {
   protected priceAge(): string {
     const texts = this.texts();
     return texts ? ago(texts, this.offer().priceFetchedAt, Date.now()) : '';
-  }
-
-  protected t(key: string, params?: Record<string, unknown>): string {
-    return this.texts()?.t(key, params) ?? '';
   }
 }
