@@ -1,8 +1,15 @@
 <ol class="groups">
   @for (group of groups(); track group.airport) {
     @let best = group.offers[0];
+    @let isOpen = open().has(group.airport);
     <li data-testid="group">
-      <button type="button" class="group-row">
+      <button
+        type="button"
+        class="group-row"
+        [attr.aria-expanded]="isOpen"
+        [attr.aria-controls]="'group-' + group.airport"
+        (click)="toggle(group.airport)"
+      >
         <span class="place">
           <span class="place-name">{{ group.name }}</span>
           <span class="place-where"
@@ -25,6 +32,21 @@
           <strong>{{ best.price }}</strong>
         </span>
       </button>
+      @if (isOpen) {
+        @let shown = shownOffers(group);
+        <div class="group-offers" [id]="'group-' + group.airport">
+          <ol class="offers">
+            @for (offer of shown; track $index) {
+              <li app-offer [offer]="offer" [showDestination]="false" [texts]="texts()"></li>
+            }
+          </ol>
+          @if (shown.length < group.offers.length) {
+            <button class="show-all" type="button" (click)="showAll(group.airport)">
+              {{ count('results.showAllDates', group.offers.length) }}
+            </button>
+          }
+        </div>
+      }
     </li>
   }
 </ol>

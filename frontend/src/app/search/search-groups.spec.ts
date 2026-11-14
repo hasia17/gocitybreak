@@ -196,6 +196,45 @@ describe('Search destination groups', () => {
     expect(heading()).toBe('1 oferta w 1 miejscu, od 210 zł');
   });
 
+  it('opens a group on its first 5 offers, shows all on demand and keeps other groups open', async () => {
+    const { fixture, settle, search, groups, rows, button } = await renderSearch();
+    await search([...offersTo('BGY', 7, 100), ...offersTo('MXP', 3, 200)]);
+    const [bergamo, malpensa] = groups();
+    const prices = () =>
+      rows().map((r) => r.querySelector('.price strong')?.textContent?.replace(/\s+/g, ' '));
+
+    expect(bergamo.getAttribute('aria-expanded')).toBe('false');
+    expect(rows()).toHaveLength(0);
+
+    bergamo.click();
+    await settle();
+    expect(bergamo.getAttribute('aria-expanded')).toBe('true');
+    expect(prices()).toEqual(['PLN 100', 'PLN 101', 'PLN 102', 'PLN 103', 'PLN 104']);
+    // Inside a group named by its airport, a direct leg does not repeat the destination.
+    expect(rows()[0].querySelector('.route')).toBeNull();
+    expect(button('Show all 7 dates')).toBeDefined();
+
+    malpensa.click();
+    await settle();
+    expect(rows()).toHaveLength(8);
+    // A group of no more than 5 offers already shows them all.
+    expect(button('Show all 3 dates')).toBeUndefined();
+
+    TestBed.inject(TranslocoService).setActiveLang('pl');
+    await settle();
+    expect(button('Pokaż wszystkie 7 terminów')).toBeDefined();
+    button('Pokaż wszystkie 7 terminów')!.click();
+    await settle();
+    expect(rows()).toHaveLength(10);
+    expect(button('Pokaż wszystkie 7 terminów')).toBeUndefined();
+
+    malpensa.click();
+    await settle();
+    expect(malpensa.getAttribute('aria-expanded')).toBe('false');
+    expect(rows()).toHaveLength(7);
+    expect(fixture.nativeElement.querySelector('h2').textContent).toContain('10 ofert');
+  });
+
   it('keeps a flat list of offers for a single destination airport', async () => {
     const { search, groups, rows, heading } = await renderSearch('BUD');
     await search([offer('BUD', 100, 4), offer('BUD', 110, 5)]);
