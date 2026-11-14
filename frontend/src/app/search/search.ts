@@ -288,14 +288,7 @@ export class Search {
     const texts = this.texts();
     const language = this.language();
     if (!this.collapsed() || !searched || !catalogue || !texts || !language) return undefined;
-    return summarySearch(
-      searched,
-      catalogue,
-      texts,
-      language,
-      this.placeTranslations.anywhere(language),
-      this.found()?.at ?? Date.now(),
-    );
+    return summarySearch(searched, catalogue, texts, language, this.found()?.at ?? Date.now());
   });
   /** What an empty search says and suggests, from the query that was searched; undefined if it found offers. */
   protected readonly emptyResult = computed(() => {

@@ -3,7 +3,7 @@
  * outbound leg lands at, for a destination that covers more than one airport.
  */
 import { Texts } from '../i18n/texts';
-import { catalogueName } from './catalogue-names';
+import { byCode, catalogueName } from './catalogue-names';
 import { Catalogue, CatalogueCodes, Offer, Price } from './search-api';
 import { offerView, OfferView } from './offer-view';
 import { readTypedNames } from './typed-names';
@@ -66,8 +66,8 @@ export function destinationGroups(
     const code = offer.outbound.flights.at(-1)!.arrivalAirport;
     let group = groups.get(code);
     if (!group) {
-      const airport = catalogue?.airports.find((a) => a.code === code);
-      const country = catalogue?.countries.find((c) => c.code === airport?.country);
+      const airport = byCode(catalogue?.airports, code);
+      const country = byCode(catalogue?.countries, airport?.country);
       group = {
         airport: code,
         name: airport ? catalogueName(airport, language).trim() : code,

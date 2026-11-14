@@ -1,5 +1,6 @@
 import { Texts, shortDay } from '../i18n/texts';
-import { catalogueName } from './catalogue-names';
+import { addDays, daysBetween } from './calendar-days';
+import { placeNames } from './catalogue-names';
 import { readPlaceSelections } from './place-selection';
 import { Catalogue } from './search-api';
 import { SearchFormValue } from './search-query';
@@ -25,35 +26,6 @@ export interface EmptyResult {
 const widenDays = 14;
 const aroundDays = 3;
 
-function addDays(isoDate: string, days: number): string {
-  return new Date(Date.parse(isoDate) + days * 86_400_000).toISOString().slice(0, 10);
-}
-
-function daysBetween(from: string, to: string): number {
-  return Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000);
-}
-
-function placeNames(
-  value: string,
-  catalogue: Catalogue | undefined,
-  language: string,
-  texts: Texts,
-): string {
-  return readPlaceSelections(value)
-    .map((place) => {
-      if (place.kind === 'anywhere') return texts.t('places.anywhere');
-      const list =
-        place.kind === 'airport'
-          ? catalogue?.airports
-          : place.kind === 'city'
-            ? catalogue?.cities
-            : catalogue?.countries;
-      const found = list?.find((item) => item.code === place.code);
-      return found ? catalogueName(found, language) : place.code;
-    })
-    .join(', ');
-}
-
 /**
  * Describes a search that found nothing: its route and dates, and the changes that apply to
  * that query. Nothing is checked ahead of time; each suggestion is only a change to try.
@@ -69,7 +41,9 @@ export function emptyResult(
   const fixed = v.dateMode === 'fixed';
   const roundTrip = v.kind === 'roundTrip';
   const day = (iso: string) => shortDay(texts, iso, true);
-  const route = `${placeNames(v.homeAirports, catalogue, language, texts)} → ${placeNames(v.destination, catalogue, language, texts)}`;
+  const names = (value: string) =>
+    placeNames(value, catalogue, language, texts.t('places.anywhere')).join(', ');
+  const route = `${names(v.homeAirports)} → ${names(v.destination)}`;
   const dates = fixed && !roundTrip ? day(v.from) : `${day(v.from)} – ${day(v.to)}`;
 
   const suggestions: Suggestion[] = [];
@@ -83,7 +57,8 @@ export function emptyResult(
       dateMode: 'flexible',
       from: earliest < today ? today : earliest,
       to: addDays(roundTrip ? v.to : v.from, aroundDays),
-      ...(roundTrip && { stayLength: { min: Math.max(1, nights - 1), max: nights + 1 } }),
+      // The stay keeps its nights exactly; only the days around it widen.
+      ...(roundTrip && { stayLength: { min: nights, max: nights } }),
     });
   } else {
     const to = addDays(v.to, widenDays);
@@ -102,9 +77,7 @@ export function emptyResult(
 
   return {
     title: texts.t('results.empty.title', { route }),
-    text: texts.t(suggestions.length > 0 ? 'results.empty.tryOne' : 'results.empty.tryMore', {
-      dates,
-    }),
+    text: texts.t('results.empty.tryOne', { dates }),
     suggestions,
   };
 }

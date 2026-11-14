@@ -127,7 +127,6 @@
     "empty": {
       "title": "No offers for {{route}}",
       "tryOne": "Nothing found for {{dates}}. Try one of these changes:",
-      "tryMore": "Nothing found for {{dates}}. Try more airports, or fewer filters: wider time ranges, more weekdays.",
       "widenWindow": "Widen the window by 14 days (until {{date}})",
       "moreNights": "Allow {{min}}–{{max}} nights",
       "removeExclusions": "Remove exclusions",

@@ -1,6 +1,7 @@
 import { Texts, ago, money, plural, shortDay } from '../i18n/texts';
 import { Catalogue, Offer } from './search-api';
-import { catalogueName } from './catalogue-names';
+import { daysBetween } from './calendar-days';
+import { byCode, catalogueName } from './catalogue-names';
 import { ryanairTickets } from './ryanair-booking';
 
 /** Display values for one result, including its booking links. */
@@ -16,9 +17,9 @@ export function offerView(offer: Offer, now: number, texts: Texts, catalogue?: C
   const year = new Date(now).getFullYear();
   const language = new Intl.Locale(texts.locale).language;
   const airportName = (code: string) => {
-    const airport = catalogue?.airports.find((a) => a.code === code);
+    const airport = byCode(catalogue?.airports, code);
     // The first city is Ryanair's own; later cities are nearby search groups (e.g. Milan for BGY).
-    const city = catalogue?.cities.find((c) => c.code === airport?.cities[0]);
+    const city = byCode(catalogue?.cities, airport?.cities[0]);
     return city ? `${code} ${catalogueName(city, language)}` : code;
   };
   const legs = [offer.outbound, ...(offer.inbound ? [offer.inbound] : [])];
@@ -35,9 +36,7 @@ export function offerView(offer: Offer, now: number, texts: Texts, catalogue?: C
           departureTime: flight.departure.time,
           arrivalTime: flight.arrival.time,
           arrivalDate: flight.arrival.date,
-          daysLater: Math.round(
-            (Date.parse(flight.arrival.date) - Date.parse(flight.departure.date)) / 86_400_000,
-          ),
+          daysLater: daysBetween(flight.departure.date, flight.arrival.date),
           from: airportName(flight.departureAirport),
           to: airportName(flight.arrivalAirport),
         };

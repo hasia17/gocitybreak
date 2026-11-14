@@ -168,7 +168,8 @@ describe('Search empty result', () => {
     const body = await press(fixture, root, 'flexibleDates');
     expect(body.fixedDates).toBeUndefined();
     expect(body.travelWindow).toEqual({ from: '2026-11-28', to: '2026-12-13' });
-    expect(body.stayLength).toEqual({ min: 8, max: 10 });
+    // The nights stay as they were; only the days widen.
+    expect(body.stayLength).toEqual({ min: 9, max: 9 });
     expect(root.querySelector<HTMLInputElement>('input[value="flexible"]')!.checked).toBe(true);
   });
 

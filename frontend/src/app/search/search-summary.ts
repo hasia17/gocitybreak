@@ -2,8 +2,7 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 import { Language } from '../i18n/language';
 import { plural, Texts } from '../i18n/texts';
 import { Catalogue } from './search-api';
-import { AnywhereLabel, cataloguePlaces } from './place-suggestions';
-import { placeValue, readPlaceSelections } from './place-selection';
+import { placeNames } from './catalogue-names';
 import { SearchFormValue } from './search-query';
 
 /** What the one-line summary of a search says, in the interface language. */
@@ -31,20 +30,6 @@ function summaryDay(texts: Texts, isoDate: string, thisYear: number): string {
     .join('');
 }
 
-/** The names of the places in a form field, in the interface language; unknown ones keep their code. */
-function placeNames(
-  catalogue: Catalogue,
-  field: 'homeAirports' | 'destination',
-  value: string,
-  language: Language,
-  anywhere: AnywhereLabel | undefined,
-): string[] {
-  const known = cataloguePlaces(catalogue, field, language, anywhere);
-  return readPlaceSelections(value).map(
-    (place) => known.find((k) => k.value === placeValue(place))?.name ?? place.code,
-  );
-}
-
 /**
  * The summary of a search: the places, dates and nights it asked for. Round trips on flexible
  * dates name the stay length, fixed ones name both dates, and one way ones say so.
@@ -54,14 +39,15 @@ export function summarySearch(
   catalogue: Catalogue,
   texts: Texts,
   language: Language,
-  anywhere: AnywhereLabel | undefined,
   now: number,
 ): SearchSummaryText {
-  const homes = placeNames(catalogue, 'homeAirports', v.homeAirports, language, anywhere);
+  const names = (value: string) =>
+    placeNames(value, catalogue, language, texts.t('places.anywhere'));
+  const homes = names(v.homeAirports);
   const from =
     homes.slice(0, shownAirports).join(', ') +
     (homes.length > shownAirports ? ` +${homes.length - shownAirports}` : '');
-  const to = placeNames(catalogue, 'destination', v.destination, language, anywhere).join(', ');
+  const to = names(v.destination).join(', ');
   const thisYear = new Date(now).getFullYear();
   const day = (iso: string) => summaryDay(texts, iso, thisYear);
   const roundTrip = v.kind === 'roundTrip';

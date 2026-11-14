@@ -131,7 +131,6 @@
     "empty": {
       "title": "Brak ofert na trasie {{route}}",
       "tryOne": "Nic nie znaleziono dla terminu {{dates}}. Spróbuj jednej z tych zmian:",
-      "tryMore": "Nic nie znaleziono dla terminu {{dates}}. Spróbuj dodać lotniska albo poluzować filtry: szersze przedziały godzin, więcej dni tygodnia.",
       "widenWindow": "Poszerz okno o 14 dni (do {{date}})",
       "moreNights": "Dopuść {{min}}–{{max}} nocy",
       "removeExclusions": "Usuń wykluczenia",

@@ -14,6 +14,7 @@ import {
   Weekday,
 } from './search-api';
 import { readTypedNames } from './typed-names';
+import { addDays, daysBetween } from './calendar-days';
 
 /** The four moments of an offer that a time range can restrict, in travel order. */
 export const moments = [
@@ -46,10 +47,10 @@ export function windowWeekdays(from: string, to: string): Set<Weekday> {
   const start = Date.parse(from);
   const end = Date.parse(to);
   if (Number.isNaN(start) || Number.isNaN(end) || end < start) return all;
-  const days = Math.round((end - start) / 86_400_000) + 1;
+  const days = daysBetween(from, to) + 1;
   if (days >= 7) return all;
   return new Set(
-    Array.from({ length: days }, (_, i) => byDay[new Date(start + i * 86_400_000).getUTCDay()]),
+    Array.from({ length: days }, (_, i) => byDay[new Date(addDays(from, i)).getUTCDay()]),
   );
 }
 
