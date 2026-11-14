@@ -73,6 +73,9 @@
 .section-toggle::before {
   content: '▸';
   align-self: center;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--text);
 }
 .section-toggle[aria-expanded='true']::before {
   content: '▾';
