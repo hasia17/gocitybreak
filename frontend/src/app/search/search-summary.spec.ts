@@ -169,7 +169,7 @@ describe('Search summary', () => {
     expect(root.querySelector('[data-place-chip="KRK"]')).not.toBeNull();
     expect(root.querySelector('[data-place-chip="anywhere"]')).not.toBeNull();
     // The results of the earlier search stay while the form is open.
-    expect(root.querySelector('[data-testid="offer"]')).not.toBeNull();
+    expect(root.querySelector('[data-testid="results"] h2')).not.toBeNull();
 
     await found(2);
     expect(visible(form())).toBe(false);
@@ -180,7 +180,7 @@ describe('Search summary', () => {
     const { root, found } = await render();
     await found(3);
     const heading = root.querySelector<HTMLElement>('[data-testid="results"] h2')!;
-    expect(heading.textContent).toBe('3 offers');
+    expect(heading.textContent?.replace(/\s+/g, ' ')).toBe('3 offers in 1 place, from PLN 100');
     expect(document.activeElement).toBe(heading);
   });
 

@@ -1,0 +1,59 @@
+<ol class="groups">
+  @for (group of visibleGroups(); track group.airport) {
+    @let best = group.offers[0];
+    @let isOpen = open().has(group.airport);
+    <li data-testid="group">
+      <button
+        type="button"
+        class="group-row"
+        [attr.aria-expanded]="isOpen"
+        [attr.aria-controls]="'group-' + group.airport"
+        (click)="toggle(group.airport)"
+      >
+        <span class="place">
+          <span class="place-name">{{ group.name }}</span>
+          <span class="place-where"
+            >{{ group.airport }}{{ group.country ? ', ' + group.country : '' }}</span
+          >
+          @if (group.offers.length > 1) {
+            <span class="more-dates">{{
+              count('results.moreDates', group.offers.length - 1)
+            }}</span>
+          }
+        </span>
+        <span class="details">
+          <span class="dates">{{ dates(best) }}</span>
+          @if (best.nights; as nights) {
+            <span>{{ nights }}</span>
+          }
+          @if (best.leaveDays; as leaveDays) {
+            <span>{{ leaveDays }}</span>
+          }
+        </span>
+        <span class="stamp">
+          <strong>{{ best.price }}</strong>
+        </span>
+      </button>
+      @if (isOpen) {
+        @let shown = shownOffers(group);
+        <div class="group-offers" [id]="'group-' + group.airport">
+          <ol class="offers">
+            @for (offer of shown; track $index) {
+              <li app-offer [offer]="offer" [showDestination]="false" [texts]="texts()"></li>
+            }
+          </ol>
+          @if (shown.length < group.offers.length) {
+            <button class="show-all" type="button" (click)="showAll(group.airport)">
+              {{ count('results.showAllDates', group.offers.length) }}
+            </button>
+          }
+        </div>
+      }
+    </li>
+  }
+</ol>
+@if (visibleCount() < groups().length) {
+  <button class="show-more" type="button" (click)="showMore()">
+    {{ texts()?.t('results.showMorePlaces') }}
+  </button>
+}

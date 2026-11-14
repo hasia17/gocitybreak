@@ -32,6 +32,7 @@ import { emptyResult, SuggestionId } from './empty-suggestions';
 import { ResultsSkeleton } from './results-skeleton';
 import { SearchSummary, summarySearch } from './search-summary';
 import { offerView } from './offer-view';
+import { coversSeveralAirports, destinationGroups } from './destination-groups';
 import { Catalogue, Offer, OfferKind, SearchResponse, SortOrder, sortOrders } from './search-api';
 import { filtersForm } from './search-filters';
 import { loadSearchSettings, saveSearchSettings } from './search-settings';
@@ -236,13 +237,33 @@ export class Search {
   private readonly sort = toSignal(this.form.controls.sort.valueChanges, {
     initialValue: this.form.controls.sort.value,
   });
+  /** Changes with a new search or sort, not with the language: the list then starts at page one. */
+  protected readonly pageKey = computed(() => ({ found: this.found(), sort: this.sort() }));
+  /**
+   * Destination groups of the last search in the chosen order, when its destination covers more
+   * than one airport; undefined otherwise. Switching the sort reorders them at once.
+   */
+  protected readonly groups = computed(() => {
+    const found = this.found();
+    const texts = this.texts();
+    const searched = this.searched();
+    if (!found || !texts || !searched) return undefined;
+    if (!coversSeveralAirports(searched.destination, searched.exclusions, this.catalogue()))
+      return undefined;
+    return destinationGroups(
+      sortOffers(found.offers, this.sort()),
+      found.at,
+      texts,
+      this.catalogue(),
+    );
+  });
   /**
    * Offers of the last search in the chosen order, shown in the interface language; undefined
    * before the first search. Switching the sort reorders them at once.
    */
-  /** Changes with a new search or sort, not with the language: the list then starts at page one. */
-  protected readonly pageKey = computed(() => ({ found: this.found(), sort: this.sort() }));
   protected readonly offers = computed(() => {
+    const groups = this.groups();
+    if (groups) return groups.flatMap((g) => g.offers);
     const found = this.found();
     const texts = this.texts();
     return found && texts

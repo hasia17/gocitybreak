@@ -146,7 +146,21 @@
       "other": "Booked as {{count}} separate one-way tickets"
     },
     "book": "Book ↗",
-    "bookRoute": "{{route}} on Ryanair ↗"
+    "bookRoute": "{{route}} on Ryanair ↗",
+    "grouped": "{{offers}} in {{places}}, from {{price}}",
+    "places": {
+      "one": "{{count}} place",
+      "other": "{{count}} places"
+    },
+    "moreDates": {
+      "one": "{{count}} more date",
+      "other": "{{count}} more dates"
+    },
+    "showAllDates": {
+      "one": "Show all {{count}} dates",
+      "other": "Show all {{count}} dates"
+    },
+    "showMorePlaces": "Show more places"
   },
   "offer": {
     "outbound": "Outbound",

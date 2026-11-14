@@ -1,6 +1,6 @@
 @if (offers().length > 0) {
   <header class="results-head">
-    <h2>{{ offerCount(offers().length) }}</h2>
+    <h2>{{ heading() }}</h2>
     <span>{{ t('results.perPerson') }}</span>
     @if (showSort()) {
       <!-- Sorting reorders the found offers at once, so it sits with them, not in the form. -->
@@ -21,14 +21,18 @@
       </div>
     }
   </header>
-  <ol class="offers">
-    @for (offer of visibleOffers(); track $index) {
-      <li app-offer [offer]="offer" [texts]="texts()"></li>
+  @if (groups(); as groups) {
+    <app-destination-group-list [groups]="groups" [pageKey]="pageKey()" [texts]="texts()" />
+  } @else {
+    <ol class="offers">
+      @for (offer of visibleOffers(); track $index) {
+        <li app-offer [offer]="offer" [texts]="texts()"></li>
+      }
+    </ol>
+    @if (visibleCount() < offers().length) {
+      <button class="show-more" type="button" (click)="showMore()">
+        {{ t('results.showMore') }}
+      </button>
     }
-  </ol>
-  @if (visibleCount() < offers().length) {
-    <button class="show-more" type="button" (click)="showMore()">
-      {{ t('results.showMore') }}
-    </button>
   }
 }
