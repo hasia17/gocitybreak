@@ -83,6 +83,11 @@ function localIsoDate(days: number): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
+/** The travel window a new search starts with: tomorrow to eight weeks from today. */
+function defaultTravelWindow(): { from: string; to: string } {
+  return { from: localIsoDate(1), to: localIsoDate(56) };
+}
+
 /** Compare ISO dates with the browser's local calendar, rather than the UTC date. */
 function pastDate(control: AbstractControl): ValidationErrors | null {
   const today = localIsoDate(0);
@@ -154,8 +159,8 @@ export class Search {
       homeAirports: ['', Validators.required],
       destination: ['anywhere', Validators.required],
       exclusions: [''],
-      from: [localIsoDate(1), [Validators.required, pastDate]],
-      to: [localIsoDate(56), [Validators.required, pastDate]],
+      from: [defaultTravelWindow().from, [Validators.required, pastDate]],
+      to: [defaultTravelWindow().to, [Validators.required, pastDate]],
       stayLength: this.fb.group(
         { min: [2, nightCount], max: [3, nightCount] },
         { validators: maxBelowMin },
@@ -334,8 +339,8 @@ export class Search {
     const settings = loadSearchSettings();
     if (settings) {
       this.form.patchValue(settings);
-      // A remembered flexible travel window that has ended would make the form open on a failing search.
-      if (this.form.controls.dateMode.value === 'flexible') this.replaceEndedWindow();
+      // A remembered flexible travel window in the past would make the form open on a failing search.
+      if (this.form.controls.dateMode.value === 'flexible') this.dropPastWindow();
     }
     // Departure days used to be all unticked for "any day"; now every ticked day suits.
     for (const days of this.departureDays()) {
@@ -358,10 +363,15 @@ export class Search {
     this.loadCatalogue();
   }
 
-  private replaceEndedWindow() {
+  /** Replaces a window that has ended with the default; starts one that has begun tomorrow. */
+  private dropPastWindow() {
     const { from, to } = this.form.controls;
-    if ((to.value || from.value) < localIsoDate(0))
-      this.form.patchValue({ from: localIsoDate(1), to: localIsoDate(56) });
+    const today = localIsoDate(0);
+    const defaults = defaultTravelWindow();
+    if ((to.value || from.value) < today) this.form.patchValue(defaults);
+    else if (from.value < today)
+      // A window that ends today can only start today.
+      from.setValue(to.value < defaults.from ? today : defaults.from);
   }
 
   /** Retry a failed load; only validated places may be selected or submitted. */
