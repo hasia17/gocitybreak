@@ -61,7 +61,6 @@
           [error]="validationMessage('homeAirports')"
           [class.invalid]="invalid('homeAirports')"
         />
-        <span class="arrow" aria-hidden="true">→</span>
         <app-place-chips
           class="field"
           formControlName="destination"
@@ -75,7 +74,6 @@
           [error]="validationMessage('destination')"
           [class.invalid]="invalid('destination')"
         />
-        <span class="divider" aria-hidden="true"></span>
         <label class="field" [class.invalid]="invalid('from')">
           {{ t(dateMode() === 'fixed' ? 'search.outboundDate' : 'search.earliest') }}
           <input
@@ -144,11 +142,8 @@
         type="submit"
         [disabled]="loading() || !catalogue()"
         [attr.aria-busy]="loading()"
-        [attr.aria-label]="t('search.submit')"
       >
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-          <path d="M5 12h14M13 6l6 6-6 6" />
-        </svg>
+        {{ t('search.submit') }}
       </button>
     </div>
     <div class="sections">
