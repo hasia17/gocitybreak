@@ -130,7 +130,7 @@
       "one": "Booked as {{count}} separate one-way ticket",
       "other": "Booked as {{count}} separate one-way tickets"
     },
-    "book": "Book on Ryanair ↗",
+    "book": "Book ↗",
     "bookRoute": "{{route}} on Ryanair ↗"
   },
   "offer": {
@@ -205,16 +205,16 @@
     "inboundArrival": {
       "label": "About inbound arrival time"
     },
+    "price": {
+      "label": "About this price"
+    },
     "approximatePrice": {
-      "label": "About approximate prices",
       "text": "Converted into PLN at the NBP mid-market rate because a flight is priced in another currency."
     },
     "priceAge": {
-      "label": "About price age",
       "text": "This is a stored price and may have changed. Check the current price on Ryanair’s site."
     },
     "separateTickets": {
-      "label": "About separate tickets",
       "text": "A self-transfer is at your own risk. Nobody guarantees the next flight if the first is late."
     }
   }

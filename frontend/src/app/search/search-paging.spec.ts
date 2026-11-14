@@ -139,19 +139,19 @@ describe('Search offer paging', () => {
     await fixture.whenStable();
 
     expect(rows()).toHaveLength(20);
-    expect(rows()[0].querySelector('.price strong')?.textContent).toBe('PLN 144.00');
-    expect(rows()[19].querySelector('.price strong')?.textContent).toBe('PLN 125.00');
+    expect(rows()[0].querySelector('.price strong')?.textContent).toBe('PLN 144');
+    expect(rows()[19].querySelector('.price strong')?.textContent).toBe('PLN 125');
     expect(root.querySelector('h2')?.textContent).toBe('45 offers');
     more()!.click();
     await fixture.whenStable();
     expect(rows()).toHaveLength(40);
-    expect(rows()[39].querySelector('.price strong')?.textContent).toBe('PLN 105.00');
+    expect(rows()[39].querySelector('.price strong')?.textContent).toBe('PLN 105');
 
     root.querySelector<HTMLInputElement>('[aria-label="Sort by"] input[value="price"]')!.click();
     await fixture.whenStable();
     expect(rows()).toHaveLength(20);
-    expect(rows()[0].querySelector('.price strong')?.textContent).toBe('PLN 100.00');
-    expect(rows()[19].querySelector('.price strong')?.textContent).toBe('PLN 119.00');
+    expect(rows()[0].querySelector('.price strong')?.textContent).toBe('PLN 100');
+    expect(rows()[19].querySelector('.price strong')?.textContent).toBe('PLN 119');
     http.expectNone('/api/search');
   });
 });

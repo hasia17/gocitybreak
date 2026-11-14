@@ -15,6 +15,8 @@ import { OfferView } from './offer-view';
 })
 export class OfferItem {
   readonly offer = input.required<OfferView>();
+  /** False inside a group that names the destination: a single-flight leg then drops its route. */
+  readonly showDestination = input(true);
   /** Texts of the interface language; undefined until they have loaded. */
   readonly texts = input<Texts | undefined>();
 
