@@ -564,6 +564,12 @@ describe('Search', () => {
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
 
+    // A first visit starts with a travel window; clear it so that the dates are invalid.
+    for (const name of ['from', 'to']) {
+      const date = root.querySelector<HTMLInputElement>(`input[formControlName="${name}"]`)!;
+      date.value = '';
+      date.dispatchEvent(new Event('input'));
+    }
     fill(root, 'From', 'KRK');
     fill(root, 'To', 'Atlantis');
     root.querySelectorAll('input').forEach((i) => i.dispatchEvent(new Event('blur')));

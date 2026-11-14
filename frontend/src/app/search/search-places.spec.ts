@@ -6,6 +6,7 @@ import { TranslocoService } from '@jsverse/transloco';
 import { provideTestI18n } from '../i18n/testing';
 import { Search } from './search';
 import { Catalogue } from './search-api';
+import { removeAnywhere } from './place-testing';
 
 const catalogue: Catalogue = {
   supportedAirports: [
@@ -99,6 +100,8 @@ describe('Search place chips', () => {
     http.expectOne('/api/catalogue').flush(catalogue);
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
+    removeAnywhere(root);
+    await fixture.whenStable();
     const from = root.querySelector<HTMLInputElement>('[role="combobox"][aria-label="From"]');
     expect(from).not.toBeNull();
     from!.value = 'Pol';
@@ -147,6 +150,8 @@ describe('Search place chips', () => {
       });
       await fixture.whenStable();
       const root = fixture.nativeElement as HTMLElement;
+    removeAnywhere(root);
+    await fixture.whenStable();
       const input = root.querySelector<HTMLInputElement>(
         `[role="combobox"][aria-label="${field}"]`,
       )!;
@@ -169,6 +174,8 @@ describe('Search place chips', () => {
     http.expectOne('/api/catalogue').flush(catalogue);
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
+    removeAnywhere(root);
+    await fixture.whenStable();
     const from = root.querySelector<HTMLInputElement>('[aria-label="From"]')!;
     from.value = 'KRK';
     from.dispatchEvent(new Event('input'));
@@ -219,6 +226,8 @@ describe('Search place chips', () => {
     http.expectOne('/api/catalogue').flush(catalogue);
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
+    removeAnywhere(root);
+    await fixture.whenStable();
     const to = root.querySelector<HTMLInputElement>('[aria-label="To"]')!;
     const field = to.closest('app-place-chips')!;
     const choose = async (name: string) => {
@@ -281,6 +290,8 @@ describe('Search place chips', () => {
     http.expectOne('/api/catalogue').flush(catalogue);
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
+    removeAnywhere(root);
+    await fixture.whenStable();
     for (const language of ['en', 'pl']) {
       translations.setActiveLang(language);
       await fixture.whenStable();
@@ -309,6 +320,8 @@ describe('Search place chips', () => {
     http.expectOne('/api/catalogue').flush(catalogue);
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
+    removeAnywhere(root);
+    await fixture.whenStable();
     const to = root.querySelector<HTMLInputElement>('[aria-label="To"]')!;
     for (const text of ['Milan', 'any']) {
       to.value = text;
@@ -355,6 +368,8 @@ describe('Search place chips', () => {
     http.expectOne('/api/catalogue').flush(catalogue);
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
+    removeAnywhere(root);
+    await fixture.whenStable();
     const except = root.querySelector<HTMLInputElement>('[aria-label="Except"]')!;
     except.value = 'Italy';
     except.dispatchEvent(new Event('input'));

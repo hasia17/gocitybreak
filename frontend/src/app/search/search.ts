@@ -61,10 +61,16 @@ function fixedDateOrder(form: AbstractControl): ValidationErrors | null {
     : null;
 }
 
+/** The browser's local calendar date, `days` days from today, as an ISO date. */
+function localIsoDate(days: number): string {
+  const now = new Date(Date.now());
+  const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + days);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 /** Compare ISO dates with the browser's local calendar, rather than the UTC date. */
 function pastDate(control: AbstractControl): ValidationErrors | null {
-  const now = new Date(Date.now());
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const today = localIsoDate(0);
   return control.value && control.value < today ? { pastDate: true } : null;
 }
 
@@ -121,10 +127,10 @@ export class Search {
       kind: this.fb.control<OfferKind>('roundTrip'),
       dateMode: this.fb.control<DateMode>('flexible'),
       homeAirports: ['', Validators.required],
-      destination: ['', Validators.required],
+      destination: ['anywhere', Validators.required],
       exclusions: [''],
-      from: ['', [Validators.required, pastDate]],
-      to: ['', [Validators.required, pastDate]],
+      from: [localIsoDate(1), [Validators.required, pastDate]],
+      to: [localIsoDate(56), [Validators.required, pastDate]],
       stayLength: this.fb.group(
         { min: [2, nightCount], max: [3, nightCount] },
         { validators: maxBelowMin },
@@ -235,7 +241,11 @@ export class Search {
       .pipe(takeUntilDestroyed())
       .subscribe(() => this.greyOutImpossibleDays());
     const settings = loadSearchSettings();
-    if (settings) this.form.patchValue(settings);
+    if (settings) {
+      this.form.patchValue(settings);
+      // A remembered flexible travel window that has ended would make the form open on a failing search.
+      if (this.form.controls.dateMode.value === 'flexible') this.replaceEndedWindow();
+    }
     // Departure days used to be all unticked for "any day"; now every ticked day suits.
     for (const days of this.departureDays()) {
       if (Object.values(days.getRawValue()).every((ticked) => !ticked))
@@ -255,6 +265,12 @@ export class Search {
       this.form.controls.sort.setValue('price');
     }
     this.loadCatalogue();
+  }
+
+  private replaceEndedWindow() {
+    const { from, to } = this.form.controls;
+    if ((to.value || from.value) < localIsoDate(0))
+      this.form.patchValue({ from: localIsoDate(1), to: localIsoDate(56) });
   }
 
   /** Retry a failed load; only validated places may be selected or submitted. */

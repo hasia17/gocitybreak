@@ -33,6 +33,12 @@ export function flushCatalogue(): void {
   TestBed.inject(ApplicationRef).tick();
 }
 
+/** The destination starts as Anywhere; remove it so that other places can be chosen. */
+export function removeAnywhere(root: HTMLElement): void {
+  root.querySelector('[data-place-chip="anywhere"] button')?.dispatchEvent(new MouseEvent('click'));
+  TestBed.inject(ApplicationRef).tick();
+}
+
 /** Select each comma-separated known suggestion, keeping unmatched text unselected. */
 export function fillPlace(root: HTMLElement, label: string, value: string): boolean {
   const input = Array.from(root.querySelectorAll<HTMLInputElement>('[role="combobox"]')).find(
@@ -40,6 +46,10 @@ export function fillPlace(root: HTMLElement, label: string, value: string): bool
   );
   if (!input) return false;
   flushCatalogue();
+  // The destination starts as Anywhere, which excludes every other place until it is removed.
+  const anywhere = input.closest('app-place-chips')!.querySelector('[data-place-chip="anywhere"]');
+  if (anywhere && value.toLowerCase() === 'anywhere') return true;
+  if (anywhere) removeAnywhere(input.closest('app-place-chips')!);
   for (const name of value
     .split(',')
     .map((s) => s.trim())
