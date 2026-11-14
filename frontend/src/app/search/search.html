@@ -395,6 +395,7 @@
     @if (offers(); as offers) {
       <app-offer-list
         [offers]="offers"
+        [groups]="groups()"
         [pageKey]="pageKey()"
         [sort]="form.controls.sort"
         [showSort]="applies('sort')"

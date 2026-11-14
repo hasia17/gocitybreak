@@ -169,7 +169,7 @@ describe('Search summary', () => {
     expect(root.querySelector('[data-place-chip="KRK"]')).not.toBeNull();
     expect(root.querySelector('[data-place-chip="anywhere"]')).not.toBeNull();
     // The results of the earlier search stay while the form is open.
-    expect(root.querySelector('[data-testid="offer"]')).not.toBeNull();
+    expect(root.querySelector('[data-testid="results"] h2')).not.toBeNull();
 
     await found(2);
     expect(visible(form())).toBe(false);

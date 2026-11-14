@@ -79,6 +79,11 @@ An airport, city or country the user removes from the destination so they get no
 _Code_: `Exclusion`
 _Avoid_: blacklist, filter
 
+**Destination group**:
+The offers of a search that land at one destination airport (the arrival airport of the outbound leg's last flight), shown together when the destination covers more than one airport; an offer is in exactly one group, and a group's best offer is its first under the sort order.
+_Code_: `DestinationGroup`
+_Avoid_: city group, place group
+
 ## Dates
 
 **Travel window**:

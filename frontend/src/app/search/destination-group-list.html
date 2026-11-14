@@ -1,0 +1,9 @@
+<ol class="groups">
+  @for (group of groups(); track group.airport) {
+    <li data-testid="group">
+      <button type="button">
+        <span class="place-name">{{ group.name }}</span>
+      </button>
+    </li>
+  }
+</ol>

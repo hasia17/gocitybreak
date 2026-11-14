@@ -34,7 +34,8 @@ describe('Search loading', () => {
     await fixture.whenStable();
     const root = fixture.nativeElement as HTMLElement;
     fillPlace(root, 'From', 'KRK');
-    fillPlace(root, 'To', 'anywhere');
+    // A single destination airport keeps a flat list, so its offers show without opening a group.
+    fillPlace(root, 'To', 'BGY');
     for (const [name, value] of Object.entries({ from: '2026-12-01', to: '2026-12-10' })) {
       const input = root.querySelector<HTMLInputElement>(`input[formControlName="${name}"]`)!;
       input.value = value;

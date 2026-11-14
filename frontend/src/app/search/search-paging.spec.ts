@@ -36,7 +36,8 @@ describe('Search offer paging', () => {
     const root = fixture.nativeElement as HTMLElement;
     for (const [name, value] of Object.entries({
       homeAirports: 'KRK',
-      destination: 'anywhere',
+      // A single destination airport keeps the flat list of offers this spec pages through.
+      destination: 'BGY',
       from: '2026-12-01',
       to: '2026-12-10',
     })) {
