@@ -150,8 +150,8 @@ describe('Search place chips', () => {
       });
       await fixture.whenStable();
       const root = fixture.nativeElement as HTMLElement;
-    removeAnywhere(root);
-    await fixture.whenStable();
+      removeAnywhere(root);
+      await fixture.whenStable();
       const input = root.querySelector<HTMLInputElement>(
         `[role="combobox"][aria-label="${field}"]`,
       )!;

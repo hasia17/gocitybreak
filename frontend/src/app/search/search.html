@@ -392,13 +392,16 @@
     [attr.aria-busy]="loading()"
     aria-live="polite"
   >
-    @if (offers(); as offers) {
+    @if (loading()) {
+      <app-results-skeleton />
+    } @else if (emptyResult(); as empty) {
+      <app-empty-results [empty]="empty" (chosen)="applySuggestion($event)" />
+    } @else if (offers(); as offers) {
       <app-offer-list
         [offers]="offers"
         [pageKey]="pageKey()"
         [sort]="form.controls.sort"
         [showSort]="applies('sort')"
-        [emptyText]="t(kind() === 'roundTrip' ? 'results.emptyRoundTrip' : 'results.emptyOneWay')"
         [texts]="texts()"
       />
     }
