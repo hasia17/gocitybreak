@@ -164,6 +164,55 @@ describe('Search place chips', () => {
       expect(chip.querySelector('.city-airports')?.textContent).toBe('(BGY, MXP)');
     },
   );
+  it.each(['en', 'pl'])(
+    'shows each airport suggestion once as code, name and country in %s, announced as an airport',
+    async (language) => {
+      const fixture = TestBed.createComponent(Search);
+      http.expectOne('/api/catalogue').flush({
+        ...catalogue,
+        airports: [
+          ...catalogue.airports,
+          { code: 'MXP', name: 'Milan Malpensa', cities: ['MILAN'], country: 'it' },
+        ],
+      });
+      TestBed.inject(TranslocoService).setActiveLang(language);
+      await fixture.whenStable();
+      const root = fixture.nativeElement as HTMLElement;
+      const to = root.querySelector<HTMLInputElement>(
+        'app-place-chips[field="destination"] input',
+      )!;
+      to.value = 'MXP';
+      to.dispatchEvent(new Event('input'));
+      await fixture.whenStable();
+      const option = root.querySelector<HTMLButtonElement>('[role="option"]')!;
+      const text = option.textContent?.trim();
+      expect(text).toBe(
+        language === 'en' ? 'MXP Milan Malpensa, Italy' : 'MXP Milan Malpensa, Włochy',
+      );
+      expect(option.getAttribute('aria-label')).toBe(
+        language === 'en' ? `${text} — airport` : `${text} — lotnisko`,
+      );
+    },
+  );
+  it('shows a place field placeholder only while the field holds no place', async () => {
+    const fixture = TestBed.createComponent(Search);
+    http.expectOne('/api/catalogue').flush(catalogue);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    const from = root.querySelector<HTMLInputElement>(
+      'app-place-chips[field="homeAirports"] input',
+    )!;
+    expect(from.placeholder).not.toBe('');
+    from.value = 'KRK';
+    from.dispatchEvent(new Event('input'));
+    await fixture.whenStable();
+    root.querySelector<HTMLButtonElement>('[role="option"]')!.click();
+    await fixture.whenStable();
+    expect(from.placeholder).toBe('');
+    root.querySelector<HTMLButtonElement>('[data-place-chip="KRK"] button')!.click();
+    await fixture.whenStable();
+    expect(from.placeholder).not.toBe('');
+  });
   it('removes chips with Backspace and the named remove button, without submitting typed text', async () => {
     const fixture = TestBed.createComponent(Search);
     http.expectOne('/api/catalogue').flush(catalogue);

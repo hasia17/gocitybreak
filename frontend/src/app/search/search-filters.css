@@ -95,6 +95,10 @@
   justify-content: start;
   min-height: 2.75rem;
 }
+/* Keep a label such as "Outbound departure" on one line; the narrow layout below lets it wrap. */
+.time-range .field-heading {
+  white-space: nowrap;
+}
 .time-range input {
   min-height: 2.25rem;
   padding: 0 0.4rem;
@@ -173,6 +177,9 @@
 @media (max-width: 640px) {
   .time-ranges {
     grid-template-columns: 1fr auto auto auto;
+  }
+  .time-range .field-heading {
+    white-space: normal;
   }
 }
 
