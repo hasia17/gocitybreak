@@ -298,6 +298,24 @@ describe('Search destination groups', () => {
     http.expectNone('/api/search');
   });
 
+  it('stamps a group row price with a small currency, and prices the offers inside plainly', async () => {
+    const { settle, search, groups, rows, plain } = await renderSearch();
+    await search([offer('BGY', 100, 4), offer('BGY', 120, 5)]);
+    const [bergamo] = groups();
+
+    expect(plain(bergamo.querySelector('.stamp strong')?.textContent)).toBe('PLN 100');
+    expect(plain(bergamo.querySelector('.stamp small')?.textContent)).toBe('PLN');
+
+    bergamo.click();
+    await settle();
+    expect(rows().map((r) => plain(r.querySelector('strong')?.textContent))).toEqual([
+      'PLN 100',
+      'PLN 120',
+    ]);
+    // Like direction D's prototype: the stamp is the one loud thing on a group row, not on each offer.
+    expect(rows().map((r) => r.querySelector('.stamp'))).toEqual([null, null]);
+  });
+
   it('orders groups by their best offer and offers inside by price or by leave days', async () => {
     const { root, settle, search, groups, groupNames, rows, plain } = await renderSearch();
     await search([

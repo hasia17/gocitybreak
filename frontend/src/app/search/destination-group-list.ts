@@ -5,6 +5,7 @@ import { DestinationGroup } from './destination-groups';
 import { OfferItem } from './offer';
 import { OfferView } from './offer-view';
 import { pagedBy } from './paging';
+import { PriceStamp } from './price-stamp';
 
 /** Offers an open group shows before "Show all". */
 const offersPerGroup = 5;
@@ -16,7 +17,7 @@ const offersPerGroup = 5;
   changeDetection: ChangeDetectionStrategy.Eager,
   // A group row is one button: the spaces between its parts keep its accessible name readable.
   preserveWhitespaces: true,
-  imports: [OfferItem],
+  imports: [OfferItem, PriceStamp],
   styleUrl: './destination-group-list.css',
   templateUrl: './destination-group-list.html',
 })

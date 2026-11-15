@@ -123,13 +123,13 @@ describe('Search explanations', () => {
     });
     await fixture.whenStable();
     const offers = root.querySelectorAll<HTMLElement>('[data-testid="offer"]');
-    const approximate = Array.from(offers).find((o) => o.textContent!.includes('≈'))!;
+    const approximate = Array.from(offers).find((o) => /PLN\s180/.test(o.textContent!))!;
     expect(approximate.querySelectorAll('app-info-tip')).toHaveLength(1);
     const info = explanation(approximate, 'About this price').tip.textContent!;
     expect(info).toMatch(/PLN.*NBP mid-market rate.*another currency/i);
     expect(info).toMatch(/stored price.*may have changed.*Ryanair/i);
     expect(info).toMatch(/self-transfer.*own risk.*next flight.*late/i);
-    const direct = Array.from(offers).find((o) => !o.textContent!.includes('≈'))!;
+    const direct = Array.from(offers).find((o) => /PLN\s100/.test(o.textContent!))!;
     expect(direct.querySelectorAll('app-info-tip')).toHaveLength(1);
     const directInfo = explanation(direct, 'About this price').tip.textContent!;
     expect(directInfo).toContain('Ryanair');

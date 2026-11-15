@@ -41,16 +41,20 @@
           <span>{{ best.nights }}</span>
           <span>{{ best.leaveDays }}</span>
         </span>
-        <span class="stamp">
-          <strong>{{ best.price }}</strong>
-        </span>
+        <app-price-stamp [parts]="best.priceParts" />
       </button>
       @if (isOpen) {
         @let shown = shownOffers(group);
         <div class="group-offers" [id]="'group-' + group.airport">
           <ol class="offers">
             @for (offer of shown; track $index) {
-              <li app-offer [offer]="offer" [showDestination]="false" [texts]="texts()"></li>
+              <li
+                app-offer
+                [offer]="offer"
+                [showDestination]="false"
+                [stamped]="false"
+                [texts]="texts()"
+              ></li>
             }
           </ol>
           @if (shown.length < group.offers.length) {

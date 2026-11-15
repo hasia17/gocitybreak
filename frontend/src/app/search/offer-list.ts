@@ -52,12 +52,7 @@ export class OfferList extends Translated {
     return texts.t('results.grouped', {
       offers,
       groups: plural(texts, 'results.destinationGroups', groups.length),
-      // "From" already says the price is a bound; the approximate mark is left to the offers.
-      price: money(
-        texts,
-        { amount: cheapest.amount, currency: cheapest.currency },
-        { whole: true },
-      ),
+      price: money(texts, cheapest, { whole: true }),
     });
   }
 }

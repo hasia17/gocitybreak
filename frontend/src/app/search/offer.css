@@ -94,23 +94,14 @@ abbr {
   align-items: center;
   gap: 0.25rem;
 }
-/* Direction D's price stamp: the one loud thing on each row. */
-.stamp {
-  display: inline-block;
-  padding: 0.2rem 0.55rem;
-  border: 2px dashed color-mix(in srgb, var(--red) 55%, transparent);
-  background: var(--bg);
-  color: var(--red);
-  line-height: 1;
-  transform: rotate(-2deg);
+/* Every other offer tilts its stamp the other way. */
+:host(:nth-child(even)) {
+  --stamp-tilt: 2deg;
 }
-:host(:nth-child(odd)) .stamp {
-  transform: rotate(2deg);
-}
+/* An offer inside a group, priced plainly beside its group's stamp. */
 .price strong {
-  font-family: var(--font-serif);
-  font-size: 1.4rem;
-  font-weight: 400;
+  font-size: 0.95rem;
+  font-weight: 600;
   white-space: nowrap;
 }
 .price small {

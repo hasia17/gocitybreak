@@ -98,7 +98,7 @@ describe('shared search HTTP contract', () => {
     req.flush(foreignCurrencyResponse);
     await fixture.whenStable();
     const offer = root.querySelector('[data-testid="offer"]')!.textContent!;
-    expect(offer).toContain('≈ PLN 135');
+    expect(offer).toContain('PLN 135');
     expect(offer).toContain('€19.99');
   });
 
