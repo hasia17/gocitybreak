@@ -1,4 +1,4 @@
-import { Texts, ago, money, plural, shortDay } from '../i18n/texts';
+import { Texts, ago, money, moneyParts, plural, shortDay } from '../i18n/texts';
 import { Catalogue, Offer } from './search-api';
 import { daysBetween } from './calendar-days';
 import { byCode, catalogueName } from './catalogue-names';
@@ -53,6 +53,8 @@ export function offerView(offer: Offer, now: number, texts: Texts, catalogue?: C
     separateTickets:
       tickets.length > 1 ? plural(texts, 'results.separateTickets', tickets.length) : undefined,
     price: money(texts, offer.price, { whole: true }),
+    /** The price in runs for its stamp: the amount large, the currency small. */
+    priceParts: moneyParts(texts, offer.price, { whole: true }),
     approximatePrice: !!offer.price.approximate,
     foreignPrices: legs
       .flatMap((leg) => leg.flights)

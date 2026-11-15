@@ -55,24 +55,45 @@ describe('offerView', () => {
       from: 'BGY',
       to: 'KRK',
     });
-    expect(plain(view.price)).toBe('≈ PLN 85');
+    expect(plain(view.price)).toBe('PLN 85');
     expect(view.foreignPrices).toEqual(['€19.99']);
     expect(view.priceAge).toBe('3 hr ago');
     expect(view.tickets[0].url).toContain('originIata=BGY');
   });
 
-  it('rounds the price to whole zloty, half up, keeping the approximate mark', () => {
+  it('rounds the price to whole zloty, half up, without marking a converted one', () => {
     const priced = (amount: number, approximate: boolean, language: Language = 'en') =>
       plain(
         offerView({ ...offer, price: { amount, currency: 'PLN', approximate } }, now, language)
           .price,
       );
-    expect(priced(156.5, true)).toBe('≈ PLN 157');
-    expect(priced(156.49, true)).toBe('≈ PLN 156');
+    expect(priced(156.5, true)).toBe('PLN 157');
+    expect(priced(156.49, true)).toBe('PLN 156');
     expect(priced(89.99, false)).toBe('PLN 90');
     expect(priced(0.5, false)).toBe('PLN 1');
     expect(priced(1234.5, false, 'pl')).toBe('1235 zł');
-    expect(priced(156.5, true, 'pl')).toBe('≈ 157 zł');
+    expect(priced(156.5, true, 'pl')).toBe('157 zł');
+  });
+
+  it('splits the price into its amount and its currency, with the space beside it', () => {
+    const parts = (amount: number, approximate: boolean, language: Language = 'en') =>
+      offerView(
+        { ...offer, price: { amount, currency: 'PLN', approximate } },
+        now,
+        language,
+      ).priceParts.map(({ text, mark }) => [plain(text), mark]);
+    expect(parts(156.5, true)).toEqual([
+      ['PLN ', true],
+      ['157', false],
+    ]);
+    expect(parts(156.5, true, 'pl')).toEqual([
+      ['157', false],
+      [' zł', true],
+    ]);
+    expect(parts(1234.5, false, 'pl')).toEqual([
+      ['1235', false],
+      [' zł', true],
+    ]);
   });
 
   it('gives each flight its day and times separately, in both languages', () => {
@@ -238,7 +259,7 @@ describe('offerView', () => {
       );
     const two = view(2, 2);
     expect(two.legs[0].flights[0].day).toBe('sob 5 gru');
-    expect(plain(two.price)).toBe('≈ 85 zł');
+    expect(plain(two.price)).toBe('85 zł');
     expect(two.foreignPrices.map(plain)).toEqual(['19,99 €', '19,99 €', '19,99 €']);
     expect(two.priceAge).toBe('2 dni temu');
     expect(two.nights).toBe('2 noce');

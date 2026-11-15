@@ -21,15 +21,35 @@ export function plural(
 }
 
 /**
- * A price like "123,45 zł" or "PLN 123.45", prefixed with "≈ " when approximate. With `whole` the
- * amount is rounded half up to whole units, like "123 zł".
+ * A price like "123,45 zł" or "PLN 123.45". With `whole` the amount is rounded half up to whole
+ * units, like "123 zł".
  */
 export function money(
   texts: Texts,
-  price: { amount: number; currency: string; approximate?: boolean },
-  { whole = false }: { whole?: boolean } = {},
+  price: { amount: number; currency: string },
+  options: { whole?: boolean } = {},
 ): string {
-  const amount = new Intl.NumberFormat(texts.locale, {
+  return moneyParts(texts, price, options)
+    .map((part) => part.text)
+    .join('');
+}
+
+/** One run of a price's text: the amount, or the currency mark beside it. */
+export interface MoneyPart {
+  text: string;
+  mark: boolean;
+}
+
+/**
+ * The text of `money` in runs, so the amount can stand out from its currency, which keeps the
+ * space beside it: like ["157", " zł"] or ["PLN ", "157"].
+ */
+export function moneyParts(
+  texts: Texts,
+  price: { amount: number; currency: string },
+  { whole = false }: { whole?: boolean } = {},
+): MoneyPart[] {
+  const parts = new Intl.NumberFormat(texts.locale, {
     style: 'currency',
     currency: price.currency,
     ...(whole && {
@@ -37,8 +57,17 @@ export function money(
       minimumFractionDigits: 0,
       roundingMode: 'halfExpand',
     }),
-  }).format(price.amount);
-  return price.approximate ? `≈ ${amount}` : amount;
+  }).formatToParts(price.amount);
+  const isCurrency = (i: number) => parts[i]?.type === 'currency';
+  const runs: MoneyPart[] = [];
+  parts.forEach((part, i) => {
+    const mark =
+      isCurrency(i) || (part.type === 'literal' && (isCurrency(i - 1) || isCurrency(i + 1)));
+    const last = runs.at(-1);
+    if (last?.mark === mark) last.text += part.value;
+    else runs.push({ text: part.value, mark });
+  });
+  return runs;
 }
 
 /** A day like "pt 13 lis" or "Fri 13 Nov", with the year appended when `withYear` is set. */

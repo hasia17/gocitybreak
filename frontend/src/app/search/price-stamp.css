@@ -1,0 +1,22 @@
+/* The one loud thing on a row: a tilted postage stamp in airmail red. */
+:host {
+  display: inline-block;
+  padding: 0.25rem 0.55rem;
+  border: 2px dashed color-mix(in srgb, var(--red) 55%, transparent);
+  background: var(--bg);
+  color: var(--red);
+  line-height: 1;
+  white-space: nowrap;
+  transform: rotate(var(--stamp-tilt, -2deg));
+}
+strong {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+small {
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+}

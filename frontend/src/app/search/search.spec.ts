@@ -194,7 +194,7 @@ describe('Search', () => {
       /Fri 4 Dec, 18:00 → 19:55 KRK Kraków → BGY Bergamo.*Sun 6 Dec, 20:00 → 21:50 BGY Bergamo → KTW Katowice/,
     );
     expect(offer).toContain('2 nights');
-    expect(offer).toContain('≈ PLN 174');
+    expect(offer).toContain('PLN 174');
     expect(offer).toContain('€19.99');
     expect(offer).not.toContain('89.00 PLN ·');
   });
@@ -538,7 +538,7 @@ describe('Search', () => {
     expect(offer).not.toContain('2026');
     expect(offer).toContain('09:00 → 10:50');
     expect(root.querySelector('[data-testid="offer"] abbr')).toBeNull();
-    expect(offer).toContain('≈ PLN 85');
+    expect(offer).toContain('PLN 85');
     expect(offer).toContain('€19.99');
     expect(offer).toContain('checked 3 hr ago');
     const clock = vi
