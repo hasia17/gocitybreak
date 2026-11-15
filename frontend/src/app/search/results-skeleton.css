@@ -14,7 +14,7 @@
   border-radius: 3px 3px 0 0;
   background: repeating-linear-gradient(
     -45deg,
-    var(--red) 0 12px,
+    var(--salmon) 0 12px,
     var(--card) 12px 18px,
     var(--blue) 18px 30px,
     var(--card) 30px 36px

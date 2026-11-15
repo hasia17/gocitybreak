@@ -170,6 +170,9 @@ describe('Search summary', () => {
     expect(root.querySelector('[data-place-chip="anywhere"]')).not.toBeNull();
     // The results of the earlier search stay while the form is open.
     expect(root.querySelector('[data-testid="results"] h2')).not.toBeNull();
+    // Focus lands on the form's heading, so no list of places opens unasked.
+    expect(document.activeElement).toBe(root.querySelector('h1'));
+    expect(root.querySelector('[role="listbox"]')).toBeNull();
 
     await found(2);
     expect(visible(form())).toBe(false);
