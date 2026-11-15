@@ -1,15 +1,20 @@
 # gocitybreak
 
-A search engine for cheap flights for short city breaks, initially based exclusively on Ryanair flights.
+A search engine for cheap flights for short city breaks, based on Ryanair and Wizz Air flights.
 
 Each term lists its name in code under _Code_.
 
 ## Language
 
 **Flight**:
-A single flight from one airport to another on a specific date and at a specific time, with a price.
+A single flight from one airport to another on a specific date and at a specific time, operated by one airline, with a price.
 _Code_: `Flight`
 _Avoid_: connection, hop
+
+**Airline**:
+A low-cost airline whose flights we fetch: Ryanair or Wizz Air. Each ticket is bought from one airline on its own, so an offer may mix airlines, between its legs and between the flights of a self-transfer.
+_Code_: `Airline`
+_Avoid_: carrier, operator
 
 **Leg**:
 One-way travel from a start airport to a destination airport, made of one or more flights (outbound leg, inbound leg).
@@ -26,6 +31,11 @@ A leg stitched together from several separate flights bought as separate tickets
 _Code_: `SelfTransfer`
 _Avoid_: connection, layover flight
 
+**Ticket**:
+One purchase from one airline that the user makes to book an offer: a round trip when both legs are direct flights of that airline between the same two airports, otherwise a single flight. An offer is bought as one or more tickets.
+_Code_: `Ticket`
+_Avoid_: booking, reservation
+
 **Offer**:
 A single search result with a total price: either round trip (outbound leg + inbound leg) or one way (a single leg).
 _Code_: `Offer`
@@ -41,7 +51,7 @@ An offer made of a single leg.
 _Code_: `OneWayOffer`
 
 **Supported airport**:
-An airport whose routes we fetch into our price database; for now only Ryanair's Polish airports.
+A Polish airport served by Ryanair or Wizz Air; we fetch the routes of every airline flying from it into our price database.
 _Code_: `SupportedAirport`
 
 **Home airports**:
@@ -60,7 +70,7 @@ _Code_: `Anywhere`
 _Avoid_: everywhere
 
 **City**:
-The group of airports Ryanair assigns to a city name, plus the few airports Ryanair names after a nearby city but assigns to another one (e.g. Milan includes Bergamo, Brussels includes Charleroi); an airport may belong to several cities, and an offer always shows the specific airport.
+The group of airports Ryanair assigns to a city name, plus the few airports Ryanair names after a nearby city but assigns to another one (e.g. Milan includes Bergamo, Brussels includes Charleroi), plus the airports only Wizz Air flies to that Wizz Air puts in the same city (e.g. Paris includes Orly); an airport only Wizz Air flies to and no such city knows is a city of its own. An airport may belong to several cities, and an offer always shows the specific airport.
 _Code_: `City`
 _Avoid_: location, place
 
@@ -70,7 +80,7 @@ _Code_: `Country`
 _Avoid_: region, place
 
 **Catalogue**:
-Every airport we know, with the supported airports among them, grouped into cities and countries: the airports, cities and countries the user picks home airports, destinations and exclusions from. Their names come from Ryanair in each language of the interface; the user may type a name in any of these languages, whichever is shown.
+Every airport we know, with the supported airports among them, grouped into cities and countries: the airports, cities and countries the user picks home airports, destinations and exclusions from. Their names come from Ryanair, or from Wizz Air for airports Ryanair doesn't know, in each language of the interface; the user may type a name in any of these languages, whichever is shown.
 _Code_: `Catalogue`
 _Avoid_: places, locations, airport list
 
@@ -100,6 +110,11 @@ _Avoid_: exact dates, specific days
 The time at an airport in that airport's own time zone, as printed on the ticket: a departure is always in the departure airport's local time, an arrival in the arrival airport's.
 _Code_: `LocalTime`
 _Avoid_: UTC time, Polish time
+
+**Estimated arrival**:
+An arrival time we work out ourselves because the airline doesn't publish one for that flight; the offer says it is estimated.
+_Code_: `estimatedArrival`
+_Avoid_: approximate arrival, guessed arrival
 
 **Night**:
 A hotel night of the stay, counted from the outbound arrival date (or the day before, when the outbound flight lands before 06:00 local time) up to the inbound departure date.
@@ -144,14 +159,14 @@ _Avoid_: vacation days, days off, holiday days
 ## Price
 
 **Original price**:
-A flight price for one adult passenger in the cheapest fare, i.e. with only a small under-seat bag (no cabin suitcase), in the currency Ryanair charges for it (the departure airport's currency).
+A flight price for one adult passenger in the airline's cheapest fare open to everyone, i.e. with only a small under-seat bag (no cabin suitcase) and no paid membership discount, in the currency the airline charges for it (the departure airport's currency).
 _Code_: `Flight.originalPrice` (amount + currency)
 _Avoid_: base price, local price
 
 **Exchange rate**:
-The official daily mid-market rate used to convert original prices into PLN; not the rate Ryanair or the user's bank applies.
+The official daily mid-market rate used to convert original prices into PLN; not the rate an airline or the user's bank applies.
 _Code_: `ExchangeRate`
-_Avoid_: Ryanair rate, conversion rate
+_Avoid_: airline rate, conversion rate
 
 **Offer price**:
 The sum of an offer's original prices, each converted into PLN at the exchange rate; approximate whenever any of its flights is priced in another currency.
@@ -164,6 +179,6 @@ _Code_: `StoredPrice`
 _Avoid_: cached price, old price
 
 **Live price**:
-A flight price fetched from Ryanair live at the moment the user selects an offer.
+A flight price fetched live from the flight's airline at the moment the user selects an offer.
 _Code_: `LivePrice`
 _Avoid_: current price, real price
