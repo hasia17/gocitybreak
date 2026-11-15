@@ -3,7 +3,8 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0.75rem;
-  padding: 0 0.75rem 0.75rem;
+  /* Room above, so the heading and the sort pill clear the summary bar stuck over them. */
+  padding: 1rem 0.75rem 0.75rem;
   border-bottom: 1px solid var(--line);
 }
 .results-head h2 {
