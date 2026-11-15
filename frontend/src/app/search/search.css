@@ -169,6 +169,10 @@ h1 {
 .mode-choice {
   padding-right: 0.4rem;
 }
+/* The tip's button is taller than a cell's heading line; let it overhang so the cell lines up with its neighbours. */
+.fields .field-heading app-info-tip {
+  margin-block: calc((1lh - 1.5rem) / 2);
+}
 .field-info {
   position: relative;
 }

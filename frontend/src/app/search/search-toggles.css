@@ -57,6 +57,8 @@
 .section-toggle {
   display: inline-flex;
   flex-wrap: wrap;
+  /* Centre the line(s) in the pill; otherwise wrapping stretches the line and the text sits at its top. */
+  align-content: center;
   align-items: baseline;
   gap: 0.1rem 0.5rem;
   min-height: 2.75rem;
