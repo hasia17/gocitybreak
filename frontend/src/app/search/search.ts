@@ -465,11 +465,18 @@ export class Search extends Translated {
     });
   }
 
-  /** Bring the form back to change the search; every value is still in it. */
+  /**
+   * Bring the form back to change the search; every value is still in it. Focus goes to the
+   * form's heading, not to a field, so no list of places pops open unasked.
+   */
   protected change() {
     this.collapsed.set(false);
     afterNextRender(
-      () => this.element.nativeElement.querySelector<HTMLElement>('app-place-chips input')?.focus(),
+      () => {
+        const heading = this.element.nativeElement.querySelector<HTMLElement>('.hero h1');
+        heading?.setAttribute('tabindex', '-1');
+        heading?.focus();
+      },
       { injector: this.injector },
     );
   }

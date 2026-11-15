@@ -8,6 +8,8 @@
   --muted: #5e6675;
   --line: #d5dbe3;
   --red: #c4363f;
+  /* Airmail decoration: the striped edges and the price stamps. Errors keep --red. */
+  --salmon: #de6066;
   --blue: #284b9b;
   --on-blue: #fff;
   --ok: #15803d;
@@ -42,6 +44,7 @@
     --muted: #9aa1ae;
     --line: #2c3443;
     --red: #ee6a70;
+    --salmon: #f3868a;
     --blue: #8ea8f0;
     --on-blue: #12161f;
     --ok: #4ade80;

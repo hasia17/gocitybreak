@@ -1,10 +1,10 @@
-/* The one loud thing on a row: a tilted postage stamp in airmail red. */
+/* The one loud thing on a row: a tilted postage stamp in airmail salmon. */
 :host {
   display: inline-block;
   padding: 0.25rem 0.55rem;
-  border: 2px dashed color-mix(in srgb, var(--red) 55%, transparent);
+  border: 2px dashed color-mix(in srgb, var(--salmon) 55%, transparent);
   background: var(--bg);
-  color: var(--red);
+  color: var(--salmon);
   line-height: 1;
   white-space: nowrap;
   transform: rotate(var(--stamp-tilt, -2deg));

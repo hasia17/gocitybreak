@@ -12,7 +12,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.25rem 1rem;
-  padding: 0.6rem 0;
+  padding: 0.6rem 0.75rem;
   font-size: 0.9rem;
 }
 .route {
@@ -28,9 +28,14 @@ button {
   margin-left: auto;
   padding: 0 0.75rem;
   background: var(--card);
-  color: var(--ink);
-  border: 1px solid var(--line);
+  /* Outlined in the accent: a secondary action next to the filled Search button. */
+  color: var(--accent);
+  border: 1px solid var(--accent);
   border-radius: 4px;
   font: inherit;
+  font-weight: 600;
   cursor: pointer;
+}
+button:hover {
+  background: var(--subtle);
 }
