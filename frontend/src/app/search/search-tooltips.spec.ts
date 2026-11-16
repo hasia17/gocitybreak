@@ -128,12 +128,12 @@ describe('Search explanations', () => {
     expect(approximate.querySelectorAll('app-info-tip')).toHaveLength(1);
     const info = explanation(approximate, 'About this price').tip.textContent!;
     expect(info).toMatch(/PLN.*NBP mid-market rate.*another currency/i);
-    expect(info).toMatch(/stored price.*may have changed.*Ryanair/i);
+    expect(info).toMatch(/stored price.*may have changed.*airline.s site/i);
     expect(info).toMatch(/self-transfer.*own risk.*next flight.*late/i);
     const direct = Array.from(offers).find((o) => /PLN\s100/.test(o.textContent!))!;
     expect(direct.querySelectorAll('app-info-tip')).toHaveLength(1);
     const directInfo = explanation(direct, 'About this price').tip.textContent!;
-    expect(directInfo).toContain('Ryanair');
+    expect(directInfo).toContain('airline');
     expect(directInfo).not.toContain('NBP');
     expect(directInfo).not.toContain('self-transfer');
 
@@ -141,7 +141,7 @@ describe('Search explanations', () => {
     await fixture.whenStable();
     const polish = explanation(approximate, 'O tej cenie').tip.textContent!;
     expect(polish).toMatch(/PLN.*średnim kursie NBP.*innej walucie/i);
-    expect(polish).toMatch(/zapisana cena.*zmienić.*Ryanair/i);
+    expect(polish).toMatch(/zapisana cena.*zmienić.*linii lotniczej/i);
     expect(polish).toMatch(/przesiadka.*własne ryzyko.*kolejnego lotu.*spóźni/i);
   });
 

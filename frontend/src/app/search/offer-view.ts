@@ -2,7 +2,7 @@ import { Texts, ago, money, moneyParts, plural, shortDay } from '../i18n/texts';
 import { Catalogue, Offer } from './search-api';
 import { daysBetween } from './calendar-days';
 import { byCode, catalogueName } from './catalogue-names';
-import { tickets as ticketsOf } from './tickets';
+import { tickets } from './tickets';
 
 /** Display values for one result, including its booking links. */
 export type OfferView = ReturnType<typeof offerView>;
@@ -23,7 +23,7 @@ export function offerView(offer: Offer, now: number, texts: Texts, catalogue?: C
     return city ? `${code} ${catalogueName(city, language)}` : code;
   };
   const legs = [offer.outbound, ...(offer.inbound ? [offer.inbound] : [])];
-  const tickets = ticketsOf(offer);
+  const offerTickets = tickets(offer);
   return {
     legs: legs.map((leg, index) => ({
       label: texts.t(index === 0 ? 'offer.outbound' : 'offer.return'),
@@ -58,7 +58,9 @@ export function offerView(offer: Offer, now: number, texts: Texts, catalogue?: C
           : plural(texts, 'offer.leaveDays', offer.leaveDays),
     freeLeave: offer.leaveDays === 0,
     separateTickets:
-      tickets.length > 1 ? plural(texts, 'results.separateTickets', tickets.length) : undefined,
+      offerTickets.length > 1
+        ? plural(texts, 'results.separateTickets', offerTickets.length)
+        : undefined,
     price: money(texts, offer.price, { whole: true }),
     /** The price in runs for its stamp: the amount large, the currency small. */
     priceParts: moneyParts(texts, offer.price, { whole: true }),
@@ -72,13 +74,13 @@ export function offerView(offer: Offer, now: number, texts: Texts, catalogue?: C
     priceInfo: [
       offer.price.approximate ? texts.t('tips.approximatePrice.text') : undefined,
       texts.t('tips.priceAge.text'),
-      tickets.length > 1 ? texts.t('tips.separateTickets.text') : undefined,
+      offerTickets.length > 1 ? texts.t('tips.separateTickets.text') : undefined,
     ]
       .filter(Boolean)
       .join(' '),
     priceFetchedAt: offer.priceFetchedAt,
     priceAge: ago(texts, offer.priceFetchedAt, now),
-    tickets: tickets.map((ticket) => ({
+    tickets: offerTickets.map((ticket) => ({
       ...ticket,
       airlineName: texts.t(`airline.${ticket.airline}`),
     })),

@@ -112,6 +112,29 @@ describe('catalogue suggestion rules', () => {
     }
     expect(restorePlaces('Gdziekolwiek', catalogue, 'destination', label)).toBe('anywhere');
   });
+  it.each([
+    ['Polish', 'tel aw'],
+    ['English', 'tel aviv'],
+  ])('finds an airport only Wizz Air flies to by its %s name', (_language, text) => {
+    // A Wizz Air airport no city of ours knows is a city of its own, named like itself in both languages.
+    const names = { en: 'Tel Aviv', pl: 'Tel Awiw' };
+    const c: Catalogue = {
+      ...catalogue,
+      airports: [
+        ...catalogue.airports,
+        { code: 'TLV', name: 'Tel Aviv', names, cities: ['TLV'], country: 'il' },
+      ],
+      cities: [
+        ...catalogue.cities,
+        { code: 'TLV', name: 'Tel Aviv', names, airports: ['TLV'], country: 'il' },
+      ],
+      countries: [...catalogue.countries, { code: 'il', name: 'Israel', names: { pl: 'Izrael' } }],
+    };
+    expect(suggestPlaces(text, c, 'destination', [], [], 'en').map((p) => p.value)).toEqual([
+      'city:TLV',
+      'TLV',
+    ]);
+  });
   it('returns every match without truncation', () => {
     const c: Catalogue = {
       ...catalogue,
