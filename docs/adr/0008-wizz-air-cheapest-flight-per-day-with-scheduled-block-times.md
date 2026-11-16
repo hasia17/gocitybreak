@@ -17,4 +17,4 @@ The time of day in `from` is undocumented, like everything else here (verified o
 
 A Wizz Air flight dearer than a later flight of the same day never shows up. That is a morning or midday departure with a cheaper way to fly later that day; it matters when the earlier arrival is what the traveller wanted.
 
-`asset/flightinformation` only knows flights a few days ahead and ignores the requested date, so block times are learnt from near flights and applied to far ones; a schedule change shows up only once the changed flights come within reach. Its route filter takes a body shape not yet worked out (only the flight-number filter was verified), which the implementation has to take from the Wizz Air web app.
+`asset/flightinformation` only knows flights a few days ahead and ignores the requested date, so block times are learnt from near flights and applied to far ones; a schedule change shows up only once the changed flights come within reach. Its route filter takes the body `{"departureIATA": "WAW", "arrivalIATA": "LTN"}`, the shape Wizz Air's own flight-status page sends (read from the web app and verified on 2026-11-16 on WAW↔LTN); the requested date isn't needed.
