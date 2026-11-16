@@ -138,6 +138,10 @@ type fakeWizzair struct {
 	// requests lists the route-windows asked for ("KRK-BGY 2026-12-01..2026-12-31") and the times of day
 	// ("KRK-BGY from 2026-12-05 14:05").
 	requests []string
+	// schedule is what flight status answers for a route, whatever the date, as the real one does for the next few
+	// days: only the departure and the arrival of each fakeFlight matter. scheduleRequests lists the routes asked.
+	schedule         []fakeFlight
+	scheduleRequests []string
 }
 
 func newFakeWizzair() *fakeWizzair {
@@ -146,7 +150,7 @@ func newFakeWizzair() *fakeWizzair {
 
 func (f *fakeWizzair) setFlights(flights ...fakeFlight) { f.flights = flights }
 
-// fail makes endpoint ("stations", "timetable" or "cheapestFrom") fail, for route ("KRK-BGY") or all routes ("").
+// fail makes endpoint ("stations", "timetable", "cheapestFrom" or "schedule") fail, for route ("KRK-BGY") or all routes ("").
 func (f *fakeWizzair) fail(endpoint, route string, enabled bool) {
 	f.failures[endpoint+" "+route] = enabled
 }
@@ -210,6 +214,27 @@ func (f *fakeWizzair) CheapestFrom(_ context.Context, from, to string, departure
 	}
 	_, cheapest := f.day(from, to, dateOf(departure), at)
 	return cheapest, nil
+}
+
+func (f *fakeWizzair) Schedule(_ context.Context, from, to string) ([]wizzair.ScheduledFlight, error) {
+	f.scheduleRequests = append(f.scheduleRequests, from+"-"+to)
+	if f.failed("schedule", from+"-"+to) {
+		return nil, errors.New("fake flight status failure")
+	}
+	var flights []wizzair.ScheduledFlight
+	for _, fl := range f.schedule {
+		if fl.from == from && fl.to == to {
+			flights = append(flights, wizzair.ScheduledFlight{Departure: fakeTime(fl.departure), Arrival: fakeTime(fl.arrival)})
+		}
+	}
+	return flights, nil
+}
+
+func (f *fakeWizzair) takeScheduleRequests() []string {
+	got := f.scheduleRequests
+	f.scheduleRequests = nil
+	slices.Sort(got)
+	return got
 }
 
 func (f *fakeWizzair) takeRequests() []string {
