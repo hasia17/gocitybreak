@@ -88,7 +88,7 @@ ON CONFLICT (airline, departure_airport, arrival_airport, departure_date, depart
     estimated_arrival = EXCLUDED.estimated_arrival,
     price_amount = EXCLUDED.price_amount,
     price_currency = EXCLUDED.price_currency,
-    fetched_at = EXCLUDED.fetched_at`, string(f.Airline), f.DepartureAirport, f.ArrivalAirport, dateOf(f.Departure), f.Departure.Format("15:04"), dateOf(f.Arrival), f.Arrival.Format("15:04"), f.EstimatedArrival, amount, currency, f.FetchedAt)
+    fetched_at = EXCLUDED.fetched_at`, string(f.Airline), f.DepartureAirport, f.ArrivalAirport, dateOf(f.Departure), f.Departure.Format(TimeOfDay), dateOf(f.Arrival), f.Arrival.Format(TimeOfDay), f.EstimatedArrival, amount, currency, f.FetchedAt)
 }
 
 // UpsertFlights stores flights without removing other flights or recording refreshes.
@@ -162,7 +162,7 @@ func (s *Store) ReplaceRouteMonth(ctx context.Context, a airline.Airline, from, 
 		for _, f := range flights {
 			queueFlight(b, Flight{Airline: a, DepartureAirport: from, ArrivalAirport: to, Departure: f.Departure, Arrival: f.Arrival, Price: f.Price, EstimatedArrival: f.EstimatedArrival, FetchedAt: fetchedAt})
 			dates = append(dates, f.Departure.Format(time.DateOnly))
-			times = append(times, f.Departure.Format("15:04"))
+			times = append(times, f.Departure.Format(TimeOfDay))
 		}
 		if complete {
 			b.Queue(`DELETE FROM flights

@@ -132,6 +132,8 @@ type fakeWizzair struct {
 	flights  []fakeFlight
 	// unpriced days ("KRK-BGY 2026-12-05") come without a price, like Wizz Air's checkPrice and noData days.
 	unpriced map[string]bool
+	// unflagged days ("KRK-BGY 2026-12-05") are priced but name no flight the price is for (Day.PricedWithoutFlight).
+	unflagged map[string]bool
 	// ignoresTimeOfDay makes CheapestFrom answer for the whole day, as if Wizz Air stopped honouring it.
 	ignoresTimeOfDay bool
 	failures         map[string]bool
@@ -145,7 +147,7 @@ type fakeWizzair struct {
 }
 
 func newFakeWizzair() *fakeWizzair {
-	return &fakeWizzair{unpriced: map[string]bool{}, failures: map[string]bool{}}
+	return &fakeWizzair{unpriced: map[string]bool{}, unflagged: map[string]bool{}, failures: map[string]bool{}}
 }
 
 func (f *fakeWizzair) setFlights(flights ...fakeFlight) { f.flights = flights }
@@ -197,7 +199,11 @@ func (f *fakeWizzair) Timetable(_ context.Context, from, to string, first, last 
 	var days []wizzair.Day
 	for date := first; !date.After(last); date = date.AddDate(0, 0, 1) {
 		if departures, cheapest := f.day(from, to, date, date); len(departures) > 0 {
-			days = append(days, wizzair.Day{Date: date, Departures: departures, Cheapest: cheapest})
+			d := wizzair.Day{Date: date, Departures: departures, Cheapest: cheapest}
+			if f.unflagged[from+"-"+to+" "+date.Format(time.DateOnly)] {
+				d.Cheapest, d.PricedWithoutFlight = nil, true
+			}
+			days = append(days, d)
 		}
 	}
 	return days, nil
