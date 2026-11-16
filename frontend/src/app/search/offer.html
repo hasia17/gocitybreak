@@ -73,7 +73,7 @@
         {{
           tickets.length > 1
             ? t('results.bookRoute', { route: ticket.route, airline: ticket.airlineName })
-            : t('results.book')
+            : t('results.book', { airline: ticket.airlineName })
         }}
       </a>
     }
