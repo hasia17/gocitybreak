@@ -1,5 +1,7 @@
-// Package worker is the price worker (ADR-0002): it fills our database with Ryanair's airport catalogue,
-// the stored prices of every flight to and from the supported airports (ADR-0005), and NBP exchange rates (ADR-0006).
+// Package worker is the price worker (ADR-0002): it fills our database with Ryanair's airport catalogue, the stored
+// prices of Ryanair's (ADR-0005) and Wizz Air's (ADR-0008) flights to and from the supported airports, and NBP
+// exchange rates (ADR-0006). Each airline is fetched by its own pass at its own rate, and one failing doesn't stop
+// the other.
 //
 // It runs as its own process, so whatever goes wrong here, search keeps answering from the last stored prices.
 package worker
@@ -10,7 +12,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"slices"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -21,12 +25,15 @@ import (
 	"github.com/hasia17/gocitybreak/backend/internal/pricestore"
 	"github.com/hasia17/gocitybreak/backend/internal/pricing"
 	"github.com/hasia17/gocitybreak/backend/internal/ryanair"
+	"github.com/hasia17/gocitybreak/backend/internal/wizzair"
 )
 
 // Config is what the worker works with.
 type Config struct {
 	Pool    *pgxpool.Pool
 	Ryanair ryanair.Client
+	// Wizzair is optional: without it, the worker fetches Ryanair's flights only.
+	Wizzair wizzair.Client
 	NBP     *nbp.Client
 	// Horizon is how far ahead prices are fetched (default 6 months).
 	Horizon time.Duration
@@ -43,6 +50,7 @@ type Worker struct {
 	pool      *pgxpool.Pool
 	store     *pricestore.Store
 	ryanair   ryanair.Client
+	wizzair   wizzair.Client
 	nbp       *nbp.Client
 	horizon   time.Duration
 	freshness Freshness
@@ -52,6 +60,7 @@ type Worker struct {
 
 // Freshness is a list of tiers, nearest first: route-months whose flights start departing sooner than a tier's
 // DepartsWithin get refetched once their stored prices are older than its MaxAge. The last tier covers the rest.
+// Each airline's refreshes are tracked on their own.
 type Freshness []Tier
 
 // Tier is one step of Freshness.
@@ -82,7 +91,7 @@ func (f Freshness) maxAge(untilDeparture time.Duration) time.Duration {
 
 // New returns a Worker for cfg.
 func New(cfg Config) *Worker {
-	w := &Worker{pool: cfg.Pool, store: pricestore.New(cfg.Pool), ryanair: cfg.Ryanair, nbp: cfg.NBP,
+	w := &Worker{pool: cfg.Pool, store: pricestore.New(cfg.Pool), ryanair: cfg.Ryanair, wizzair: cfg.Wizzair, nbp: cfg.NBP,
 		horizon: cfg.Horizon, freshness: cfg.Freshness, now: cfg.Now, logger: cmp.Or(cfg.Logger, slog.Default())}
 	if w.horizon <= 0 {
 		w.horizon = 183 * day
@@ -98,14 +107,15 @@ func New(cfg Config) *Worker {
 
 // Schedule says how often the worker refreshes.
 type Schedule struct {
-	// PricePause is the pause between the end of one price refresh and the start of the next, which picks up
-	// whatever has become due in the meantime (see Freshness).
+	// PricePause is the pause between the end of one airline's price refresh and the start of its next, which picks
+	// up whatever has become due in the meantime (see Freshness).
 	PricePause time.Duration
 	// RatesInterval is how often exchange rates are fetched; RatesRetry is how soon a failed fetch is retried.
 	RatesInterval, RatesRetry time.Duration
 }
 
-// Run refreshes exchange rates and prices on schedule until ctx is cancelled.
+// Run refreshes exchange rates and each airline's prices on schedule until ctx is cancelled. The airlines are
+// refreshed side by side, each pausing after its own refresh, so a long refresh of one doesn't hold up the other.
 // Failures are logged and retried on the next round; they never stop the worker.
 func (w *Worker) Run(ctx context.Context, s Schedule) {
 	go func() {
@@ -120,19 +130,26 @@ func (w *Worker) Run(ctx context.Context, s Schedule) {
 			}
 		}
 	}()
-	for {
-		start := time.Now()
-		if err := w.RefreshCatalogue(ctx); err != nil {
-			w.logger.ErrorContext(ctx, "catalogue refresh failed", "err", err)
-		}
-		if err := w.RefreshPrices(ctx); err != nil {
-			w.logger.ErrorContext(ctx, "price refresh incomplete", "err", err)
-		}
-		w.logger.InfoContext(ctx, "price refresh finished", "took", time.Since(start).Round(time.Second))
-		if !sleep(ctx, s.PricePause) {
-			return
-		}
+	var wg sync.WaitGroup
+	for _, p := range w.passes() {
+		wg.Go(func() {
+			for {
+				start := time.Now()
+				if p.airline == airline.Ryanair {
+					// The catalogue is Ryanair's, so it is refreshed along with Ryanair's prices.
+					if err := w.RefreshCatalogue(ctx); err != nil {
+						w.logger.ErrorContext(ctx, "catalogue refresh failed", "err", err)
+					}
+				}
+				_ = p.refresh(ctx) // the pass logs its failures
+				w.logger.InfoContext(ctx, "price refresh finished", "airline", p.airline, "took", time.Since(start).Round(time.Second))
+				if !sleep(ctx, s.PricePause) {
+					return
+				}
+			}
+		})
 	}
+	wg.Wait()
 }
 
 // sleep waits for d and reports whether ctx is still alive.
@@ -192,39 +209,140 @@ type routeMonth struct {
 	first, last time.Time
 }
 
-// RefreshPrices fetches every flight on every route from and to the supported airports whose stored prices are due
-// for a refresh (see Freshness), nearest months first. A route-month that fails keeps its previously stored prices
-// and stays due for the next refresh; the returned error lists the failures.
-func (w *Worker) RefreshPrices(ctx context.Context) error {
-	routes, err := w.routes(ctx)
-	if err != nil {
-		return err
-	}
-	due, err := w.due(ctx, routes)
-	if err != nil {
-		return err
-	}
+// pass refreshes one airline's prices; it logs its failures, naming the airline, and returns them.
+type pass struct {
+	airline airline.Airline
+	refresh func(context.Context) error
+}
 
+// passes lists a pass for every airline the worker fetches.
+func (w *Worker) passes() []pass {
+	passes := []pass{{airline.Ryanair, w.refreshRyanairPrices}}
+	if w.wizzair != nil {
+		passes = append(passes, pass{airline.Wizzair, w.refreshWizzairPrices})
+	}
+	return passes
+}
+
+// RefreshPrices fetches every airline's flights on every route from and to the supported airports whose stored
+// prices are due for a refresh (see Freshness), nearest months first, the airlines side by side. A route-month that
+// fails keeps its previously stored prices and stays due for the next refresh, and an airline that fails doesn't
+// stop the other; the returned error lists the failures.
+func (w *Worker) RefreshPrices(ctx context.Context) error {
+	passes := w.passes()
+	failures := make([]error, len(passes))
+	var wg sync.WaitGroup
+	for i, p := range passes {
+		wg.Go(func() { failures[i] = p.refresh(ctx) })
+	}
+	wg.Wait()
+	return errors.Join(failures...)
+}
+
+// refreshRyanairPrices prices every due Ryanair route-month (ADR-0005).
+func (w *Worker) refreshRyanairPrices(ctx context.Context) error {
+	logger := w.logger.With("airline", airline.Ryanair)
+	return logFailure(ctx, logger, airline.Ryanair, func() error {
+		catalogue, err := w.catalogue(ctx)
+		if err != nil {
+			return err
+		}
+		routes := bothWays(ctx, logger, catalogue.supported, w.ryanair.Routes, catalogue.has)
+		return w.refreshRouteMonths(ctx, logger, airline.Ryanair, routes, func(ctx context.Context, rm routeMonth) error {
+			flights, complete, err := pricing.RouteMonth(ctx, logger, w.ryanair, rm.route.from, rm.route.to, rm.month, rm.first, rm.last)
+			if err != nil {
+				return err
+			}
+			return w.store.ReplaceRouteMonth(ctx, rm.airline, rm.route.from, rm.route.to, rm.month, rm.first, rm.last, w.now(), flights, complete)
+		})
+	})
+}
+
+// refreshWizzairPrices prices every due Wizz Air route-month (ADR-0008) and estimates each flight's arrival from the
+// distance, Wizz Air's timetable giving none.
+func (w *Worker) refreshWizzairPrices(ctx context.Context) error {
+	logger := w.logger.With("airline", airline.Wizzair)
+	return logFailure(ctx, logger, airline.Wizzair, func() error {
+		stations, err := w.wizzair.Stations(ctx)
+		if err != nil {
+			return err
+		}
+		catalogue, err := w.catalogue(ctx)
+		if err != nil {
+			return err
+		}
+		// Only airports in the catalogue: search knows no other, and an arrival needs the airport's time zone.
+		places := map[string]place{}
+		connections := map[string][]string{}
+		for _, s := range stations {
+			zone, ok := catalogue.zones[s.Code]
+			if !ok {
+				continue
+			}
+			location, err := time.LoadLocation(zone)
+			if err != nil {
+				logger.WarnContext(ctx, "airport with an unknown time zone", "airport", s.Code, "zone", zone, "err", err)
+				continue
+			}
+			places[s.Code] = place{latitude: s.Latitude, longitude: s.Longitude, zone: location}
+			connections[s.Code] = s.Connections
+		}
+		destinations := func(_ context.Context, home string) ([]string, error) { return connections[home], nil }
+		routes := bothWays(ctx, logger, catalogue.supported, destinations, func(code string) bool {
+			_, ok := places[code]
+			return ok
+		})
+		return w.refreshRouteMonths(ctx, logger, airline.Wizzair, routes, func(ctx context.Context, rm routeMonth) error {
+			flights, complete, err := pricing.WizzairRange(ctx, logger, w.wizzair, rm.route.from, rm.route.to, rm.first, rm.last)
+			if err != nil {
+				return err
+			}
+			for i, f := range flights {
+				flights[i].Arrival = estimatedArrival(f.Departure, places[rm.route.from], places[rm.route.to])
+				flights[i].EstimatedArrival = true
+			}
+			return w.store.ReplaceRouteMonth(ctx, rm.airline, rm.route.from, rm.route.to, rm.month, rm.first, rm.last, w.now(), flights, complete)
+		})
+	})
+}
+
+// logFailure runs an airline's pass, logging and returning its failure.
+func logFailure(ctx context.Context, logger *slog.Logger, a airline.Airline, pass func() error) error {
+	if err := pass(); err != nil {
+		logger.ErrorContext(ctx, "price refresh incomplete", "err", err)
+		return fmt.Errorf("%s: %w", a, err)
+	}
+	return nil
+}
+
+// refreshRouteMonths prices and stores, with refresh, every route-month of airline a's routes that is due.
+func (w *Worker) refreshRouteMonths(ctx context.Context, logger *slog.Logger, a airline.Airline, routes []route,
+	refresh func(context.Context, routeMonth) error) error {
+	due, err := w.due(ctx, a, routes)
+	if err != nil {
+		return err
+	}
 	var failures []error
 	for _, rm := range due {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if err := w.refreshRouteMonth(ctx, rm); err != nil {
-			w.logger.WarnContext(ctx, "route refresh failed", "from", rm.route.from, "to", rm.route.to,
+		if err := refresh(ctx, rm); err != nil {
+			logger.WarnContext(ctx, "route refresh failed", "from", rm.route.from, "to", rm.route.to,
 				"month", rm.month.Format("2006-01"), "err", err)
 			failures = append(failures, err)
 		}
 	}
-	w.logger.InfoContext(ctx, "prices refreshed", "routes", len(routes), "routeMonths", len(due), "failures", len(failures))
+	logger.InfoContext(ctx, "prices refreshed", "routes", len(routes), "routeMonths", len(due), "failures", len(failures))
 	if len(failures) > 0 {
 		return fmt.Errorf("%d route-months failed: %w", len(failures), errors.Join(failures...))
 	}
 	return nil
 }
 
-// due lists the route-months within the horizon whose stored prices are missing or too old, nearest first.
-func (w *Worker) due(ctx context.Context, routes []route) ([]routeMonth, error) {
+// due lists the route-months of airline a's routes within the horizon whose stored prices are missing or too old,
+// nearest first.
+func (w *Worker) due(ctx context.Context, a airline.Airline, routes []route) ([]routeMonth, error) {
 	now := w.now()
 	today, last := dateOf(now), dateOf(now.Add(w.horizon))
 
@@ -233,18 +351,18 @@ func (w *Worker) due(ctx context.Context, routes []route) ([]routeMonth, error) 
 		return nil, err
 	}
 	type key struct {
-		airline airline.Airline
-		route   route
-		month   time.Time
+		route route
+		month time.Time
 	}
 	refreshed := map[key]time.Time{}
-	rows, err := w.pool.Query(ctx, `SELECT airline, departure_airport, arrival_airport, month, refreshed_at FROM route_month_refreshes`)
+	rows, err := w.pool.Query(ctx, `SELECT departure_airport, arrival_airport, month, refreshed_at
+FROM route_month_refreshes WHERE airline = $1`, string(a))
 	if err != nil {
 		return nil, fmt.Errorf("read refreshes: %w", err)
 	}
 	var k key
 	var at time.Time
-	if _, err := pgx.ForEachRow(rows, []any{&k.airline, &k.route.from, &k.route.to, &k.month, &at}, func() error {
+	if _, err := pgx.ForEachRow(rows, []any{&k.route.from, &k.route.to, &k.month, &at}, func() error {
 		refreshed[k] = at
 		return nil
 	}); err != nil {
@@ -255,69 +373,72 @@ func (w *Worker) due(ctx context.Context, routes []route) ([]routeMonth, error) 
 	for month := firstOfMonth(today); !month.After(last); month = month.AddDate(0, 1, 0) {
 		first, lastDay := maxDate(month, today), minDate(month.AddDate(0, 1, -1), last)
 		maxAge := w.freshness.maxAge(first.Sub(today))
-		// The routes are Ryanair's, the only airline fetched so far.
 		for _, r := range routes {
-			at, ok := refreshed[key{airline.Ryanair, r, month}]
+			at, ok := refreshed[key{r, month}]
 			if !ok || now.Sub(at) >= maxAge {
-				due = append(due, routeMonth{airline: airline.Ryanair, route: r, month: month, first: first, last: lastDay})
+				due = append(due, routeMonth{airline: a, route: r, month: month, first: first, last: lastDay})
 			}
 		}
 	}
 	return due, nil
 }
 
-// routes lists both directions of every Ryanair route touching a supported airport, sorted.
-func (w *Worker) routes(ctx context.Context) ([]route, error) {
-	rows, err := w.pool.Query(ctx, `SELECT code FROM airports ORDER BY code`)
-	if err != nil {
-		return nil, fmt.Errorf("read airports: %w", err)
-	}
-	known, err := pgx.CollectRows(rows, pgx.RowTo[string])
-	if err != nil {
-		return nil, fmt.Errorf("read airports: %w", err)
-	}
-	rows, err = w.pool.Query(ctx, `SELECT code FROM airports WHERE supported ORDER BY code`)
-	if err != nil {
-		return nil, fmt.Errorf("read supported airports: %w", err)
-	}
-	supported, err := pgx.CollectRows(rows, pgx.RowTo[string])
-	if err != nil {
-		return nil, fmt.Errorf("read supported airports: %w", err)
-	}
+// catalogueAirports is what the passes need from the stored catalogue.
+type catalogueAirports struct {
+	zones     map[string]string // every airport's time zone, by code
+	supported []string          // the supported airports' codes, sorted
+}
 
+func (c catalogueAirports) has(code string) bool {
+	_, ok := c.zones[code]
+	return ok
+}
+
+func (w *Worker) catalogue(ctx context.Context) (catalogueAirports, error) {
+	c := catalogueAirports{zones: map[string]string{}}
+	rows, err := w.pool.Query(ctx, `SELECT code, time_zone, supported FROM airports ORDER BY code`)
+	if err != nil {
+		return c, fmt.Errorf("read airports: %w", err)
+	}
+	var code, zone string
+	var supported bool
+	if _, err := pgx.ForEachRow(rows, []any{&code, &zone, &supported}, func() error {
+		c.zones[code] = zone
+		if supported {
+			c.supported = append(c.supported, code)
+		}
+		return nil
+	}); err != nil {
+		return c, fmt.Errorf("read airports: %w", err)
+	}
+	return c, nil
+}
+
+// bothWays lists both directions of every route from a home airport to the airports destinations names, sorted.
+// Airports that aren't usable (missing from the catalogue) are skipped.
+func bothWays(ctx context.Context, logger *slog.Logger, homes []string,
+	destinations func(context.Context, string) ([]string, error), usable func(string) bool) []route {
 	seen := map[route]bool{}
-	for _, home := range supported {
-		destinations, err := w.ryanair.Routes(ctx, home)
+	for _, home := range homes {
+		codes, err := destinations(ctx, home)
 		if err != nil {
-			w.logger.WarnContext(ctx, "routes unavailable", "airport", home, "err", err)
+			logger.WarnContext(ctx, "routes unavailable", "airport", home, "err", err)
 			continue
 		}
-		for _, d := range destinations {
-			if !slices.Contains(known, d) {
-				w.logger.WarnContext(ctx, "route to an airport missing from the catalogue", "from", home, "to", d)
+		for _, d := range codes {
+			if !usable(d) {
+				logger.WarnContext(ctx, "route to an airport missing from the catalogue", "from", home, "to", d)
 				continue
 			}
 			seen[route{home, d}] = true
 			seen[route{d, home}] = true
 		}
 	}
-	routes := make([]route, 0, len(seen))
-	for r := range seen {
-		routes = append(routes, r)
-	}
+	routes := slices.Collect(maps.Keys(seen))
 	slices.SortFunc(routes, func(a, b route) int {
 		return cmp.Or(cmp.Compare(a.from, b.from), cmp.Compare(a.to, b.to))
 	})
-	return routes, nil
-}
-
-// refreshRouteMonth prices and stores a route-month.
-func (w *Worker) refreshRouteMonth(ctx context.Context, rm routeMonth) error {
-	flights, complete, err := pricing.RouteMonth(ctx, w.logger, w.ryanair, rm.route.from, rm.route.to, rm.month, rm.first, rm.last)
-	if err != nil {
-		return err
-	}
-	return w.store.ReplaceRouteMonth(ctx, rm.airline, rm.route.from, rm.route.to, rm.month, rm.first, rm.last, w.now(), flights, complete)
+	return routes
 }
 
 func dateOf(t time.Time) time.Time {
