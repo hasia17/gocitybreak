@@ -72,6 +72,38 @@ func TestWorkerStoresPricedAndUnpricedFlights(t *testing.T) {
 	})
 }
 
+func TestWorkerStoresRyanairFlightsAsRyanairs(t *testing.T) {
+	env := start(t)
+	env.ryanair.setFlights(
+		fakeFlight{from: "KRK", to: "BGY", departure: "2026-12-04T05:50", arrival: "2026-12-04T07:40", price: 70.27, currency: "PLN"},
+	)
+
+	env.refresh(t)
+
+	assertEqual(t, "airlines of the flights", queryStrings(t, env.pool, `SELECT DISTINCT airline FROM flights`), []string{"ryanair"})
+	assertEqual(t, "airlines of the refreshes", queryStrings(t, env.pool, `SELECT DISTINCT airline FROM route_month_refreshes`), []string{"ryanair"})
+}
+
+func TestWorkerChecksFreshnessPerAirline(t *testing.T) {
+	env := start(t)
+	if err := env.worker.RefreshCatalogue(t.Context()); err != nil {
+		t.Fatalf("RefreshCatalogue: %v", err)
+	}
+	// Another airline's fresh refreshes say nothing about Ryanair's prices.
+	if _, err := env.pool.Exec(t.Context(), `INSERT INTO route_month_refreshes (airline, departure_airport, arrival_airport, month, refreshed_at)
+		SELECT 'other', r.dep, r.arr, m::date, $1
+		FROM (VALUES ('KRK', 'BGY'), ('BGY', 'KRK')) AS r(dep, arr)
+		CROSS JOIN generate_series('2026-11-01'::date, '2027-05-01'::date, interval '1 month') AS m`, now); err != nil {
+		t.Fatal(err)
+	}
+
+	env.refresh(t)
+
+	if got := len(env.ryanair.takeCheapestPerDayRequests()); got != 14 {
+		t.Errorf("Ryanair route-months fetched = %d, want all 14 despite the other airline's refreshes", got)
+	}
+}
+
 func TestWorkerUpdatesStoredPricesAndDropsCancelledFlightsOnRefetch(t *testing.T) {
 	env := start(t)
 	env.ryanair.setFlights(

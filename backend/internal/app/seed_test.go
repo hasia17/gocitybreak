@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hasia17/gocitybreak/backend/internal/airline"
 	"github.com/hasia17/gocitybreak/backend/internal/nbp"
 	"github.com/hasia17/gocitybreak/backend/internal/pricestore"
 	"github.com/hasia17/gocitybreak/backend/internal/ryanair"
@@ -63,7 +64,7 @@ func seed(t *testing.T, url string, fixtures ...fixture) {
 			if f.amount >= 0 {
 				price = &ryanair.Money{Amount: f.amount, Currency: f.currency}
 			}
-			flights = append(flights, pricestore.Flight{DepartureAirport: f.from, ArrivalAirport: f.to,
+			flights = append(flights, pricestore.Flight{Airline: airline.Ryanair, DepartureAirport: f.from, ArrivalAirport: f.to,
 				Departure: fixtureTime(t, "2006-01-02 15:04", f.departureDate+" "+f.departureTime),
 				Arrival:   fixtureTime(t, "2006-01-02 15:04", f.arrivalDate+" "+f.arrivalTime),
 				Price:     price, FetchedAt: fixtureTime(t, time.RFC3339, f.fetchedAt)})

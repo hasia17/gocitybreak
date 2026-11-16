@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/hasia17/gocitybreak/backend/internal/airline"
 	"github.com/hasia17/gocitybreak/backend/internal/catalogue"
 	"github.com/hasia17/gocitybreak/backend/internal/leave"
 )
@@ -114,6 +115,7 @@ func (l Leg) IsDirect() bool { return len(l.Flights) == 1 }
 
 // Flight is a single flight with its stored price.
 type Flight struct {
+	Airline          airline.Airline
 	DepartureAirport string
 	ArrivalAirport   string
 	Departure        LocalTime
@@ -297,7 +299,7 @@ func (d Destination) airports(c *catalogue.Catalogue) []string {
 // rounded to minor units.
 const pricedFlights = `
 	priced AS NOT MATERIALIZED (
-		SELECT f.departure_airport, f.arrival_airport,
+		SELECT f.airline, f.departure_airport, f.arrival_airport,
 			f.departure_date, f.departure_time, dep.time_zone AS departure_time_zone,
 			f.arrival_date, f.arrival_time, arr.time_zone AS arrival_time_zone,
 			f.price_amount, f.price_currency, f.fetched_at,
@@ -318,7 +320,7 @@ const pricedFlights = `
 
 // flightColumns selects a row of pricedFlights under alias in the order pricedFlight.scanTargets expects.
 func flightColumns(alias string) string {
-	return fmt.Sprintf(`%[1]s.departure_airport, %[1]s.arrival_airport,
+	return fmt.Sprintf(`%[1]s.airline, %[1]s.departure_airport, %[1]s.arrival_airport,
 		%[1]s.departure_date + %[1]s.departure_time, %[1]s.departure_time_zone,
 		%[1]s.arrival_date + %[1]s.arrival_time, %[1]s.arrival_time_zone,
 		%[1]s.price_amount, %[1]s.price_currency, %[1]s.fetched_at, %[1]s.price_pln`, alias)
@@ -434,7 +436,7 @@ type pricedFlight struct {
 
 // scanTargets returns pointers for a row selected by flightColumns.
 func (f *pricedFlight) scanTargets() []any {
-	return []any{&f.DepartureAirport, &f.ArrivalAirport,
+	return []any{&f.Airline, &f.DepartureAirport, &f.ArrivalAirport,
 		&f.Departure.DateTime, &f.Departure.TimeZone,
 		&f.Arrival.DateTime, &f.Arrival.TimeZone,
 		&f.OriginalPrice.Amount, &f.OriginalPrice.Currency, &f.FetchedAt,

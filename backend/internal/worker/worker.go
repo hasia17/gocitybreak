@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/hasia17/gocitybreak/backend/internal/airline"
 	"github.com/hasia17/gocitybreak/backend/internal/nbp"
 	"github.com/hasia17/gocitybreak/backend/internal/pricestore"
 	"github.com/hasia17/gocitybreak/backend/internal/pricing"
@@ -185,6 +186,7 @@ type route struct{ from, to string }
 
 // routeMonth is the part of a route's month inside the horizon: flights departing from first to last.
 type routeMonth struct {
+	airline     airline.Airline
 	route       route
 	month       time.Time // the first day of the month
 	first, last time.Time
@@ -231,17 +233,18 @@ func (w *Worker) due(ctx context.Context, routes []route) ([]routeMonth, error) 
 		return nil, err
 	}
 	type key struct {
-		route route
-		month time.Time
+		airline airline.Airline
+		route   route
+		month   time.Time
 	}
 	refreshed := map[key]time.Time{}
-	rows, err := w.pool.Query(ctx, `SELECT departure_airport, arrival_airport, month, refreshed_at FROM route_month_refreshes`)
+	rows, err := w.pool.Query(ctx, `SELECT airline, departure_airport, arrival_airport, month, refreshed_at FROM route_month_refreshes`)
 	if err != nil {
 		return nil, fmt.Errorf("read refreshes: %w", err)
 	}
 	var k key
 	var at time.Time
-	if _, err := pgx.ForEachRow(rows, []any{&k.route.from, &k.route.to, &k.month, &at}, func() error {
+	if _, err := pgx.ForEachRow(rows, []any{&k.airline, &k.route.from, &k.route.to, &k.month, &at}, func() error {
 		refreshed[k] = at
 		return nil
 	}); err != nil {
@@ -252,10 +255,11 @@ func (w *Worker) due(ctx context.Context, routes []route) ([]routeMonth, error) 
 	for month := firstOfMonth(today); !month.After(last); month = month.AddDate(0, 1, 0) {
 		first, lastDay := maxDate(month, today), minDate(month.AddDate(0, 1, -1), last)
 		maxAge := w.freshness.maxAge(first.Sub(today))
+		// The routes are Ryanair's, the only airline fetched so far.
 		for _, r := range routes {
-			at, ok := refreshed[key{r, month}]
+			at, ok := refreshed[key{airline.Ryanair, r, month}]
 			if !ok || now.Sub(at) >= maxAge {
-				due = append(due, routeMonth{route: r, month: month, first: first, last: lastDay})
+				due = append(due, routeMonth{airline: airline.Ryanair, route: r, month: month, first: first, last: lastDay})
 			}
 		}
 	}
@@ -313,7 +317,7 @@ func (w *Worker) refreshRouteMonth(ctx context.Context, rm routeMonth) error {
 	if err != nil {
 		return err
 	}
-	return w.store.ReplaceRouteMonth(ctx, rm.route.from, rm.route.to, rm.month, rm.first, rm.last, w.now(), flights, complete)
+	return w.store.ReplaceRouteMonth(ctx, rm.airline, rm.route.from, rm.route.to, rm.month, rm.first, rm.last, w.now(), flights, complete)
 }
 
 func dateOf(t time.Time) time.Time {

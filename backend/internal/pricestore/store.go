@@ -8,6 +8,7 @@ import (
 	"maps"
 	"time"
 
+	"github.com/hasia17/gocitybreak/backend/internal/airline"
 	"github.com/hasia17/gocitybreak/backend/internal/nbp"
 	"github.com/hasia17/gocitybreak/backend/internal/pricing"
 	"github.com/hasia17/gocitybreak/backend/internal/ryanair"
@@ -23,6 +24,7 @@ func New(pool *pgxpool.Pool) *Store { return &Store{pool: pool} }
 
 // Flight is a flight with local wall-clock times and an optional price.
 type Flight struct {
+	Airline                          airline.Airline
 	DepartureAirport, ArrivalAirport string
 	Departure, Arrival               time.Time
 	Price                            *ryanair.Money
@@ -75,15 +77,15 @@ func queueFlight(b *pgx.Batch, f Flight) {
 		amount, currency = &f.Price.Amount, &f.Price.Currency
 	}
 	b.Queue(`INSERT INTO flights
-    (departure_airport, arrival_airport, departure_date, departure_time,
+    (airline, departure_airport, arrival_airport, departure_date, departure_time,
      arrival_date, arrival_time, price_amount, price_currency, fetched_at)
-VALUES ($1, $2, $3, $4::text::time, $5, $6::text::time, $7, $8, $9)
-ON CONFLICT (departure_airport, arrival_airport, departure_date, departure_time) DO UPDATE SET
+VALUES ($1, $2, $3, $4, $5::text::time, $6, $7::text::time, $8, $9, $10)
+ON CONFLICT (airline, departure_airport, arrival_airport, departure_date, departure_time) DO UPDATE SET
     arrival_date = EXCLUDED.arrival_date,
     arrival_time = EXCLUDED.arrival_time,
     price_amount = EXCLUDED.price_amount,
     price_currency = EXCLUDED.price_currency,
-    fetched_at = EXCLUDED.fetched_at`, f.DepartureAirport, f.ArrivalAirport, dateOf(f.Departure), f.Departure.Format("15:04"), dateOf(f.Arrival), f.Arrival.Format("15:04"), amount, currency, f.FetchedAt)
+    fetched_at = EXCLUDED.fetched_at`, string(f.Airline), f.DepartureAirport, f.ArrivalAirport, dateOf(f.Departure), f.Departure.Format("15:04"), dateOf(f.Arrival), f.Arrival.Format("15:04"), amount, currency, f.FetchedAt)
 }
 
 // UpsertFlights stores flights without removing other flights or recording refreshes.
@@ -101,11 +103,11 @@ func (s *Store) UpsertFlights(ctx context.Context, flights []Flight) error {
 // Flights reads all stored flights in route and departure order. Departure and
 // arrival are local wall-clock times represented in UTC, not absolute instants.
 func (s *Store) Flights(ctx context.Context) ([]Flight, error) {
-	rows, err := s.pool.Query(ctx, `SELECT departure_airport, arrival_airport,
+	rows, err := s.pool.Query(ctx, `SELECT airline, departure_airport, arrival_airport,
     departure_date + departure_time, arrival_date + arrival_time,
     price_amount, price_currency, fetched_at
 FROM flights
-ORDER BY departure_airport, arrival_airport, departure_date, departure_time`)
+ORDER BY departure_airport, arrival_airport, departure_date, departure_time, airline`)
 	if err != nil {
 		return nil, fmt.Errorf("read flights: %w", err)
 	}
@@ -116,7 +118,7 @@ ORDER BY departure_airport, arrival_airport, departure_date, departure_time`)
 		var f Flight
 		var amount *int64
 		var currency *string
-		if err := rows.Scan(&f.DepartureAirport, &f.ArrivalAirport, &f.Departure, &f.Arrival, &amount, &currency, &f.FetchedAt); err != nil {
+		if err := rows.Scan(&f.Airline, &f.DepartureAirport, &f.ArrivalAirport, &f.Departure, &f.Arrival, &amount, &currency, &f.FetchedAt); err != nil {
 			return nil, fmt.Errorf("read flights: %w", err)
 		}
 		if amount != nil && currency != nil {
@@ -131,8 +133,8 @@ ORDER BY departure_airport, arrival_airport, departure_date, departure_time`)
 	return flights, nil
 }
 
-// ReplaceRouteMonth upserts flights for the route from → to and records fetchedAt
-// as the refresh time for month, in one transaction. from and to are airport
+// ReplaceRouteMonth upserts airline a's flights for the route from → to and records fetchedAt
+// as a's refresh time for month, in one transaction. from and to are airport
 // codes; month is the first day of the month, and first and last are the
 // inclusive departure-date bounds of the fetched timetable. The caller must
 // supply consistent route, month, bounds, and flights; these are not validated.
@@ -150,30 +152,31 @@ ORDER BY departure_airport, arrival_airport, departure_date, departure_time`)
 // and context errors are returned; batch errors are wrapped with route context.
 // A transaction or commit error is returned by pgx; a commit error can leave
 // the outcome unknown.
-func (s *Store) ReplaceRouteMonth(ctx context.Context, from, to string, month, first, last, fetchedAt time.Time, flights []pricing.Flight, complete bool) error {
+func (s *Store) ReplaceRouteMonth(ctx context.Context, a airline.Airline, from, to string, month, first, last, fetchedAt time.Time, flights []pricing.Flight, complete bool) error {
 	return pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		b := &pgx.Batch{}
 		var dates, times []string
 		for _, f := range flights {
-			queueFlight(b, Flight{DepartureAirport: from, ArrivalAirport: to, Departure: f.Departure, Arrival: f.Arrival, Price: f.Price, FetchedAt: fetchedAt})
+			queueFlight(b, Flight{Airline: a, DepartureAirport: from, ArrivalAirport: to, Departure: f.Departure, Arrival: f.Arrival, Price: f.Price, FetchedAt: fetchedAt})
 			dates = append(dates, f.Departure.Format(time.DateOnly))
 			times = append(times, f.Departure.Format("15:04"))
 		}
 		if complete {
 			b.Queue(`DELETE FROM flights
-WHERE departure_airport = $1
-  AND arrival_airport = $2
-  AND departure_date BETWEEN $3 AND $4
+WHERE airline = $1
+  AND departure_airport = $2
+  AND arrival_airport = $3
+  AND departure_date BETWEEN $4 AND $5
   AND (departure_date, departure_time) NOT IN (
       SELECT d, t
-      FROM unnest($5::text[]::date[], $6::text[]::time[]) AS fetched (d, t)
-  )`, from, to, first, last, dates, times)
+      FROM unnest($6::text[]::date[], $7::text[]::time[]) AS fetched (d, t)
+  )`, string(a), from, to, first, last, dates, times)
 		}
 		b.Queue(`INSERT INTO route_month_refreshes
-    (departure_airport, arrival_airport, month, refreshed_at)
-VALUES ($1, $2, $3, $4)
-ON CONFLICT (departure_airport, arrival_airport, month) DO UPDATE SET
-    refreshed_at = EXCLUDED.refreshed_at`, from, to, month, fetchedAt)
+    (airline, departure_airport, arrival_airport, month, refreshed_at)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (airline, departure_airport, arrival_airport, month) DO UPDATE SET
+    refreshed_at = EXCLUDED.refreshed_at`, string(a), from, to, month, fetchedAt)
 		if err := tx.SendBatch(ctx, b).Close(); err != nil {
 			return fmt.Errorf("store flights %s→%s: %w", from, to, err)
 		}

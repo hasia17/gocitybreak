@@ -74,6 +74,7 @@ type legJSON struct {
 }
 
 type flightJSON struct {
+	Airline          string        `json:"airline"`
 	DepartureAirport string        `json:"departureAirport"`
 	ArrivalAirport   string        `json:"arrivalAirport"`
 	Departure        localTimeJSON `json:"departure"`
@@ -241,6 +242,7 @@ func toLegJSON(l search.Leg) legJSON {
 	leg := legJSON{IsDirect: l.IsDirect(), Flights: make([]flightJSON, 0, len(l.Flights))}
 	for _, f := range l.Flights {
 		leg.Flights = append(leg.Flights, flightJSON{
+			Airline:          string(f.Airline),
 			DepartureAirport: f.DepartureAirport,
 			ArrivalAirport:   f.ArrivalAirport,
 			Departure:        toLocalTimeJSON(f.Departure),
