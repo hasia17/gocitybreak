@@ -18,6 +18,7 @@
               </span>
             </span>
             <!-- A group names the destination: its single-flight legs then name only the home airport. -->
+            <span class="airline">{{ flight.airline }}</span>
             <span class="route">{{
               showDestination() || leg.flights.length > 1
                 ? flight.from + ' → ' + flight.to
@@ -67,7 +68,9 @@
     @for (ticket of tickets; track ticket.url) {
       <a class="book" [href]="ticket.url" target="_blank" rel="noopener">
         {{
-          tickets.length > 1 ? t('results.bookRoute', { route: ticket.route }) : t('results.book')
+          tickets.length > 1
+            ? t('results.bookRoute', { route: ticket.route, airline: ticket.airlineName })
+            : t('results.book')
         }}
       </a>
     }

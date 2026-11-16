@@ -94,7 +94,11 @@ export interface Leg {
   flights: Flight[];
 }
 
+/** The airline operating a flight (GLOSSARY: Airline); its name is under `airline.<id>` in the i18n files. */
+export type Airline = 'ryanair';
+
 export interface Flight {
+  airline: Airline;
   departureAirport: string;
   arrivalAirport: string;
   departure: LocalTime;

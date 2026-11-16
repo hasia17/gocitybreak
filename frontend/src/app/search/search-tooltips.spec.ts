@@ -95,6 +95,7 @@ describe('Search explanations', () => {
     const root = fixture.nativeElement as HTMLElement;
     root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
     const flight = (from: string, to: string, currency: string) => ({
+      airline: 'ryanair' as const,
       departureAirport: from,
       arrivalAirport: to,
       departure: { date: '2026-12-04', time: '10:00', timeZone: 'Europe/Warsaw' },

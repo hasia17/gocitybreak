@@ -2,7 +2,7 @@ import { Texts, ago, money, moneyParts, plural, shortDay } from '../i18n/texts';
 import { Catalogue, Offer } from './search-api';
 import { daysBetween } from './calendar-days';
 import { byCode, catalogueName } from './catalogue-names';
-import { ryanairTickets } from './ryanair-booking';
+import { tickets as ticketsOf } from './tickets';
 
 /** Display values for one result, including its booking links. */
 export type OfferView = ReturnType<typeof offerView>;
@@ -23,7 +23,7 @@ export function offerView(offer: Offer, now: number, texts: Texts, catalogue?: C
     return city ? `${code} ${catalogueName(city, language)}` : code;
   };
   const legs = [offer.outbound, ...(offer.inbound ? [offer.inbound] : [])];
-  const tickets = ryanairTickets(offer);
+  const tickets = ticketsOf(offer);
   return {
     legs: legs.map((leg, index) => ({
       label: texts.t(index === 0 ? 'offer.outbound' : 'offer.return'),
@@ -31,6 +31,7 @@ export function offerView(offer: Offer, now: number, texts: Texts, catalogue?: C
       flights: leg.flights.map((flight) => {
         const dateYear = Number(flight.departure.date.slice(0, 4));
         return {
+          airline: texts.t(`airline.${flight.airline}`),
           departureDate: flight.departure.date,
           day: shortDay(texts, flight.departure.date, dateYear !== year),
           departureTime: flight.departure.time,
@@ -71,6 +72,9 @@ export function offerView(offer: Offer, now: number, texts: Texts, catalogue?: C
       .join(' '),
     priceFetchedAt: offer.priceFetchedAt,
     priceAge: ago(texts, offer.priceFetchedAt, now),
-    tickets,
+    tickets: tickets.map((ticket) => ({
+      ...ticket,
+      airlineName: texts.t(`airline.${ticket.airline}`),
+    })),
   };
 }

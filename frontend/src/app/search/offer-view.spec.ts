@@ -14,6 +14,7 @@ const offer: Offer = {
     isDirect: true,
     flights: [
       {
+        airline: 'ryanair' as const,
         departureAirport: 'BGY',
         arrivalAirport: 'KRK',
         departure: { date: '2026-12-05', time: '23:30', timeZone: 'Europe/Rome' },
@@ -46,6 +47,7 @@ describe('offerView', () => {
   it('formats a one-way offer with an overnight flight and foreign price', () => {
     const view = offerView(offer, now);
     expect(view.legs[0].flights[0]).toEqual({
+      airline: 'Ryanair',
       departureDate: '2026-12-05',
       day: 'Sat 5 Dec',
       departureTime: '23:30',
@@ -109,6 +111,11 @@ describe('offerView', () => {
       '23:30',
       '01:20',
     ]);
+  });
+
+  it('names the airline of each flight, in both languages', () => {
+    expect(offerView(offer, now).legs[0].flights[0].airline).toBe('Ryanair');
+    expect(offerView(offer, now, 'pl').legs[0].flights[0].airline).toBe('Ryanair');
   });
 
   it('keeps foreign original prices out of the whole-zloty price', () => {

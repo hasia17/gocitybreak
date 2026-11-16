@@ -36,8 +36,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-  /* One content width for the whole search page: form, panels and results. */
-  --content-width: 68rem;
+    /* One content width for the whole search page: form, panels and results. */
+    --content-width: 68rem;
     --bg: #12161f;
     --card: #1b212d;
     --ink: #eeeae2;
