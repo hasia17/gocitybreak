@@ -38,7 +38,9 @@ type Client interface {
 // Station is a Wizz Air airport.
 type Station struct {
 	Code string
-	Name string
+	// Names and CountryNames are the airport's and its country's names keyed by the catalogue's interface
+	// languages ("en", "pl").
+	Names, CountryNames map[string]string
 	// CountryCode is lower-case ISO 3166-1 alpha-2, like the catalogue's.
 	CountryCode string
 	// Currency is what Wizz Air prices flights departing from the station in.
@@ -186,42 +188,61 @@ func (c *HTTPClient) tokenHeader(api string) http.Header {
 	return nil
 }
 
+// stationNetwork is asset/map: the stations with their connections, named in one language.
+type stationNetwork struct {
+	Cities []struct {
+		IATA          string  `json:"iata"`
+		Mac           *string `json:"mac"`
+		ShortName     string  `json:"shortName"`
+		CountryName   string  `json:"countryName"`
+		CountryCode   string  `json:"countryCode"`
+		CurrencyCode  string  `json:"currencyCode"`
+		Latitude      float64 `json:"latitude"`
+		Longitude     float64 `json:"longitude"`
+		IsFakeStation bool    `json:"isFakeStation"`
+		Connections   []struct {
+			IATA           string `json:"iata"`
+			IsConnected    bool   `json:"isConnected"`
+			IsDirectFlight bool   `json:"isDirectFlight"`
+		} `json:"connections"`
+	} `json:"cities"`
+}
+
 func (c *HTTPClient) Stations(ctx context.Context) ([]Station, error) {
-	var body struct {
-		Cities []struct {
-			IATA          string  `json:"iata"`
-			Mac           *string `json:"mac"`
-			ShortName     string  `json:"shortName"`
-			CountryCode   string  `json:"countryCode"`
-			CurrencyCode  string  `json:"currencyCode"`
-			Latitude      float64 `json:"latitude"`
-			Longitude     float64 `json:"longitude"`
-			IsFakeStation bool    `json:"isFakeStation"`
-			Connections   []struct {
-				IATA           string `json:"iata"`
-				IsConnected    bool   `json:"isConnected"`
-				IsDirectFlight bool   `json:"isDirectFlight"`
-			} `json:"connections"`
-		} `json:"cities"`
-	}
-	if err := c.call(ctx, http.MethodGet, "asset/map?languageCode=en-gb", nil, &body); err != nil {
+	var english, polish stationNetwork
+	if err := c.call(ctx, http.MethodGet, "asset/map?languageCode=en-gb", nil, &english); err != nil {
 		return nil, fmt.Errorf("stations: %w", err)
+	}
+	if err := c.call(ctx, http.MethodGet, "asset/map?languageCode=pl-pl", nil, &polish); err != nil {
+		return nil, fmt.Errorf("stations: %w", err)
+	}
+	type polishNames struct{ station, country string }
+	inPolish := map[string]polishNames{}
+	for _, s := range polish.Cities {
+		inPolish[s.IATA] = polishNames{strings.TrimSpace(s.ShortName), strings.TrimSpace(s.CountryName)}
 	}
 	// Pseudo-stations such as LON ("London (All Airports)") group real ones; they are no airport to fly to.
 	pseudo := map[string]bool{}
-	for _, s := range body.Cities {
+	for _, s := range english.Cities {
 		if s.IsFakeStation {
 			pseudo[s.IATA] = true
 		}
 	}
 	var stations []Station
-	for _, s := range body.Cities {
+	for _, s := range english.Cities {
 		if s.IsFakeStation {
 			continue
 		}
+		pl, ok := inPolish[s.IATA]
+		if !ok {
+			return nil, fmt.Errorf("stations: %s is missing from the Polish station network", s.IATA)
+		}
 		station := Station{
-			Code: s.IATA, Name: strings.TrimSpace(s.ShortName), CountryCode: strings.ToLower(s.CountryCode),
-			Currency: s.CurrencyCode, Latitude: s.Latitude, Longitude: s.Longitude,
+			Code:         s.IATA,
+			Names:        map[string]string{"en": strings.TrimSpace(s.ShortName), "pl": pl.station},
+			CountryNames: map[string]string{"en": strings.TrimSpace(s.CountryName), "pl": pl.country},
+			CountryCode:  strings.ToLower(s.CountryCode),
+			Currency:     s.CurrencyCode, Latitude: s.Latitude, Longitude: s.Longitude,
 		}
 		if s.Mac != nil {
 			station.CityGroup = *s.Mac

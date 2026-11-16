@@ -1,4 +1,5 @@
-// Package worker is the price worker (ADR-0002): it fills our database with Ryanair's airport catalogue, the stored
+// Package worker is the price worker (ADR-0002): it fills our database with Ryanair's airport catalogue (and the
+// airports only Wizz Air flies to, see wizzairOnly), the stored
 // prices of Ryanair's (ADR-0005) and Wizz Air's (ADR-0008) flights to and from the supported airports, and NBP
 // exchange rates (ADR-0006). Each airline is fetched by its own pass at its own rate, and one failing doesn't stop
 // the other.
@@ -162,11 +163,19 @@ func sleep(ctx context.Context, d time.Duration) bool {
 	}
 }
 
-// RefreshCatalogue stores Ryanair's airports with their city and country; the Polish ones become supported airports.
+// RefreshCatalogue stores Ryanair's airports with their city and country, and the airports only Wizz Air flies to
+// (see wizzairOnly); the Polish ones become supported airports. Wizz Air failing leaves Ryanair's airports alone.
 func (w *Worker) RefreshCatalogue(ctx context.Context) error {
 	airports, err := w.ryanair.Airports(ctx)
 	if err != nil {
 		return err
+	}
+	if w.wizzair != nil {
+		if stations, err := w.wizzair.Stations(ctx); err != nil {
+			w.logger.WarnContext(ctx, "Wizz Air airports not added to the catalogue", "airline", airline.Wizzair, "err", err)
+		} else {
+			airports = append(airports, wizzairOnly(ctx, w.logger, airports, stations)...)
+		}
 	}
 	if err := w.store.UpsertAirports(ctx, airports); err != nil {
 		return err

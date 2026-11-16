@@ -91,6 +91,10 @@ func (f *fakeWizzair) serve(w http.ResponseWriter, r *http.Request) {
 	}
 	switch api {
 	case "asset/map":
+		if r.URL.Query().Get("languageCode") == "pl-pl" {
+			_, _ = io.WriteString(w, payload("map_pl.json"))
+			return
+		}
 		_, _ = io.WriteString(w, payload("map.json"))
 	case "search/timetableV2":
 		var body struct {
@@ -163,7 +167,9 @@ func TestClientShakesHandsBeforeItsFirstRequest(t *testing.T) {
 		"GET /en-gb cookies:",
 		"GET /29.25.0/Api/userSession/new cookies: ak_bmsc",
 		"GET /29.25.0/Api/asset/map?languageCode=en-gb cookies: ak_bmsc ASP.NET_SessionId RequestVerificationToken",
+		"GET /29.25.0/Api/asset/map?languageCode=pl-pl cookies: ak_bmsc ASP.NET_SessionId RequestVerificationToken",
 		"GET /29.25.0/Api/asset/map?languageCode=en-gb cookies: ak_bmsc ASP.NET_SessionId RequestVerificationToken",
+		"GET /29.25.0/Api/asset/map?languageCode=pl-pl cookies: ak_bmsc ASP.NET_SessionId RequestVerificationToken",
 	}
 	if got := fake.takeRequests(); !reflect.DeepEqual(got, want) {
 		t.Errorf("requests:\n got %q\nwant %q", got, want)
@@ -208,24 +214,33 @@ func TestStationsHaveTheirDirectConnectionsOnly(t *testing.T) {
 	}
 	// LON and MIL are Wizz Air's "all airports" pseudo-stations; LUZ → KUT is a Wizz-operated connection
 	// (hand-added to the recording, which had none).
+	// Names come in both of the catalogue's languages, from the station network in each.
 	want := []wizzair.Station{
-		{Code: "WAW", Name: "Warsaw Chopin", CountryCode: "pl", Currency: "PLN", CityGroup: "WSW",
+		{Code: "WAW", Names: names("Warsaw Chopin", "Warszawa Chopin"), CountryNames: names("Poland", "Polska"),
+			CountryCode: "pl", Currency: "PLN", CityGroup: "WSW",
 			Latitude: 52.16583333333333, Longitude: 20.96722222222222, Connections: []string{"BGY", "KUT", "LTN"}},
-		{Code: "KTW", Name: "Katowice", CountryCode: "pl", Currency: "PLN", CityGroup: "SPQ",
+		{Code: "KTW", Names: names("Katowice", "Katowice"), CountryNames: names("Poland", "Polska"),
+			CountryCode: "pl", Currency: "PLN", CityGroup: "SPQ",
 			Latitude: 50.483333333333334, Longitude: 19.083333333333332, Connections: []string{"KUT", "LTN"}},
-		{Code: "LUZ", Name: "Lublin", CountryCode: "pl", Currency: "PLN",
+		{Code: "LUZ", Names: names("Lublin", "Lublin"), CountryNames: names("Poland", "Polska"),
+			CountryCode: "pl", Currency: "PLN",
 			Latitude: 51.231388888888894, Longitude: 22.690555555555555, Connections: []string{"LTN"}},
-		{Code: "LTN", Name: "London Luton", CountryCode: "gb", Currency: "GBP", CityGroup: "LON",
+		{Code: "LTN", Names: names("London Luton", "Londyn-Luton"), CountryNames: names("United Kingdom", "Wielka Brytania"),
+			CountryCode: "gb", Currency: "GBP", CityGroup: "LON",
 			Latitude: 51.874722222222225, Longitude: -0.3683333333333333, Connections: []string{"KTW", "LUZ", "WAW"}},
-		{Code: "BGY", Name: "Milan Bergamo", CountryCode: "it", Currency: "EUR", CityGroup: "MIL",
+		{Code: "BGY", Names: names("Milan Bergamo", "Mediolan-Bergamo"), CountryNames: names("Italy", "Włochy"),
+			CountryCode: "it", Currency: "EUR", CityGroup: "MIL",
 			Latitude: 45.66833333333333, Longitude: 9.700277777777776, Connections: []string{"WAW"}},
-		{Code: "KUT", Name: "Kutaisi", CountryCode: "ge", Currency: "GEL", CityGroup: "GEL",
+		{Code: "KUT", Names: names("Kutaisi", "Kutaisi"), CountryNames: names("Georgia", "Gruzja"),
+			CountryCode: "ge", Currency: "GEL", CityGroup: "GEL",
 			Latitude: 42.17666666666666, Longitude: 42.4825, Connections: []string{"KTW", "WAW"}},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("stations:\n got %+v\nwant %+v", got, want)
 	}
 }
+
+func names(en, pl string) map[string]string { return map[string]string{"en": en, "pl": pl} }
 
 func day(s string) time.Time {
 	d, err := time.Parse(time.DateOnly, s)
