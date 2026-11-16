@@ -27,9 +27,11 @@ const token = "8d05a60d3c66437f9deea94cc31c19a3"
 // fakeWizzair answers the homepage and the API under one version, and records every request.
 type fakeWizzair struct {
 	*httptest.Server
-	version    string
-	homepage   int // the homepage's HTTP status
-	timetables func(window flightList) string
+	version  string
+	homepage int // the homepage's HTTP status
+	// homepageHTML replaces the recorded homepage when set.
+	homepageHTML string
+	timetables   func(window flightList) string
 	// statuses answers asset/flightinformation; the bodies it was asked with are kept in statusBodies.
 	statuses     func() string
 	statusBodies []map[string]any
@@ -71,6 +73,10 @@ func (f *fakeWizzair) serve(w http.ResponseWriter, r *http.Request) {
 		}
 		http.SetCookie(w, &http.Cookie{Name: "ak_bmsc", Value: "warm", Path: "/"})
 		w.Header().Set("Content-Type", "text/html")
+		if f.homepageHTML != "" {
+			_, _ = io.WriteString(w, f.homepageHTML)
+			return
+		}
 		_, _ = io.WriteString(w, payload("homepage.html"))
 		return
 	}
@@ -443,5 +449,76 @@ func TestScheduleLeavesOutCancelledFlightsAndOnesWithoutTimes(t *testing.T) {
 
 	if err != nil || len(flights) != 1 || !flights[0].Departure.Equal(at("2026-11-17T06:00")) {
 		t.Errorf("Schedule = %+v, %v; want only the 2026-11-17 flight", flights, err)
+	}
+}
+
+func TestClientSaysSoWhenTheHomepageNamesNoVersionAndNoneIsConfigured(t *testing.T) {
+	fake := newFake(t)
+	fake.homepageHTML = "<html>no version here</html>"
+
+	_, err := fake.client("").Stations(t.Context())
+
+	if err == nil || !strings.Contains(err.Error(), "names no API version") || strings.Contains(err.Error(), "nil") {
+		t.Errorf("Stations error = %v, want one saying the homepage names no API version", err)
+	}
+}
+
+func TestClientSaysWhyWhenTheHomepageFailsAndNoVersionIsConfigured(t *testing.T) {
+	fake := newFake(t)
+	fake.homepage = http.StatusForbidden
+
+	_, err := fake.client("").Stations(t.Context())
+
+	if err == nil || !strings.Contains(err.Error(), "403") {
+		t.Errorf("Stations error = %v, want the homepage's failure", err)
+	}
+}
+
+func TestTimetableStoresTheRegularPriceNotTheOriginalOne(t *testing.T) {
+	fake := newFake(t)
+	// Hand-built: every recording has price equal to originalPrice, so a day where they differ (here the original
+	// is dearer, as a Wizz Discount Club fare would make it) is made up to pin which of them is the regular fare.
+	fake.timetables = func(flightList) string {
+		return `{"outboundFlights":[{"departureDate":"2026-12-10T06:00:00",
+"price":{"amount":209.0,"currencyCode":"PLN"},"originalPrice":{"amount":249.0,"currencyCode":"PLN"},
+"priceType":"price","departureDates":[{"date":"2026-12-10T06:00:00","isCheapestOfTheDay":true}]}]}`
+	}
+
+	days, err := fake.client("29.20.0").Timetable(t.Context(), "WAW", "LTN", day("2026-12-10"), day("2026-12-10"))
+
+	if err != nil {
+		t.Fatalf("Timetable: %v", err)
+	}
+	if want := []string{"2026-12-10: 06:00, cheapest 2026-12-10 06:00 20900 PLN"}; !reflect.DeepEqual(describe(days), want) {
+		t.Errorf("days %q, want %q", describe(days), want)
+	}
+}
+
+func TestTimetableTakesTheDaysDepartureDateForTheCheapestFlightOnlyWhenItIsAListedDeparture(t *testing.T) {
+	fake := newFake(t)
+	// Hand-built: no departure is flagged isCheapestOfTheDay. The first day's departureDate is one of its
+	// departures, the second's is a time Wizz Air lists no flight at.
+	fake.timetables = func(flightList) string {
+		return `{"outboundFlights":[
+{"departureDate":"2026-12-10T11:40:00","price":{"amount":209.0,"currencyCode":"PLN"},"priceType":"price",
+"departureDates":[{"date":"2026-12-10T06:00:00","isCheapestOfTheDay":false},{"date":"2026-12-10T11:40:00","isCheapestOfTheDay":false}]},
+{"departureDate":"2026-12-11T09:15:00","price":{"amount":199.0,"currencyCode":"PLN"},"priceType":"price",
+"departureDates":[{"date":"2026-12-11T06:00:00","isCheapestOfTheDay":false},{"date":"2026-12-11T11:40:00","isCheapestOfTheDay":false}]}]}`
+	}
+
+	days, err := fake.client("29.20.0").Timetable(t.Context(), "WAW", "LTN", day("2026-12-10"), day("2026-12-11"))
+
+	if err != nil {
+		t.Fatalf("Timetable: %v", err)
+	}
+	want := []string{
+		"2026-12-10: 06:00 11:40, cheapest 2026-12-10 11:40 20900 PLN",
+		"2026-12-11: 06:00 11:40, no price",
+	}
+	if got := describe(days); !reflect.DeepEqual(got, want) {
+		t.Errorf("days:\n got %q\nwant %q", got, want)
+	}
+	if days[0].PricedWithoutFlight || !days[1].PricedWithoutFlight {
+		t.Errorf("PricedWithoutFlight = %t, %t; want false, true", days[0].PricedWithoutFlight, days[1].PricedWithoutFlight)
 	}
 }

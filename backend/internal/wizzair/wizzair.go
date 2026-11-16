@@ -72,6 +72,10 @@ type Day struct {
 	Date       time.Time
 	Departures []time.Time
 	Cheapest   *Fare
+	// PricedWithoutFlight is set when Wizz Air gives the day a price but no way to tell which of its departures the
+	// price is for (none is flagged as the cheapest, and the day's own departure date is none of them): the price
+	// is then not used and Cheapest is nil.
+	PricedWithoutFlight bool
 }
 
 // Config says where the client finds Wizz Air.
@@ -123,7 +127,10 @@ func (c *HTTPClient) handshake(ctx context.Context) (string, error) {
 		version = string(m[1])
 	}
 	if version == "" {
-		return "", fmt.Errorf("handshake: no API version on the homepage (%v) and none configured", err)
+		if err != nil {
+			return "", fmt.Errorf("handshake: homepage failed and no API version is configured: %w", err)
+		}
+		return "", errors.New("handshake: the homepage names no API version and none is configured")
 	}
 	api := strings.TrimSuffix(c.cfg.BaseURL, "/") + "/" + version + "/Api"
 	if _, err := c.fetch.Do(ctx, fetch.Request{URL: api + "/userSession/new"}); err != nil {
@@ -210,6 +217,8 @@ type stationNetwork struct {
 	} `json:"cities"`
 }
 
+// Stations reads Wizz Air's station network (asset/map) in English and Polish: direct connections only, the
+// pseudo-stations that group airports left out.
 func (c *HTTPClient) Stations(ctx context.Context) ([]Station, error) {
 	var english, polish stationNetwork
 	if err := c.call(ctx, http.MethodGet, "asset/map?languageCode=en-gb", nil, &english); err != nil {
@@ -261,8 +270,8 @@ func (c *HTTPClient) Stations(ctx context.Context) ([]Station, error) {
 	return stations, nil
 }
 
-// window is the longest date range timetableV2 answers, in days.
-const window = 42
+// maxWindowDays is the longest date range timetableV2 answers, in days.
+const maxWindowDays = 42
 
 // localLayout is how Wizz Air writes local date-times: no offset, the airport's wall clock.
 const localLayout = "2006-01-02T15:04:05"
@@ -336,8 +345,13 @@ func parseDay(d timetableDay) (Day, error) {
 	slices.SortFunc(day.Departures, time.Time.Compare)
 	// checkPrice and noData days, and a price of 0, are no price we can store.
 	if d.PriceType == "price" && d.Price != nil && d.Price.Amount > 0 && d.Price.CurrencyCode != "" {
-		if cheapest.IsZero() {
+		// No flagged departure: the day's own departure date is the cheapest flight only if it is one of the departures.
+		if cheapest.IsZero() && slices.ContainsFunc(day.Departures, first.Equal) {
 			cheapest = first
+		}
+		if cheapest.IsZero() {
+			day.PricedWithoutFlight = true
+			return day, nil
 		}
 		day.Cheapest = &Fare{Departure: cheapest,
 			Price: Money{Amount: int64(math.Round(d.Price.Amount * 100)), Currency: d.Price.CurrencyCode}}
@@ -345,10 +359,12 @@ func parseDay(d timetableDay) (Day, error) {
 	return day, nil
 }
 
+// Timetable reads the days from first to last (inclusive) on which Wizz Air flies from → to, asking for at most
+// maxWindowDays at a time, with every departure of each day and the regular fare of the day's cheapest flight.
 func (c *HTTPClient) Timetable(ctx context.Context, from, to string, first, last time.Time) ([]Day, error) {
 	var days []Day
-	for start := first; !start.After(last); start = start.AddDate(0, 0, window) {
-		end := start.AddDate(0, 0, window-1)
+	for start := first; !start.After(last); start = start.AddDate(0, 0, maxWindowDays) {
+		end := start.AddDate(0, 0, maxWindowDays-1)
 		if end.After(last) {
 			end = last
 		}
@@ -362,6 +378,8 @@ func (c *HTTPClient) Timetable(ctx context.Context, from, to string, first, last
 	return days, nil
 }
 
+// CheapestFrom reads the cheapest flight from → to on the day of departure among those departing at its time of day
+// or later, at the regular fare; it is nil when Wizz Air prices none of them.
 func (c *HTTPClient) CheapestFrom(ctx context.Context, from, to string, departure time.Time) (*Fare, error) {
 	// A time of day in to is ignored, but to must not end before from.
 	at := departure.Format(localLayout)
