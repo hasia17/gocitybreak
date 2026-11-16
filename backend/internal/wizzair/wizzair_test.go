@@ -55,11 +55,11 @@ func newFake(t *testing.T) *fakeWizzair {
 func (f *fakeWizzair) serve(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	cookies := ""
+	var cookies strings.Builder
 	for _, c := range r.Cookies() {
-		cookies += " " + c.Name
+		cookies.WriteString(" " + c.Name)
 	}
-	f.requests = append(f.requests, r.Method+" "+r.URL.RequestURI()+" cookies:"+cookies)
+	f.requests = append(f.requests, r.Method+" "+r.URL.RequestURI()+" cookies:"+cookies.String())
 
 	if r.URL.Path == "/en-gb" {
 		if f.homepage != http.StatusOK {
@@ -246,17 +246,18 @@ func at(s string) time.Time {
 func describe(days []wizzair.Day) []string {
 	var got []string
 	for _, d := range days {
-		line := d.Date.Format(time.DateOnly) + ":"
+		var line strings.Builder
+		line.WriteString(d.Date.Format(time.DateOnly) + ":")
 		for _, dep := range d.Departures {
-			line += " " + dep.Format("15:04")
+			line.WriteString(" " + dep.Format("15:04"))
 		}
 		if d.Cheapest == nil {
-			line += ", no price"
+			line.WriteString(", no price")
 		} else {
-			line += fmt.Sprintf(", cheapest %s %d %s", d.Cheapest.Departure.Format("2006-01-02 15:04"),
-				d.Cheapest.Price.Amount, d.Cheapest.Price.Currency)
+			line.WriteString(fmt.Sprintf(", cheapest %s %d %s", d.Cheapest.Departure.Format("2006-01-02 15:04"),
+				d.Cheapest.Price.Amount, d.Cheapest.Price.Currency))
 		}
-		got = append(got, line)
+		got = append(got, line.String())
 	}
 	return got
 }
