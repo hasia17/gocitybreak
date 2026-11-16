@@ -53,6 +53,10 @@ func TestSearchContract(t *testing.T) {
 		{"fixed-one-way", fixture{flights: []fixtureFlight{
 			{"KRK", "BGY", "2026-12-05", "23:00", "2026-12-06", "02:00", 8900, "PLN", "2026-11-10T08:00:00Z"},
 		}}, http.StatusOK, "json", "application/json"},
+		{"mixed-airlines", fixture{
+			flights: []fixtureFlight{{"KRK", "BGY", "2026-12-04", "18:00", "2026-12-04", "19:55", 5000, "PLN", "2026-11-10T08:00:00Z"}},
+			wizzair: []fixtureFlight{{"BGY", "KRK", "2026-12-06", "21:00", "2026-12-06", "22:45", 4500, "PLN", "2026-11-09T07:00:00Z"}},
+		}, http.StatusOK, "json", "application/json"},
 		{"query-error", fixture{}, http.StatusBadRequest, "txt", "text/plain"},
 	}
 	for _, tc := range cases {

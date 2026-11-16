@@ -273,6 +273,7 @@ type flightBody struct {
 	ArrivalAirport   string        `json:"arrivalAirport"`
 	Departure        localTimeBody `json:"departure"`
 	Arrival          localTimeBody `json:"arrival"`
+	EstimatedArrival bool          `json:"estimatedArrival"`
 	OriginalPrice    moneyBody     `json:"originalPrice"`
 	FetchedAt        string        `json:"fetchedAt"`
 }

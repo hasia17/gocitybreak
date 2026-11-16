@@ -1,0 +1,67 @@
+{
+  "offers": [
+    {
+      "kind": "roundTrip",
+      "outbound": {
+        "isDirect": true,
+        "flights": [
+          {
+            "airline": "ryanair",
+            "departureAirport": "KRK",
+            "arrivalAirport": "BGY",
+            "departure": {
+              "date": "2026-12-04",
+              "time": "18:00",
+              "timeZone": "Europe/Warsaw"
+            },
+            "arrival": {
+              "date": "2026-12-04",
+              "time": "19:55",
+              "timeZone": "Europe/Rome"
+            },
+            "originalPrice": {
+              "amount": 50,
+              "currency": "PLN"
+            },
+            "fetchedAt": "2026-11-10T08:00:00Z"
+          }
+        ]
+      },
+      "inbound": {
+        "isDirect": true,
+        "flights": [
+          {
+            "airline": "wizzair",
+            "departureAirport": "BGY",
+            "arrivalAirport": "KRK",
+            "departure": {
+              "date": "2026-12-06",
+              "time": "21:00",
+              "timeZone": "Europe/Rome"
+            },
+            "arrival": {
+              "date": "2026-12-06",
+              "time": "22:45",
+              "timeZone": "Europe/Warsaw"
+            },
+            "estimatedArrival": true,
+            "originalPrice": {
+              "amount": 45,
+              "currency": "PLN"
+            },
+            "fetchedAt": "2026-11-09T07:00:00Z"
+          }
+        ]
+      },
+      "nights": 2,
+      "price": {
+        "amount": 95,
+        "currency": "PLN",
+        "approximate": false
+      },
+      "priceFetchedAt": "2026-11-09T07:00:00Z",
+      "leaveDays": 0
+    }
+  ]
+}
+
