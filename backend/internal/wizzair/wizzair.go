@@ -33,6 +33,8 @@ type Client interface {
 	// CheapestFrom returns the cheapest flight from → to on the day of departure among those departing at its
 	// time of day or later, with its regular fare, or nil when Wizz Air prices none of them.
 	CheapestFrom(ctx context.Context, from, to string, departure time.Time) (*Fare, error)
+	// Schedule returns the scheduled departure and arrival of the route's flights of the next few days.
+	Schedule(ctx context.Context, from, to string) ([]ScheduledFlight, error)
 }
 
 // Station is a Wizz Air airport.

@@ -30,6 +30,9 @@ type fakeWizzair struct {
 	version    string
 	homepage   int // the homepage's HTTP status
 	timetables func(window flightList) string
+	// statuses answers asset/flightinformation; the bodies it was asked with are kept in statusBodies.
+	statuses     func() string
+	statusBodies []map[string]any
 
 	mu       sync.Mutex
 	requests []string
@@ -111,6 +114,14 @@ func (f *fakeWizzair) serve(w http.ResponseWriter, r *http.Request) {
 		window.PriceType = body.PriceType
 		f.bodies = append(f.bodies, window)
 		_, _ = io.WriteString(w, f.timetables(window))
+	case "asset/flightinformation":
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		f.statusBodies = append(f.statusBodies, body)
+		_, _ = io.WriteString(w, f.statuses())
 	default:
 		http.NotFound(w, r)
 	}
@@ -384,5 +395,53 @@ func TestCheapestFromIsNilWhenTheDayHasNoPrice(t *testing.T) {
 
 	if err != nil || got != nil {
 		t.Errorf("CheapestFrom = %+v, %v; want no fare", got, err)
+	}
+}
+
+func TestScheduleReadsTheScheduledTimesOfARoutesNearFlights(t *testing.T) {
+	fake := newFake(t)
+	// Recorded live on 2026-11-16 with the route filter the web app's flight status page sends.
+	fake.statuses = func() string { return payload("flightinformation_waw_ltn.json") }
+
+	flights, err := fake.client("29.20.0").Schedule(t.Context(), "WAW", "LTN")
+
+	if err != nil {
+		t.Fatalf("Schedule: %v", err)
+	}
+	var lines []string
+	for _, f := range flights {
+		lines = append(lines, f.Departure.Format("2006-01-02 15:04")+" → "+f.Arrival.Format("2006-01-02 15:04"))
+	}
+	// Local times at each airport, earliest first: Luton is an hour behind Warsaw, so 06:00 → 07:40 is 2 h 40.
+	want := []string{
+		"2026-11-16 11:40 → 2026-11-16 13:25",
+		"2026-11-16 16:35 → 2026-11-16 18:20",
+		"2026-11-17 06:00 → 2026-11-17 07:40",
+		"2026-11-18 06:00 → 2026-11-18 07:40",
+		"2026-11-19 06:00 → 2026-11-19 07:40",
+		"2026-11-19 16:35 → 2026-11-19 18:20",
+	}
+	if !reflect.DeepEqual(lines, want) {
+		t.Errorf("schedule:\n got %q\nwant %q", lines, want)
+	}
+	if want := []map[string]any{{"departureIATA": "WAW", "arrivalIATA": "LTN"}}; !reflect.DeepEqual(fake.statusBodies, want) {
+		t.Errorf("request bodies %v, want %v", fake.statusBodies, want)
+	}
+}
+
+func TestScheduleLeavesOutCancelledFlightsAndOnesWithoutTimes(t *testing.T) {
+	fake := newFake(t)
+	// Hand-built in the recorded shape: a cancelled flight and one without a scheduled arrival.
+	fake.statuses = func() string {
+		return `{"flightInformationResponseItems":[
+{"scheduledDepartureTime":"2026-11-17T06:00:00","scheduledArrivalTime":"2026-11-17T07:40:00","flightStatus":"OnTime"},
+{"scheduledDepartureTime":"2026-11-18T06:00:00","scheduledArrivalTime":"2026-11-18T07:40:00","flightStatus":"Cancelled"},
+{"scheduledDepartureTime":"2026-11-19T06:00:00","scheduledArrivalTime":null,"flightStatus":"OnTime"}]}`
+	}
+
+	flights, err := fake.client("29.20.0").Schedule(t.Context(), "WAW", "LTN")
+
+	if err != nil || len(flights) != 1 || !flights[0].Departure.Equal(at("2026-11-17T06:00")) {
+		t.Errorf("Schedule = %+v, %v; want only the 2026-11-17 flight", flights, err)
 	}
 }
