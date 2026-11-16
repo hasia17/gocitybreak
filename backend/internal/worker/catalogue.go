@@ -11,9 +11,9 @@ import (
 	"github.com/hasia17/gocitybreak/backend/internal/wizzair"
 )
 
-// notOneCity lists Wizz Air's groupings of airports ("mac") that aren't one city, though the rule in wizzairOnly
-// can't tell: they hold at most one city of Ryanair's, so it would put the rest into that city.
-var notOneCity = map[string]bool{
+// groupingsOfSeveralCities lists Wizz Air's groupings of airports ("mac") that hold several cities, though the rule in
+// wizzairOnly can't tell: they hold at most one city of Ryanair's, so it would put the rest into that city.
+var groupingsOfSeveralCities = map[string]bool{
 	"UAE": true, // Dubai and Abu Dhabi
 	"BIH": true, // Sarajevo and Tuzla
 	"NLM": true, // Eindhoven and Maastricht
@@ -27,7 +27,7 @@ var notOneCity = map[string]bool{
 // Such an airport gets its names and country from Wizz Air and its time zone from its coordinates. It joins the city
 // of the Ryanair airports Wizz Air groups it with when they are all of one city (e.g. Orly with Paris Beauvais),
 // and is a city of its own, named like itself, otherwise: no grouping, a grouping of several Ryanair cities
-// (e.g. SPQ) or one on the notOneCity list. An airport whose time zone can't be found is left out.
+// (e.g. SPQ) or one on the groupingsOfSeveralCities list. An airport whose time zone can't be found is left out.
 func wizzairOnly(ctx context.Context, logger *slog.Logger, known []ryanair.Airport, stations []wizzair.Station) []ryanair.Airport {
 	ryanairByCode := map[string]ryanair.Airport{}
 	for _, a := range known {
@@ -39,6 +39,11 @@ func wizzairOnly(ctx context.Context, logger *slog.Logger, known []ryanair.Airpo
 		if a, ok := ryanairByCode[s.Code]; ok && s.CityGroup != "" {
 			groups[s.CityGroup] = append(groups[s.CityGroup], a)
 		}
+	}
+
+	cityCodes := map[string]bool{}
+	for _, a := range known {
+		cityCodes[a.CityCode] = true
 	}
 
 	var added []ryanair.Airport
@@ -54,7 +59,7 @@ func wizzairOnly(ctx context.Context, logger *slog.Logger, known []ryanair.Airpo
 		a := ryanair.Airport{
 			Code: s.Code, Name: s.Names["en"], Names: s.Names, TimeZone: zone,
 			CountryCode: s.CountryCode, CountryName: s.CountryNames["en"], CountryNames: s.CountryNames,
-			CityCode: s.Code, CityName: s.Names["en"], CityNames: s.Names, // a city of its own
+			CityCode: ownCityCode(s.Code, cityCodes), CityName: s.Names["en"], CityNames: s.Names, // a city of its own
 		}
 		if city, ok := cityOfGroup(groups[s.CityGroup], s.CityGroup); ok {
 			a.CityCode, a.CityName, a.CityNames = city.CityCode, city.CityName, city.CityNames
@@ -65,9 +70,18 @@ func wizzairOnly(ctx context.Context, logger *slog.Logger, known []ryanair.Airpo
 	return added
 }
 
+// ownCityCode is the code of the city of its own that the airport with the given code is: the airport's code, unless
+// a city of Ryanair's already has it.
+func ownCityCode(airport string, taken map[string]bool) string {
+	if taken[airport] {
+		return airport + "-WIZZ"
+	}
+	return airport
+}
+
 // cityOfGroup returns an airport of the one city that group, Ryanair's airports in a Wizz Air grouping, is all in.
 func cityOfGroup(group []ryanair.Airport, code string) (ryanair.Airport, bool) {
-	if code == "" || notOneCity[code] || len(group) == 0 {
+	if code == "" || groupingsOfSeveralCities[code] || len(group) == 0 {
 		return ryanair.Airport{}, false
 	}
 	for _, a := range group {

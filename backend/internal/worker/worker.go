@@ -1,8 +1,7 @@
 // Package worker is the price worker (ADR-0002): it fills our database with Ryanair's airport catalogue (and the
-// airports only Wizz Air flies to, see wizzairOnly), the stored
-// prices of Ryanair's (ADR-0005) and Wizz Air's (ADR-0008) flights to and from the supported airports, and NBP
-// exchange rates (ADR-0006). Each airline is fetched by its own pass at its own rate, and one failing doesn't stop
-// the other.
+// airports only Wizz Air flies to, see wizzairOnly), the stored prices of Ryanair's (ADR-0005) and Wizz Air's
+// (ADR-0008) flights to and from the supported airports, and NBP exchange rates (ADR-0006). Each airline is fetched
+// by its own pass at its own rate, and one failing doesn't stop the other.
 //
 // It runs as its own process, so whatever goes wrong here, search keeps answering from the last stored prices.
 package worker
@@ -115,11 +114,13 @@ type Schedule struct {
 	RatesInterval, RatesRetry time.Duration
 }
 
-// Run refreshes exchange rates and each airline's prices on schedule until ctx is cancelled. The airlines are
-// refreshed side by side, each pausing after its own refresh, so a long refresh of one doesn't hold up the other.
-// Failures are logged and retried on the next round; they never stop the worker.
+// Run refreshes exchange rates, the catalogue and each airline's prices on schedule until ctx is cancelled. The
+// catalogue is stored before either airline is fetched, as both read it, then refreshed every PricePause. The
+// airlines are refreshed side by side, each pausing after its own refresh, so a long refresh of one doesn't hold up
+// the other. Failures are logged, once, and retried on the next round; they never stop the worker.
 func (w *Worker) Run(ctx context.Context, s Schedule) {
-	go func() {
+	var wg sync.WaitGroup
+	wg.Go(func() {
 		for {
 			wait := s.RatesInterval
 			if err := w.RefreshExchangeRates(ctx); err != nil {
@@ -130,20 +131,26 @@ func (w *Worker) Run(ctx context.Context, s Schedule) {
 				return
 			}
 		}
-	}()
-	var wg sync.WaitGroup
+	})
+	refreshCatalogue := func() {
+		if err := w.RefreshCatalogue(ctx); err != nil {
+			w.logger.ErrorContext(ctx, "catalogue refresh failed", "err", err)
+		}
+	}
+	refreshCatalogue()
+	wg.Go(func() {
+		for sleep(ctx, s.PricePause) {
+			refreshCatalogue()
+		}
+	})
 	for _, p := range w.passes() {
 		wg.Go(func() {
 			for {
-				start := time.Now()
-				if p.airline == airline.Ryanair {
-					// The catalogue is Ryanair's, so it is refreshed along with Ryanair's prices.
-					if err := w.RefreshCatalogue(ctx); err != nil {
-						w.logger.ErrorContext(ctx, "catalogue refresh failed", "err", err)
-					}
+				start := w.now()
+				if err := p.refresh(ctx); err != nil {
+					w.logger.ErrorContext(ctx, "price refresh incomplete", "airline", p.airline, "err", err)
 				}
-				_ = p.refresh(ctx) // the pass logs its failures
-				w.logger.InfoContext(ctx, "price refresh finished", "airline", p.airline, "took", time.Since(start).Round(time.Second))
+				w.logger.InfoContext(ctx, "price refresh finished", "airline", p.airline, "took", w.now().Sub(start).Round(time.Second))
 				if !sleep(ctx, s.PricePause) {
 					return
 				}
@@ -208,7 +215,7 @@ func (w *Worker) refreshExchangeRateTable(ctx context.Context, table string) err
 }
 
 // route is one direction between two airports.
-type route struct{ from, to string }
+type route = pricestore.Route
 
 // routeMonth is the part of a route's month inside the horizon: flights departing from first to last.
 type routeMonth struct {
@@ -218,7 +225,7 @@ type routeMonth struct {
 	first, last time.Time
 }
 
-// pass refreshes one airline's prices; it logs its failures, naming the airline, and returns them.
+// pass refreshes one airline's prices. It returns its failure for the caller to log, naming the airline, or return.
 type pass struct {
 	airline airline.Airline
 	refresh func(context.Context) error
@@ -236,13 +243,18 @@ func (w *Worker) passes() []pass {
 // RefreshPrices fetches every airline's flights on every route from and to the supported airports whose stored
 // prices are due for a refresh (see Freshness), nearest months first, the airlines side by side. A route-month that
 // fails keeps its previously stored prices and stays due for the next refresh, and an airline that fails doesn't
-// stop the other; the returned error lists the failures.
+// stop the other; the returned error says which airlines failed. Failures of single route-months are logged as they
+// happen.
 func (w *Worker) RefreshPrices(ctx context.Context) error {
 	passes := w.passes()
 	failures := make([]error, len(passes))
 	var wg sync.WaitGroup
 	for i, p := range passes {
-		wg.Go(func() { failures[i] = p.refresh(ctx) })
+		wg.Go(func() {
+			if err := p.refresh(ctx); err != nil {
+				failures[i] = fmt.Errorf("%s: %w", p.airline, err)
+			}
+		})
 	}
 	wg.Wait()
 	return errors.Join(failures...)
@@ -251,134 +263,18 @@ func (w *Worker) RefreshPrices(ctx context.Context) error {
 // refreshRyanairPrices prices every due Ryanair route-month (ADR-0005).
 func (w *Worker) refreshRyanairPrices(ctx context.Context) error {
 	logger := w.logger.With("airline", airline.Ryanair)
-	return logFailure(ctx, logger, airline.Ryanair, func() error {
-		catalogue, err := w.catalogue(ctx)
-		if err != nil {
-			return err
-		}
-		routes := bothWays(ctx, logger, catalogue.supported, w.ryanair.Routes, catalogue.has)
-		return w.refreshRouteMonths(ctx, logger, airline.Ryanair, routes, func(ctx context.Context, rm routeMonth) error {
-			flights, complete, err := pricing.RouteMonth(ctx, logger, w.ryanair, rm.route.from, rm.route.to, rm.month, rm.first, rm.last)
-			if err != nil {
-				return err
-			}
-			return w.store.ReplaceRouteMonth(ctx, rm.airline, rm.route.from, rm.route.to, rm.month, rm.first, rm.last, w.now(), flights, complete)
-		})
-	})
-}
-
-// refreshWizzairPrices prices every due Wizz Air route-month (ADR-0008). Wizz Air's timetable gives no arrival, so each
-// flight arrives after its route's scheduled block time at its departure time, learnt from flight status, or, where
-// none is known yet, after a block time estimated from the distance, and is then marked as estimated.
-func (w *Worker) refreshWizzairPrices(ctx context.Context) error {
-	logger := w.logger.With("airline", airline.Wizzair)
-	return logFailure(ctx, logger, airline.Wizzair, func() error {
-		stations, err := w.wizzair.Stations(ctx)
-		if err != nil {
-			return err
-		}
-		catalogue, err := w.catalogue(ctx)
-		if err != nil {
-			return err
-		}
-		// Only airports in the catalogue: search knows no other, and an arrival needs the airport's time zone.
-		places := map[string]place{}
-		connections := map[string][]string{}
-		for _, s := range stations {
-			zone, ok := catalogue.zones[s.Code]
-			if !ok {
-				continue
-			}
-			location, err := time.LoadLocation(zone)
-			if err != nil {
-				logger.WarnContext(ctx, "airport with an unknown time zone", "airport", s.Code, "zone", zone, "err", err)
-				continue
-			}
-			places[s.Code] = place{latitude: s.Latitude, longitude: s.Longitude, zone: location}
-			connections[s.Code] = s.Connections
-		}
-		destinations := func(_ context.Context, home string) ([]string, error) { return connections[home], nil }
-		routes := bothWays(ctx, logger, catalogue.supported, destinations, func(code string) bool {
-			_, ok := places[code]
-			return ok
-		})
-		blocks, err := w.refreshBlockTimes(ctx, logger, routes, places)
-		if err != nil {
-			return err
-		}
-		return w.refreshRouteMonths(ctx, logger, airline.Wizzair, routes, func(ctx context.Context, rm routeMonth) error {
-			flights, complete, err := pricing.WizzairRange(ctx, logger, w.wizzair, rm.route.from, rm.route.to, rm.first, rm.last)
-			if err != nil {
-				return err
-			}
-			from, to := places[rm.route.from], places[rm.route.to]
-			for i, f := range flights {
-				// The route's scheduled block time at this departure time, else the distance's estimate.
-				key := pricestore.BlockKey{Airline: airline.Wizzair, From: rm.route.from, To: rm.route.to, Time: f.Departure.Format("15:04")}
-				if block, ok := blocks[key]; ok {
-					flights[i].Arrival = arrivalAfter(f.Departure, block, from, to)
-					flights[i].EstimatedArrival = false
-					continue
-				}
-				flights[i].Arrival = estimatedArrival(f.Departure, from, to)
-				flights[i].EstimatedArrival = true
-			}
-			return w.store.ReplaceRouteMonth(ctx, rm.airline, rm.route.from, rm.route.to, rm.month, rm.first, rm.last, w.now(), flights, complete)
-		})
-	})
-}
-
-// blockTimeMaxAge is how long a route's flight status is trusted before it is read again: it only covers the next
-// few days, and a changed schedule shows up once the changed flights come within reach.
-const blockTimeMaxAge = day
-
-// maxBlockTime is the longest flight we believe: anything longer in flight status is a misread.
-const maxBlockTime = 12 * time.Hour
-
-// refreshBlockTimes reads the flight status of every route whose last read is too old and stores the scheduled
-// block times it shows (ADR-0008), then returns all of Wizz Air's stored block times. A route whose flight status
-// can't be read is logged, stays due for the next pass and keeps what we knew: its flights are priced either way.
-func (w *Worker) refreshBlockTimes(ctx context.Context, logger *slog.Logger, routes []route, places map[string]place) (map[pricestore.BlockKey]time.Duration, error) {
-	refreshed, err := w.store.ScheduleRefreshes(ctx, airline.Wizzair)
+	catalogue, err := w.catalogue(ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	for _, r := range routes {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-		if at, ok := refreshed[r.from+"-"+r.to]; ok && w.now().Sub(at) < blockTimeMaxAge {
-			continue
-		}
-		schedule, err := w.wizzair.Schedule(ctx, r.from, r.to)
+	routes := bothWays(ctx, logger, catalogue.supported, w.ryanair.Routes, catalogue.has)
+	return w.refreshRouteMonths(ctx, logger, airline.Ryanair, routes, func(ctx context.Context, rm routeMonth) error {
+		flights, complete, err := pricing.RouteMonth(ctx, logger, w.ryanair, rm.route.From, rm.route.To, rm.month, rm.first, rm.last)
 		if err != nil {
-			logger.WarnContext(ctx, "flight status failed", "from", r.from, "to", r.to, "err", err)
-			continue
+			return err
 		}
-		blocks := map[string]time.Duration{}
-		for _, f := range schedule { // earliest first, so the latest flight's block time wins
-			block := blockTime(f.Departure, f.Arrival, places[r.from], places[r.to])
-			if block <= 0 || block > maxBlockTime {
-				logger.WarnContext(ctx, "flight status with an impossible block time", "from", r.from, "to", r.to,
-					"departure", f.Departure.Format("2006-01-02 15:04"), "block", block)
-				continue
-			}
-			blocks[f.Departure.Format("15:04")] = block
-		}
-		if err := w.store.ReplaceBlockTimes(ctx, airline.Wizzair, r.from, r.to, blocks, w.now()); err != nil {
-			return nil, err
-		}
-	}
-	return w.store.BlockTimes(ctx, airline.Wizzair)
-}
-
-// logFailure runs an airline's pass, logging and returning its failure.
-func logFailure(ctx context.Context, logger *slog.Logger, a airline.Airline, pass func() error) error {
-	if err := pass(); err != nil {
-		logger.ErrorContext(ctx, "price refresh incomplete", "err", err)
-		return fmt.Errorf("%s: %w", a, err)
-	}
-	return nil
+		return w.store.ReplaceRouteMonth(ctx, rm.airline, rm.route.From, rm.route.To, rm.month, rm.first, rm.last, w.now(), flights, complete)
+	})
 }
 
 // refreshRouteMonths prices and stores, with refresh, every route-month of airline a's routes that is due.
@@ -394,14 +290,15 @@ func (w *Worker) refreshRouteMonths(ctx context.Context, logger *slog.Logger, a 
 			return err
 		}
 		if err := refresh(ctx, rm); err != nil {
-			logger.WarnContext(ctx, "route refresh failed", "from", rm.route.from, "to", rm.route.to,
+			logger.WarnContext(ctx, "route refresh failed", "from", rm.route.From, "to", rm.route.To,
 				"month", rm.month.Format("2006-01"), "err", err)
 			failures = append(failures, err)
 		}
 	}
 	logger.InfoContext(ctx, "prices refreshed", "routes", len(routes), "routeMonths", len(due), "failures", len(failures))
 	if len(failures) > 0 {
-		return fmt.Errorf("%d route-months failed: %w", len(failures), errors.Join(failures...))
+		// Each failure is logged above, with its route and month, so the error only counts them.
+		return fmt.Errorf("%d route-months failed", len(failures))
 	}
 	return nil
 }
@@ -428,7 +325,7 @@ FROM route_month_refreshes WHERE airline = $1`, string(a))
 	}
 	var k key
 	var at time.Time
-	if _, err := pgx.ForEachRow(rows, []any{&k.route.from, &k.route.to, &k.month, &at}, func() error {
+	if _, err := pgx.ForEachRow(rows, []any{&k.route.From, &k.route.To, &k.month, &at}, func() error {
 		refreshed[k] = at
 		return nil
 	}); err != nil {
@@ -496,13 +393,13 @@ func bothWays(ctx context.Context, logger *slog.Logger, homes []string,
 				logger.WarnContext(ctx, "route to an airport missing from the catalogue", "from", home, "to", d)
 				continue
 			}
-			seen[route{home, d}] = true
-			seen[route{d, home}] = true
+			seen[route{From: home, To: d}] = true
+			seen[route{From: d, To: home}] = true
 		}
 	}
 	routes := slices.Collect(maps.Keys(seen))
 	slices.SortFunc(routes, func(a, b route) int {
-		return cmp.Or(cmp.Compare(a.from, b.from), cmp.Compare(a.to, b.to))
+		return cmp.Or(cmp.Compare(a.From, b.From), cmp.Compare(a.To, b.To))
 	})
 	return routes
 }

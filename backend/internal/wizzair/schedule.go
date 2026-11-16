@@ -15,9 +15,10 @@ type ScheduledFlight struct {
 	Departure, Arrival time.Time
 }
 
-// Schedule reads the flight status of the route from → to (asset/flightinformation, by route as the web app's
-// flight status page asks: the filter is {departureIATA, arrivalIATA}). Wizz Air answers with the flights of the
-// next few days whatever the date; cancelled ones and ones lacking a scheduled time are left out. Earliest first.
+// Schedule reads the flight status of the route from → to (asset/flightinformation). The route filter's body,
+// {departureIATA, arrivalIATA}, was read from Wizz Air's web app (its flight status page) and confirmed live on
+// 2026-11-16. Wizz Air answers with the flights of the next few days whatever the date; cancelled ones and ones
+// lacking a scheduled time are left out. Earliest first.
 func (c *HTTPClient) Schedule(ctx context.Context, from, to string) ([]ScheduledFlight, error) {
 	var body struct {
 		Items []struct {

@@ -9,7 +9,7 @@
   },
   "search": {
     "title": "Gdzie na weekend?",
-    "lede": "Tanie loty Ryanair na krótki city break.",
+    "lede": "Tanie loty Ryanair i Wizz Air na krótki city break.",
     "kind": {
       "label": "Rodzaj oferty",
       "roundTrip": "Tam i z powrotem",
@@ -271,7 +271,7 @@
       "text": "Przeliczono na PLN po średnim kursie NBP, ponieważ lot jest wyceniony w innej walucie."
     },
     "priceAge": {
-      "text": "To zapisana cena, która mogła się zmienić. Aktualną cenę sprawdzisz na stronie Ryanair."
+      "text": "To zapisana cena, która mogła się zmienić. Aktualną cenę sprawdzisz na stronie linii lotniczej."
     },
     "estimatedArrival": {
       "label": "O szacowanej godzinie przylotu",

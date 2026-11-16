@@ -147,3 +147,20 @@ func TestWorkerFetchesWizzairRoutesToAndFromAirportsOnlyWizzairFliesTo(t *testin
 		"KUT→KRK 2026-12-12 20:00 → ~2026-12-12 20:05 12000 GEL @2026-11-10T08:00",
 	})
 }
+
+func TestWorkerKeepsTheOwnCityOfAnAirportOnlyWizzairFliesToApartFromACityOfRyanairsWithTheSameCode(t *testing.T) {
+	env := start(t)
+	// A city code of Ryanair's that happens to be Kutaisi's airport code: using it would put the airport into the
+	// wrong city.
+	env.ryanair.airports = append(env.ryanair.airports,
+		ryanair.Airport{Code: "XYZ", Name: "Somewhere", TimeZone: "Europe/Rome", CityCode: "KUT", CityName: "Kut",
+			CountryCode: "it", CountryName: "Italy"})
+	env.wizzair.stations = []wizzair.Station{flies(krk, "KUT"), flies(kut, "KRK")}
+
+	env.refresh(t)
+
+	assertEqual(t, "airports", airportsOf(t, env, "KUT", "XYZ"), []string{
+		"KUT Kutaisi/Kutaisi Asia/Tbilisi city KUT-WIZZ Kutaisi/Kutaisi country ge Georgia/Gruzja",
+		"XYZ Somewhere/- Europe/Rome city KUT Kut/- country it Italy/-",
+	})
+}

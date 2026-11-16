@@ -20,8 +20,8 @@
                 }
               </span>
             </span>
-            <!-- A group names the destination: its single-flight legs then name only the home airport. -->
             <span class="airline">{{ flight.airline }}</span>
+            <!-- A group names the destination: its single-flight legs then name only the home airport. -->
             <span class="route">{{
               showDestination() || leg.flights.length > 1
                 ? flight.from + ' → ' + flight.to

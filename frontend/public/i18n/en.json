@@ -9,7 +9,7 @@
   },
   "search": {
     "title": "Where to this weekend?",
-    "lede": "Cheap Ryanair flights for a short city break.",
+    "lede": "Cheap Ryanair and Wizz Air flights for a short city break.",
     "kind": {
       "label": "Kind of offer",
       "roundTrip": "Round trip",
@@ -251,7 +251,7 @@
       "text": "Converted into PLN at the NBP mid-market rate because a flight is priced in another currency."
     },
     "priceAge": {
-      "text": "This is a stored price and may have changed. Check the current price on Ryanair’s site."
+      "text": "This is a stored price and may have changed. Check the current price on the airline’s site."
     },
     "estimatedArrival": {
       "label": "About the estimated arrival",

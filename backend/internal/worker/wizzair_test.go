@@ -92,6 +92,25 @@ func TestWorkerSkipsWizzairDaysWithoutAPrice(t *testing.T) {
 	})
 }
 
+func TestWorkerLogsAndSkipsWizzairDaysPricedWithoutTellingWhichFlight(t *testing.T) {
+	env := start(t)
+	env.wizzair.stations = []wizzair.Station{flies(krk, "BGY"), flies(bgy, "KRK")}
+	env.wizzair.setFlights(
+		fakeFlight{from: "KRK", to: "BGY", departure: "2026-12-05T06:00", price: 99.00, currency: "PLN"},
+		fakeFlight{from: "KRK", to: "BGY", departure: "2026-12-06T06:00", price: 89.00, currency: "PLN"},
+	)
+	env.wizzair.unflagged["KRK-BGY 2026-12-05"] = true
+
+	env.refresh(t)
+
+	assertEqual(t, "Wizz Air flights", storedWizzairFlights(t, env), []string{
+		"KRK→BGY 2026-12-06 06:00 → ~2026-12-06 07:45 8900 PLN @2026-11-10T08:00",
+	})
+	if !strings.Contains(env.logs.String(), "priced without telling which flight") || !strings.Contains(env.logs.String(), "date=2026-12-05") {
+		t.Errorf("logs don't report the day:\n%s", env.logs)
+	}
+}
+
 func TestWorkerPricesTheLaterWizzairFlightsOfADayStepByStep(t *testing.T) {
 	env := start(t)
 	env.wizzair.stations = []wizzair.Station{flies(krk, "BGY"), flies(bgy, "KRK")}
@@ -194,15 +213,12 @@ func TestWorkerKeepsRefreshingRyanairWhenWizzairFails(t *testing.T) {
 
 	err := env.worker.RefreshPrices(t.Context())
 
-	if err == nil {
-		t.Errorf("RefreshPrices reported no error, want Wizz Air's failure")
+	if err == nil || !strings.HasPrefix(err.Error(), "wizzair: ") {
+		t.Errorf("RefreshPrices error = %v, want Wizz Air's failure naming the airline", err)
 	}
 	assertEqual(t, "Ryanair flights", storedFlights(t, env.pool), []string{
 		"KRK→BGY 2026-12-04 05:50 → 2026-12-04 07:40 7027 PLN @2026-11-10T08:00",
 	})
-	if !strings.Contains(env.logs.String(), "airline=wizzair") {
-		t.Errorf("logs don't name the failing airline:\n%s", env.logs)
-	}
 }
 
 func TestWorkerKeepsRefreshingWizzairWhenRyanairFails(t *testing.T) {
@@ -287,4 +303,80 @@ func TestSearchMixesAirlinesStoredByTheWorker(t *testing.T) {
 		got = append(got, fmt.Sprintf("%s %s estimated=%t", f.Airline, f.Arrival.Time, f.EstimatedArrival))
 	}
 	assertEqual(t, "offer", got, []string{"134.98", "ryanair 20:05 estimated=false", "wizzair 21:40 estimated=true"})
+}
+
+func TestWorkerKeepsTheStoredLaterFlightsOfADayWhenAStepFailsMidDay(t *testing.T) {
+	env := start(t)
+	env.wizzair.stations = []wizzair.Station{flies(krk, "BGY"), flies(bgy, "KRK")}
+	env.wizzair.setFlights(
+		fakeFlight{from: "KRK", to: "BGY", departure: "2026-12-12T11:40", price: 149.00, currency: "PLN"},
+		fakeFlight{from: "KRK", to: "BGY", departure: "2026-12-12T16:35", price: 179.00, currency: "PLN"},
+		fakeFlight{from: "KRK", to: "BGY", departure: "2026-12-12T21:00", price: 259.00, currency: "PLN"},
+	)
+	env.refresh(t)
+
+	// Every price changes, but asking for the later flights fails: only the day's cheapest flight can be updated,
+	// and the later ones keep their stored prices instead of being dropped as cancelled.
+	env.wizzair.setFlights(
+		fakeFlight{from: "KRK", to: "BGY", departure: "2026-12-12T11:40", price: 139.00, currency: "PLN"},
+		fakeFlight{from: "KRK", to: "BGY", departure: "2026-12-12T16:35", price: 169.00, currency: "PLN"},
+		fakeFlight{from: "KRK", to: "BGY", departure: "2026-12-12T21:00", price: 249.00, currency: "PLN"},
+	)
+	env.wizzair.fail("cheapestFrom", "KRK-BGY", true)
+	env.clock = now.Add(13 * time.Hour)
+	env.refresh(t)
+
+	assertEqual(t, "Wizz Air flights", storedWizzairFlights(t, env), []string{
+		"KRK→BGY 2026-12-12 11:40 → ~2026-12-12 13:25 13900 PLN @2026-11-10T21:00",
+		"KRK→BGY 2026-12-12 16:35 → ~2026-12-12 18:20 17900 PLN @2026-11-10T08:00",
+		"KRK→BGY 2026-12-12 21:00 → ~2026-12-12 22:45 25900 PLN @2026-11-10T08:00",
+	})
+	if !strings.Contains(env.logs.String(), "time-of-day pricing failed") {
+		t.Errorf("logs don't report the failed step:\n%s", env.logs)
+	}
+}
+
+func TestWorkerTracksFreshnessOfEachAirlineOnItsOwn(t *testing.T) {
+	env := start(t)
+	env.wizzair.stations = []wizzair.Station{flies(krk, "BGY"), flies(bgy, "KRK")}
+	// Wizz Air is down at first, so only Ryanair's prices are fresh.
+	env.wizzair.fail("stations", "", true)
+	if err := env.worker.RefreshCatalogue(t.Context()); err != nil {
+		t.Fatalf("RefreshCatalogue: %v", err)
+	}
+	if err := env.worker.RefreshPrices(t.Context()); err == nil {
+		t.Fatalf("RefreshPrices reported no error, want Wizz Air's failure")
+	}
+	if got := len(env.ryanair.takeCheapestPerDayRequests()); got != 14 {
+		t.Fatalf("Ryanair route-months fetched = %d, want all 14", got)
+	}
+	nearRyanair := []string{"BGY-KRK 2026-11", "BGY-KRK 2026-12", "KRK-BGY 2026-11", "KRK-BGY 2026-12"}
+	sortedRyanair := func() []string {
+		got := env.ryanair.takeCheapestPerDayRequests()
+		slices.Sort(got)
+		return got
+	}
+
+	// An hour on, Wizz Air is back: Ryanair's fresh prices don't make Wizz Air's fresh.
+	env.wizzair.fail("stations", "", false)
+	env.clock = now.Add(time.Hour)
+	env.refresh(t)
+	if got := len(env.wizzair.takeRequests()); got != 14 {
+		t.Errorf("Wizz Air route-months fetched = %d, want all 14 despite Ryanair's fresh prices", got)
+	}
+	assertEqual(t, "Ryanair route-months fetched an hour on", sortedRyanair(), nil)
+
+	// Ryanair's near months came due 12 hours after its refresh, Wizz Air's an hour later.
+	env.clock = now.Add(12*time.Hour + 30*time.Minute)
+	env.refresh(t)
+	assertEqual(t, "Ryanair route-months fetched 12.5 hours on", sortedRyanair(), nearRyanair)
+	assertEqual(t, "Wizz Air requests 12.5 hours on", env.wizzair.takeRequests(), nil)
+
+	env.clock = now.Add(13*time.Hour + 30*time.Minute)
+	env.refresh(t)
+	assertEqual(t, "Ryanair route-months fetched 13.5 hours on", sortedRyanair(), nil)
+	assertEqual(t, "Wizz Air requests 13.5 hours on", env.wizzair.takeRequests(), []string{
+		"BGY-KRK 2026-11-10..2026-11-30", "KRK-BGY 2026-11-10..2026-11-30",
+		"BGY-KRK 2026-12-01..2026-12-31", "KRK-BGY 2026-12-01..2026-12-31",
+	})
 }

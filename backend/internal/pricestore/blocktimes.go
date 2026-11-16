@@ -10,7 +10,13 @@ import (
 	"github.com/hasia17/gocitybreak/backend/internal/airline"
 )
 
-// BlockKey names a scheduled block time: the airline's route and the local time of day ("15:04") of its departure.
+// TimeOfDay is how a departure's local time of day is written ("15:04").
+const TimeOfDay = "15:04"
+
+// Route is one direction between two airports.
+type Route struct{ From, To string }
+
+// BlockKey names a scheduled block time: the airline's route and the local time of day (TimeOfDay) of its departure.
 type BlockKey struct {
 	Airline  airline.Airline
 	From, To string
@@ -18,7 +24,7 @@ type BlockKey struct {
 }
 
 // ReplaceBlockTimes stores the block times airline a's flight status gave for the route from → to, each by the
-// local time of day ("15:04") of the departure, and records observedAt as the route's last flight status read. It
+// local time of day (TimeOfDay) of the departure, and records observedAt as the route's last flight status read. It
 // then gives every stored flight of the route whose departure time has a block time its scheduled arrival (the
 // departure plus the block time, in the arrival airport's time zone), no longer estimated. Block times of other
 // departure times are kept, so a seasonal flight's is remembered while it doesn't fly.
@@ -83,18 +89,18 @@ FROM route_block_times WHERE airline = $1`, string(a))
 	return blocks, nil
 }
 
-// ScheduleRefreshes reads when airline a's flight status was last read, by route "FROM-TO".
-func (s *Store) ScheduleRefreshes(ctx context.Context, a airline.Airline) (map[string]time.Time, error) {
-	rows, err := s.pool.Query(ctx, `SELECT departure_airport || '-' || arrival_airport, refreshed_at
+// ScheduleRefreshes reads when airline a's flight status was last read, by route.
+func (s *Store) ScheduleRefreshes(ctx context.Context, a airline.Airline) (map[Route]time.Time, error) {
+	rows, err := s.pool.Query(ctx, `SELECT departure_airport, arrival_airport, refreshed_at
 FROM route_schedule_refreshes WHERE airline = $1`, string(a))
 	if err != nil {
 		return nil, fmt.Errorf("read schedule refreshes: %w", err)
 	}
-	refreshes := map[string]time.Time{}
-	var route string
+	refreshes := map[Route]time.Time{}
+	var r Route
 	var at time.Time
-	if _, err := pgx.ForEachRow(rows, []any{&route, &at}, func() error {
-		refreshes[route] = at
+	if _, err := pgx.ForEachRow(rows, []any{&r.From, &r.To, &at}, func() error {
+		refreshes[r] = at
 		return nil
 	}); err != nil {
 		return nil, fmt.Errorf("read schedule refreshes: %w", err)

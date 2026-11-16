@@ -35,17 +35,19 @@ func estimatedArrival(departure time.Time, from, to place) time.Time {
 // arrivalAfter is the local time at to of a flight departing from at departure (a local time at from) that takes
 // block from gate to gate. Both are wall clocks with a meaningless time.Location.
 func arrivalAfter(departure time.Time, block time.Duration, from, to place) time.Time {
-	local := time.Date(departure.Year(), departure.Month(), departure.Day(), departure.Hour(), departure.Minute(), 0, 0, from.zone)
-	arrival := local.Add(block).In(to.zone)
-	return time.Date(arrival.Year(), arrival.Month(), arrival.Day(), arrival.Hour(), arrival.Minute(), 0, 0, time.UTC)
+	arrival := wallClockIn(departure, from.zone).Add(block).In(to.zone)
+	return wallClockIn(arrival, time.UTC)
 }
 
 // blockTime is how long a flight takes that departs from at departure and arrives at to at arrival, both local
 // wall clocks with a meaningless time.Location.
 func blockTime(departure, arrival time.Time, from, to place) time.Duration {
-	dep := time.Date(departure.Year(), departure.Month(), departure.Day(), departure.Hour(), departure.Minute(), 0, 0, from.zone)
-	arr := time.Date(arrival.Year(), arrival.Month(), arrival.Day(), arrival.Hour(), arrival.Minute(), 0, 0, to.zone)
-	return arr.Sub(dep)
+	return wallClockIn(arrival, to.zone).Sub(wallClockIn(departure, from.zone))
+}
+
+// wallClockIn is the minute of t's wall clock (whatever its time.Location) read in zone.
+func wallClockIn(t time.Time, zone *time.Location) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), 0, 0, zone)
 }
 
 // earthRadiusKm is the Earth's mean radius.

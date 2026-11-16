@@ -25,6 +25,10 @@ func WizzairRange(ctx context.Context, logger *slog.Logger, client wizzair.Clien
 	var flights []Flight
 	complete := true
 	for _, day := range days {
+		if day.PricedWithoutFlight && !day.Date.Before(first) && !day.Date.After(last) {
+			logger.WarnContext(ctx, "day priced without telling which flight, leaving it unpriced", "from", from, "to", to,
+				"date", day.Date.Format(time.DateOnly))
+		}
 		if day.Cheapest == nil || day.Date.Before(first) || day.Date.After(last) {
 			continue
 		}
