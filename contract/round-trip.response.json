@@ -6,6 +6,7 @@
         "isDirect": true,
         "flights": [
           {
+            "airline": "ryanair",
             "departureAirport": "KRK",
             "arrivalAirport": "BGY",
             "departure": {
@@ -30,6 +31,7 @@
         "isDirect": true,
         "flights": [
           {
+            "airline": "ryanair",
             "departureAirport": "BGY",
             "arrivalAirport": "KRK",
             "departure": {

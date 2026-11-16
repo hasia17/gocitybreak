@@ -67,8 +67,14 @@ describe('Search conveniences', () => {
 
   const fetchedAt = new Date().toISOString();
 
-  function flight(from: string, to: string, date: string) {
+  function flight(
+    from: string,
+    to: string,
+    date: string,
+    airline: 'ryanair' | 'wizzair' = 'ryanair',
+  ) {
     return {
+      airline,
       departureAirport: from,
       arrivalAirport: to,
       departure: { date, time: '10:00', timeZone: 'Europe/Warsaw' },
@@ -257,7 +263,7 @@ describe('Search conveniences', () => {
     expect(url.searchParams.get('dateIn')).toBe('2026-12-06');
     expect(url.searchParams.get('isReturn')).toBe('true');
     expect(url.searchParams.get('adults')).toBe('1');
-    expect(text).toBe('Book ↗');
+    expect(text).toBe('Book · Ryanair ↗');
     expect(target).toBe('_blank');
   });
 
@@ -276,14 +282,14 @@ describe('Search conveniences', () => {
       })),
     ).toEqual([
       {
-        text: 'KRK → BGY on Ryanair ↗',
+        text: 'Book KRK → BGY · Ryanair ↗',
         origin: 'KRK',
         destination: 'BGY',
         dateOut: '2026-12-04',
         isReturn: 'false',
       },
       {
-        text: 'BGY → KTW on Ryanair ↗',
+        text: 'Book BGY → KTW · Ryanair ↗',
         origin: 'BGY',
         destination: 'KTW',
         dateOut: '2026-12-06',
@@ -315,7 +321,7 @@ describe('Search conveniences', () => {
 
     expect(links).toHaveLength(1);
     const [{ url, text }] = links;
-    expect(text).toBe('Book ↗');
+    expect(text).toBe('Book · Ryanair ↗');
     expect(url.searchParams.get('originIata')).toBe('KRK');
     expect(url.searchParams.get('destinationIata')).toBe('BGY');
     expect(url.searchParams.get('dateOut')).toBe('2026-12-04');
@@ -328,7 +334,63 @@ describe('Search conveniences', () => {
       offer([flight('KRK', 'STN', '2026-12-04'), flight('STN', 'BGY', '2026-12-04')]),
     );
 
-    expect(links.map((l) => l.text)).toEqual(['KRK → STN on Ryanair ↗', 'STN → BGY on Ryanair ↗']);
+    expect(links.map((l) => l.text)).toEqual([
+      'Book KRK → STN · Ryanair ↗',
+      'Book STN → BGY · Ryanair ↗',
+    ]);
     expect(rendered.textContent).toContain('Booked as 2 separate one-way tickets');
+  });
+
+  it('links a round trip of two direct Wizz Air flights to one Wizz Air round-trip booking', async () => {
+    const { links } = await showOffer(
+      offer(
+        [flight('KRK', 'BGY', '2026-12-04', 'wizzair')],
+        [flight('BGY', 'KRK', '2026-12-06', 'wizzair')],
+      ),
+    );
+
+    expect(links.map((l) => [l.text, l.url.href])).toEqual([
+      [
+        'Book · Wizz Air ↗',
+        'https://www.wizzair.com/en-gb/booking/select-flight/KRK/BGY/2026-12-04/2026-12-06/1/0/0/null',
+      ],
+    ]);
+  });
+
+  it('links a round trip mixing airlines to one booking per flight, each with its own airline', async () => {
+    const { rendered, links } = await showOffer(
+      offer([flight('KRK', 'BGY', '2026-12-04')], [flight('BGY', 'KRK', '2026-12-06', 'wizzair')]),
+    );
+
+    expect(links.map((l) => [l.text, l.url.hostname, l.url.pathname])).toEqual([
+      ['Book KRK → BGY · Ryanair ↗', 'www.ryanair.com', '/gb/en/trip/flights/select'],
+      [
+        'Book BGY → KRK · Wizz Air ↗',
+        'www.wizzair.com',
+        '/en-gb/booking/select-flight/BGY/KRK/2026-12-06/null/1/0/0/null',
+      ],
+    ]);
+    expect(rendered.textContent).toContain('Booked as 2 separate one-way tickets');
+  });
+
+  it('links each flight of a mixed self-transfer to its own airline, labelled in both languages', async () => {
+    const { links } = await showOffer(
+      offer([flight('KRK', 'STN', '2026-12-04'), flight('LTN', 'BGY', '2026-12-04', 'wizzair')]),
+    );
+
+    expect(links.map((l) => [l.text, l.url.hostname])).toEqual([
+      ['Book KRK → STN · Ryanair ↗', 'www.ryanair.com'],
+      ['Book LTN → BGY · Wizz Air ↗', 'www.wizzair.com'],
+    ]);
+
+    TestBed.inject(TranslocoService).setActiveLang('pl');
+    await TestBed.inject(ApplicationRef).whenStable();
+    const polish = [
+      ...document.querySelectorAll<HTMLAnchorElement>('[data-testid="offer"] a.book'),
+    ];
+    expect(polish.map((a) => a.textContent!.trim())).toEqual([
+      'Rezerwuj KRK → STN · Ryanair ↗',
+      'Rezerwuj LTN → BGY · Wizz Air ↗',
+    ]);
   });
 });

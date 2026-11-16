@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hasia17/gocitybreak/backend/internal/airline"
 	"github.com/hasia17/gocitybreak/backend/internal/nbp"
 	"github.com/hasia17/gocitybreak/backend/internal/pricestore"
 	"github.com/hasia17/gocitybreak/backend/internal/ryanair"
@@ -14,8 +15,9 @@ import (
 // fixture keeps test data readable while routing all database writes through the price store.
 type fixture struct {
 	airports []fixtureAirport
-	flights  []fixtureFlight
-	rates    []fixtureRate
+	// flights are Ryanair's; wizzair are Wizz Air's, with estimated arrivals.
+	flights, wizzair []fixtureFlight
+	rates            []fixtureRate
 }
 
 type fixtureAirport struct {
@@ -59,14 +61,10 @@ func seed(t *testing.T, url string, fixtures ...fixture) {
 			rates = append(rates, nbp.Rate{Currency: r.currency, Date: fixtureTime(t, time.DateOnly, r.date), PLN: r.rate})
 		}
 		for _, f := range data.flights {
-			var price *ryanair.Money
-			if f.amount >= 0 {
-				price = &ryanair.Money{Amount: f.amount, Currency: f.currency}
-			}
-			flights = append(flights, pricestore.Flight{DepartureAirport: f.from, ArrivalAirport: f.to,
-				Departure: fixtureTime(t, "2006-01-02 15:04", f.departureDate+" "+f.departureTime),
-				Arrival:   fixtureTime(t, "2006-01-02 15:04", f.arrivalDate+" "+f.arrivalTime),
-				Price:     price, FetchedAt: fixtureTime(t, time.RFC3339, f.fetchedAt)})
+			flights = append(flights, f.flight(t, airline.Ryanair, false))
+		}
+		for _, f := range data.wizzair {
+			flights = append(flights, f.flight(t, airline.Wizzair, true))
 		}
 	}
 	if err := store.UpsertAirports(ctx, airports); err != nil {
@@ -78,6 +76,19 @@ func seed(t *testing.T, url string, fixtures ...fixture) {
 	if err := store.UpsertFlights(ctx, flights); err != nil {
 		t.Fatalf("seed flights: %v", err)
 	}
+}
+
+func (f fixtureFlight) flight(t *testing.T, a airline.Airline, estimatedArrival bool) pricestore.Flight {
+	t.Helper()
+	var price *ryanair.Money
+	if f.amount >= 0 {
+		price = &ryanair.Money{Amount: f.amount, Currency: f.currency}
+	}
+	return pricestore.Flight{Airline: a, DepartureAirport: f.from, ArrivalAirport: f.to,
+		Departure:        fixtureTime(t, "2006-01-02 15:04", f.departureDate+" "+f.departureTime),
+		Arrival:          fixtureTime(t, "2006-01-02 15:04", f.arrivalDate+" "+f.arrivalTime),
+		EstimatedArrival: estimatedArrival,
+		Price:            price, FetchedAt: fixtureTime(t, time.RFC3339, f.fetchedAt)}
 }
 
 func fixtureTime(t *testing.T, layout, value string) time.Time {

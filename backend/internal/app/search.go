@@ -74,12 +74,15 @@ type legJSON struct {
 }
 
 type flightJSON struct {
+	Airline          string        `json:"airline"`
 	DepartureAirport string        `json:"departureAirport"`
 	ArrivalAirport   string        `json:"arrivalAirport"`
 	Departure        localTimeJSON `json:"departure"`
 	Arrival          localTimeJSON `json:"arrival"`
-	OriginalPrice    moneyJSON     `json:"originalPrice"`
-	FetchedAt        time.Time     `json:"fetchedAt"`
+	// EstimatedArrival is set when the arrival is our estimate (GLOSSARY: Estimated arrival).
+	EstimatedArrival bool      `json:"estimatedArrival,omitzero"`
+	OriginalPrice    moneyJSON `json:"originalPrice"`
+	FetchedAt        time.Time `json:"fetchedAt"`
 }
 
 type localTimeJSON struct {
@@ -241,10 +244,12 @@ func toLegJSON(l search.Leg) legJSON {
 	leg := legJSON{IsDirect: l.IsDirect(), Flights: make([]flightJSON, 0, len(l.Flights))}
 	for _, f := range l.Flights {
 		leg.Flights = append(leg.Flights, flightJSON{
+			Airline:          string(f.Airline),
 			DepartureAirport: f.DepartureAirport,
 			ArrivalAirport:   f.ArrivalAirport,
 			Departure:        toLocalTimeJSON(f.Departure),
 			Arrival:          toLocalTimeJSON(f.Arrival),
+			EstimatedArrival: f.EstimatedArrival,
 			OriginalPrice:    moneyJSON{Amount: majorUnits(f.OriginalPrice.Amount), Currency: f.OriginalPrice.Currency},
 			FetchedAt:        f.FetchedAt.UTC(),
 		})

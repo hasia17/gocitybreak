@@ -4,15 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/hasia17/gocitybreak/backend/internal/ryanair"
+	"github.com/hasia17/gocitybreak/backend/internal/wizzair"
 )
 
 // fakeRyanair is an in-memory Ryanair client backed by scheduled flights.
@@ -121,6 +124,133 @@ func (f *fakeRyanair) takeCheapestPerDayRequests() []string {
 	got := f.cheapestPerDayRequests
 	f.cheapestPerDayRequests = nil
 	return got
+}
+
+// fakeWizzair is an in-memory Wizz Air client backed by priced flights (their arrivals are not Wizz Air's to tell).
+type fakeWizzair struct {
+	stations []wizzair.Station
+	flights  []fakeFlight
+	// unpriced days ("KRK-BGY 2026-12-05") come without a price, like Wizz Air's checkPrice and noData days.
+	unpriced map[string]bool
+	// unflagged days ("KRK-BGY 2026-12-05") are priced but name no flight the price is for (Day.PricedWithoutFlight).
+	unflagged map[string]bool
+	// ignoresTimeOfDay makes CheapestFrom answer for the whole day, as if Wizz Air stopped honouring it.
+	ignoresTimeOfDay bool
+	failures         map[string]bool
+	// requests lists the route-windows asked for ("KRK-BGY 2026-12-01..2026-12-31") and the times of day
+	// ("KRK-BGY from 2026-12-05 14:05").
+	requests []string
+	// schedule is what flight status answers for a route, whatever the date, as the real one does for the next few
+	// days: only the departure and the arrival of each fakeFlight matter. scheduleRequests lists the routes asked.
+	schedule         []fakeFlight
+	scheduleRequests []string
+}
+
+func newFakeWizzair() *fakeWizzair {
+	return &fakeWizzair{unpriced: map[string]bool{}, unflagged: map[string]bool{}, failures: map[string]bool{}}
+}
+
+func (f *fakeWizzair) setFlights(flights ...fakeFlight) { f.flights = flights }
+
+// fail makes endpoint ("stations", "timetable", "cheapestFrom" or "schedule") fail, for route ("KRK-BGY") or all routes ("").
+func (f *fakeWizzair) fail(endpoint, route string, enabled bool) {
+	f.failures[endpoint+" "+route] = enabled
+}
+
+func (f *fakeWizzair) failed(endpoint, route string) bool {
+	return f.failures[endpoint+" "+route] || f.failures[endpoint+" "]
+}
+
+func (f *fakeWizzair) Stations(context.Context) ([]wizzair.Station, error) {
+	if f.failed("stations", "") {
+		return nil, errors.New("fake stations failure")
+	}
+	return f.stations, nil
+}
+
+// day returns the flights from → to departing on date, earliest first, and the cheapest of those departing at from
+// or later (the earliest of equally cheap ones), nil when none is or the day is unpriced.
+func (f *fakeWizzair) day(from, to string, date, at time.Time) (departures []time.Time, cheapest *wizzair.Fare) {
+	unpriced := f.unpriced[from+"-"+to+" "+date.Format(time.DateOnly)]
+	for _, fl := range f.flights {
+		departure := fakeTime(fl.departure)
+		if fl.from != from || fl.to != to || !dateOf(departure).Equal(date) {
+			continue
+		}
+		departures = append(departures, departure)
+		price := wizzair.Money{Amount: int64(math.Round(fl.price * 100)), Currency: fl.currency}
+		if unpriced || departure.Before(at) {
+			continue
+		}
+		if cheapest == nil || price.Amount < cheapest.Price.Amount ||
+			price.Amount == cheapest.Price.Amount && departure.Before(cheapest.Departure) {
+			cheapest = &wizzair.Fare{Departure: departure, Price: price}
+		}
+	}
+	slices.SortFunc(departures, time.Time.Compare)
+	return departures, cheapest
+}
+
+func (f *fakeWizzair) Timetable(_ context.Context, from, to string, first, last time.Time) ([]wizzair.Day, error) {
+	f.requests = append(f.requests, fmt.Sprintf("%s-%s %s..%s", from, to, first.Format(time.DateOnly), last.Format(time.DateOnly)))
+	if f.failed("timetable", from+"-"+to) {
+		return nil, errors.New("fake timetable failure")
+	}
+	var days []wizzair.Day
+	for date := first; !date.After(last); date = date.AddDate(0, 0, 1) {
+		if departures, cheapest := f.day(from, to, date, date); len(departures) > 0 {
+			d := wizzair.Day{Date: date, Departures: departures, Cheapest: cheapest}
+			if f.unflagged[from+"-"+to+" "+date.Format(time.DateOnly)] {
+				d.Cheapest, d.PricedWithoutFlight = nil, true
+			}
+			days = append(days, d)
+		}
+	}
+	return days, nil
+}
+
+func (f *fakeWizzair) CheapestFrom(_ context.Context, from, to string, departure time.Time) (*wizzair.Fare, error) {
+	f.requests = append(f.requests, fmt.Sprintf("%s-%s from %s", from, to, departure.Format("2006-01-02 15:04")))
+	if f.failed("cheapestFrom", from+"-"+to) {
+		return nil, errors.New("fake time-of-day failure")
+	}
+	at := departure
+	if f.ignoresTimeOfDay {
+		at = dateOf(departure)
+	}
+	_, cheapest := f.day(from, to, dateOf(departure), at)
+	return cheapest, nil
+}
+
+func (f *fakeWizzair) Schedule(_ context.Context, from, to string) ([]wizzair.ScheduledFlight, error) {
+	f.scheduleRequests = append(f.scheduleRequests, from+"-"+to)
+	if f.failed("schedule", from+"-"+to) {
+		return nil, errors.New("fake flight status failure")
+	}
+	var flights []wizzair.ScheduledFlight
+	for _, fl := range f.schedule {
+		if fl.from == from && fl.to == to {
+			flights = append(flights, wizzair.ScheduledFlight{Departure: fakeTime(fl.departure), Arrival: fakeTime(fl.arrival)})
+		}
+	}
+	return flights, nil
+}
+
+func (f *fakeWizzair) takeScheduleRequests() []string {
+	got := f.scheduleRequests
+	f.scheduleRequests = nil
+	slices.Sort(got)
+	return got
+}
+
+func (f *fakeWizzair) takeRequests() []string {
+	got := f.requests
+	f.requests = nil
+	return got
+}
+
+func dateOf(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC)
 }
 
 // fakeNBP imitates NBP's API: the latest table A and table B of mid-market rates.

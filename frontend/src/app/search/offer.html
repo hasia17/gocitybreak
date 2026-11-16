@@ -10,6 +10,9 @@
               >,
               <span class="times"
                 >{{ flight.departureTime }} → {{ flight.arrivalTime }}
+                @if (flight.estimatedArrival; as why) {
+                  <app-info-tip [label]="t('tips.estimatedArrival.label')" [text]="why" />
+                }
                 @if (flight.daysLater; as days) {
                   <abbr [title]="t('results.arrives', { date: flight.arrivalDate })"
                     >+{{ days }}</abbr
@@ -17,6 +20,7 @@
                 }
               </span>
             </span>
+            <span class="airline">{{ flight.airline }}</span>
             <!-- A group names the destination: its single-flight legs then name only the home airport. -->
             <span class="route">{{
               showDestination() || leg.flights.length > 1
@@ -67,7 +71,9 @@
     @for (ticket of tickets; track ticket.url) {
       <a class="book" [href]="ticket.url" target="_blank" rel="noopener">
         {{
-          tickets.length > 1 ? t('results.bookRoute', { route: ticket.route }) : t('results.book')
+          tickets.length > 1
+            ? t('results.bookRoute', { route: ticket.route, airline: ticket.airlineName })
+            : t('results.book', { airline: ticket.airlineName })
         }}
       </a>
     }

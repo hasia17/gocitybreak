@@ -9,7 +9,7 @@
   },
   "search": {
     "title": "Where to this weekend?",
-    "lede": "Cheap Ryanair flights for a short city break.",
+    "lede": "Cheap Ryanair and Wizz Air flights for a short city break.",
     "kind": {
       "label": "Kind of offer",
       "roundTrip": "Round trip",
@@ -145,8 +145,8 @@
       "one": "Booked as {{count}} separate one-way ticket",
       "other": "Booked as {{count}} separate one-way tickets"
     },
-    "book": "Book ↗",
-    "bookRoute": "{{route}} on Ryanair ↗",
+    "book": "Book · {{airline}} ↗",
+    "bookRoute": "Book {{route}} · {{airline}} ↗",
     "grouped": "{{offers}} in {{groups}}, from {{price}}",
     "destinationGroups": {
       "one": "{{count}} place",
@@ -167,6 +167,10 @@
       "leave": "Leave",
       "from": "From"
     }
+  },
+  "airline": {
+    "ryanair": "Ryanair",
+    "wizzair": "Wizz Air"
   },
   "offer": {
     "outbound": "Outbound",
@@ -247,7 +251,11 @@
       "text": "Converted into PLN at the NBP mid-market rate because a flight is priced in another currency."
     },
     "priceAge": {
-      "text": "This is a stored price and may have changed. Check the current price on Ryanair’s site."
+      "text": "This is a stored price and may have changed. Check the current price on the airline’s site."
+    },
+    "estimatedArrival": {
+      "label": "About the estimated arrival",
+      "text": "{{airline}} doesn’t publish the scheduled arrival time for this flight. We estimated it from the distance, so it may be off by a few minutes."
     },
     "separateTickets": {
       "text": "A self-transfer is at your own risk. Nobody guarantees the next flight if the first is late."

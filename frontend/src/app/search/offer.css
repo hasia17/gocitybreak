@@ -51,6 +51,13 @@
 .times {
   font-weight: 500;
 }
+/* The ⓘ of an estimated arrival sits in the line of times without making it taller. */
+.times app-info-tip {
+  margin-block: calc((1lh - 1.5rem) / 2);
+}
+.airline {
+  font-size: 0.75rem;
+}
 .route {
   font-family: var(--font-serif);
   overflow-wrap: anywhere;
@@ -78,6 +85,7 @@ abbr {
 }
 .date,
 .route,
+.airline,
 .price small {
   color: var(--muted);
 }

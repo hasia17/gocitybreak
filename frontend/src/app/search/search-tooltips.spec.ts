@@ -95,6 +95,7 @@ describe('Search explanations', () => {
     const root = fixture.nativeElement as HTMLElement;
     root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
     const flight = (from: string, to: string, currency: string) => ({
+      airline: 'ryanair' as const,
       departureAirport: from,
       arrivalAirport: to,
       departure: { date: '2026-12-04', time: '10:00', timeZone: 'Europe/Warsaw' },
@@ -127,12 +128,12 @@ describe('Search explanations', () => {
     expect(approximate.querySelectorAll('app-info-tip')).toHaveLength(1);
     const info = explanation(approximate, 'About this price').tip.textContent!;
     expect(info).toMatch(/PLN.*NBP mid-market rate.*another currency/i);
-    expect(info).toMatch(/stored price.*may have changed.*Ryanair/i);
+    expect(info).toMatch(/stored price.*may have changed.*airline.s site/i);
     expect(info).toMatch(/self-transfer.*own risk.*next flight.*late/i);
     const direct = Array.from(offers).find((o) => /PLN\s100/.test(o.textContent!))!;
     expect(direct.querySelectorAll('app-info-tip')).toHaveLength(1);
     const directInfo = explanation(direct, 'About this price').tip.textContent!;
-    expect(directInfo).toContain('Ryanair');
+    expect(directInfo).toContain('airline');
     expect(directInfo).not.toContain('NBP');
     expect(directInfo).not.toContain('self-transfer');
 
@@ -140,7 +141,62 @@ describe('Search explanations', () => {
     await fixture.whenStable();
     const polish = explanation(approximate, 'O tej cenie').tip.textContent!;
     expect(polish).toMatch(/PLN.*średnim kursie NBP.*innej walucie/i);
-    expect(polish).toMatch(/zapisana cena.*zmienić.*Ryanair/i);
+    expect(polish).toMatch(/zapisana cena.*zmienić.*linii lotniczej/i);
     expect(polish).toMatch(/przesiadka.*własne ryzyko.*kolejnego lotu.*spóźni/i);
+  });
+
+  it('marks an estimated arrival with ~ and explains it on keyboard focus, in both languages', async () => {
+    const fixture = TestBed.createComponent(Search);
+    flushCatalogue();
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+    const flight = (
+      airline: 'ryanair' | 'wizzair',
+      from: string,
+      to: string,
+      estimated: boolean,
+    ) => ({
+      airline,
+      departureAirport: from,
+      arrivalAirport: to,
+      departure: { date: '2026-12-04', time: '21:00', timeZone: 'Europe/Rome' },
+      arrival: { date: '2026-12-04', time: '22:45', timeZone: 'Europe/Warsaw' },
+      ...(estimated ? { estimatedArrival: true } : {}),
+      originalPrice: { amount: 45, currency: 'PLN' },
+      fetchedAt: '2026-11-12T12:00:00Z',
+    });
+    http.expectOne('/api/search').flush({
+      offers: [
+        {
+          kind: 'roundTrip',
+          outbound: { isDirect: true, flights: [flight('ryanair', 'KRK', 'BGY', false)] },
+          inbound: { isDirect: true, flights: [flight('wizzair', 'BGY', 'KRK', true)] },
+          nights: 0,
+          leaveDays: 0,
+          price: { amount: 90, currency: 'PLN', approximate: false },
+          priceFetchedAt: '2026-11-12T12:00:00Z',
+        },
+      ],
+    });
+    await fixture.whenStable();
+    const offer = root.querySelector<HTMLElement>('[data-testid="offer"]')!;
+    const [outbound, inbound] = Array.from(offer.querySelectorAll<HTMLElement>('.flight'));
+    expect(outbound.textContent).toContain('21:00 → 22:45');
+    expect(outbound.querySelector('app-info-tip')).toBeNull();
+    expect(inbound.textContent).toContain('21:00 → ~22:45');
+
+    const { button, tip } = explanation(inbound, 'About the estimated arrival');
+    expect(tip.textContent).toMatch(/Wizz Air doesn’t publish the scheduled arrival.*estimated/i);
+    expect(button.tabIndex).toBe(0);
+    button.focus();
+    await fixture.whenStable();
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+
+    TestBed.inject(TranslocoService).setActiveLang('pl');
+    await fixture.whenStable();
+    expect(explanation(inbound, 'O szacowanej godzinie przylotu').tip.textContent).toMatch(
+      /Wizz Air nie podaje planowej godziny przylotu.*Oszacowaliśmy/i,
+    );
   });
 });

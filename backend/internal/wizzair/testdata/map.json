@@ -1,0 +1,434 @@
+{
+  "cities": [
+    {
+      "iata": "WAW",
+      "mac": "WSW",
+      "longitude": 20.96722222222222,
+      "currencyCode": "PLN",
+      "latitude": 52.16583333333333,
+      "shortName": "Warsaw Chopin\r\n",
+      "countryName": "Poland",
+      "countryCode": "PL",
+      "connections": [
+        {
+          "iata": "BGY",
+          "operationStartDate": "2026-11-16T17:45:00",
+          "rescueEndDate": "2026-11-16T20:01:04.4674747+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        },
+        {
+          "iata": "MIL",
+          "operationStartDate": "2026-11-16T17:45:00",
+          "rescueEndDate": "2026-11-16T20:01:04.4674747+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        },
+        {
+          "iata": "KUT",
+          "operationStartDate": "2026-11-16T12:50:00",
+          "rescueEndDate": "2026-11-16T20:01:04.4674747+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        },
+        {
+          "iata": "LTN",
+          "operationStartDate": "2026-11-16T11:40:00",
+          "rescueEndDate": "2026-11-16T20:01:04.4674747+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        },
+        {
+          "iata": "LON",
+          "operationStartDate": "2026-11-16T11:40:00",
+          "rescueEndDate": "2026-11-16T20:01:04.4674747+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        }
+      ],
+      "aliases": [
+        "Warsaw Chopin\r\n"
+      ],
+      "isExcludedFromGeoLocation": false,
+      "rank": 1,
+      "categories": [
+        1,
+        8,
+        9,
+        0
+      ],
+      "isFakeStation": false
+    },
+    {
+      "iata": "KTW",
+      "mac": "SPQ",
+      "longitude": 19.083333333333332,
+      "currencyCode": "PLN",
+      "latitude": 50.483333333333334,
+      "shortName": "Katowice",
+      "countryName": "Poland",
+      "countryCode": "PL",
+      "connections": [
+        {
+          "iata": "KUT",
+          "operationStartDate": "2026-11-17T05:45:00",
+          "rescueEndDate": "2026-11-16T20:01:04.4674747+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        },
+        {
+          "iata": "LTN",
+          "operationStartDate": "2026-11-18T06:05:00",
+          "rescueEndDate": "2026-11-16T20:01:04.4674747+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        },
+        {
+          "iata": "LON",
+          "operationStartDate": "2026-11-18T06:05:00",
+          "rescueEndDate": "2026-11-16T20:01:04.4674747+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        }
+      ],
+      "aliases": [
+        "Katowice"
+      ],
+      "isExcludedFromGeoLocation": false,
+      "rank": 1,
+      "categories": [
+        1,
+        3,
+        7,
+        0
+      ],
+      "isFakeStation": false
+    },
+    {
+      "iata": "LUZ",
+      "mac": null,
+      "longitude": 22.690555555555555,
+      "currencyCode": "PLN",
+      "latitude": 51.231388888888894,
+      "shortName": "Lublin",
+      "countryName": "Poland",
+      "countryCode": "PL",
+      "connections": [
+        {
+          "iata": "LTN",
+          "operationStartDate": "2026-11-16T10:00:00",
+          "rescueEndDate": "2026-11-16T20:01:04.4674747+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        },
+        {
+          "iata": "LON",
+          "operationStartDate": "2026-11-16T10:00:00",
+          "rescueEndDate": "2026-11-16T20:01:04.4674747+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        },
+        {
+          "iata": "KUT",
+          "operationStartDate": "2026-12-07T10:00:00",
+          "rescueEndDate": "2026-11-16T20:01:04.4674747+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": true,
+          "isDirectFlight": false
+        }
+      ],
+      "aliases": [
+        "Lublin"
+      ],
+      "isExcludedFromGeoLocation": false,
+      "rank": 1,
+      "categories": [
+        1,
+        7,
+        9,
+        0
+      ],
+      "isFakeStation": false
+    },
+    {
+      "iata": "LTN",
+      "mac": "LON",
+      "longitude": -0.3683333333333333,
+      "currencyCode": "GBP",
+      "latitude": 51.874722222222225,
+      "shortName": "London Luton",
+      "countryName": "United Kingdom",
+      "countryCode": "GB",
+      "connections": [
+        {
+          "iata": "KTW",
+          "operationStartDate": "2026-11-16T08:25:00",
+          "rescueEndDate": "2026-11-16T20:01:04.5924805+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        },
+        {
+          "iata": "LUZ",
+          "operationStartDate": "2026-11-16T05:50:00",
+          "rescueEndDate": "2026-11-16T20:01:04.5924805+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        },
+        {
+          "iata": "MIL",
+          "operationStartDate": "2026-11-16T15:05:00",
+          "rescueEndDate": "2026-11-16T20:01:04.6081064+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        },
+        {
+          "iata": "WAW",
+          "operationStartDate": "2026-11-16T14:05:00",
+          "rescueEndDate": "2026-11-16T20:01:04.6081064+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        }
+      ],
+      "aliases": [
+        "London Luton"
+      ],
+      "isExcludedFromGeoLocation": false,
+      "rank": 1,
+      "categories": [
+        1,
+        2,
+        5,
+        8,
+        0
+      ],
+      "isFakeStation": false
+    },
+    {
+      "iata": "LON",
+      "mac": "LON",
+      "longitude": -0.11805555555555555,
+      "currencyCode": "GBP",
+      "latitude": 51.51,
+      "shortName": "London (All Airports)",
+      "countryName": "United Kingdom",
+      "countryCode": "GB",
+      "connections": [
+        {
+          "iata": "KTW",
+          "operationStartDate": "2026-11-16T08:25:00",
+          "rescueEndDate": "2026-11-16T20:01:04.5924805+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        },
+        {
+          "iata": "LUZ",
+          "operationStartDate": "2026-11-16T05:50:00",
+          "rescueEndDate": "2026-11-16T20:01:04.5924805+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        },
+        {
+          "iata": "MIL",
+          "operationStartDate": "2026-11-16T15:05:00",
+          "rescueEndDate": "2026-11-16T20:01:04.5924805+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        },
+        {
+          "iata": "WAW",
+          "operationStartDate": "2026-11-16T14:05:00",
+          "rescueEndDate": "2026-11-16T20:01:04.5924805+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        }
+      ],
+      "aliases": [
+        "London (All Airports)"
+      ],
+      "isExcludedFromGeoLocation": false,
+      "rank": 1,
+      "categories": [],
+      "isFakeStation": true
+    },
+    {
+      "iata": "BGY",
+      "mac": "MIL",
+      "longitude": 9.700277777777776,
+      "currencyCode": "EUR",
+      "latitude": 45.66833333333333,
+      "shortName": "Milan Bergamo",
+      "countryName": "Italy",
+      "countryCode": "IT",
+      "connections": [
+        {
+          "iata": "WAW",
+          "operationStartDate": "2026-11-16T08:20:00",
+          "rescueEndDate": "2026-11-16T20:01:04.3613207+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        }
+      ],
+      "aliases": [
+        "Milan Bergamo"
+      ],
+      "isExcludedFromGeoLocation": false,
+      "rank": 1,
+      "categories": [
+        1,
+        3,
+        8,
+        0
+      ],
+      "isFakeStation": false
+    },
+    {
+      "iata": "MIL",
+      "mac": "MIL",
+      "longitude": 9.188611111111111,
+      "currencyCode": "EUR",
+      "latitude": 45.46472222222223,
+      "shortName": "Milan (All Airports)",
+      "countryName": "Italy",
+      "countryCode": "IT",
+      "connections": [
+        {
+          "iata": "KUT",
+          "operationStartDate": "2026-11-16T17:50:00",
+          "rescueEndDate": "2026-11-16T20:01:04.3769542+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        },
+        {
+          "iata": "LTN",
+          "operationStartDate": "2026-11-16T13:20:00",
+          "rescueEndDate": "2026-11-16T20:01:04.3769542+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        },
+        {
+          "iata": "LON",
+          "operationStartDate": "2026-11-16T13:20:00",
+          "rescueEndDate": "2026-11-16T20:01:04.3769542+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        },
+        {
+          "iata": "WAW",
+          "operationStartDate": "2026-11-16T08:20:00",
+          "rescueEndDate": "2026-11-16T20:01:04.3769542+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        }
+      ],
+      "aliases": [
+        "Milan (All Airports)"
+      ],
+      "isExcludedFromGeoLocation": false,
+      "rank": 1,
+      "categories": [],
+      "isFakeStation": true
+    },
+    {
+      "iata": "KUT",
+      "mac": "GEL",
+      "longitude": 42.4825,
+      "currencyCode": "GEL",
+      "latitude": 42.17666666666666,
+      "shortName": "Kutaisi",
+      "countryName": "Georgia",
+      "countryCode": "GE",
+      "connections": [
+        {
+          "iata": "KTW",
+          "operationStartDate": "2026-11-17T12:45:00",
+          "rescueEndDate": "2026-11-16T20:01:04.3144433+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        },
+        {
+          "iata": "MIL",
+          "operationStartDate": "2026-11-16T15:55:00",
+          "rescueEndDate": "2026-11-16T20:01:04.3144433+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        },
+        {
+          "iata": "WAW",
+          "operationStartDate": "2026-11-16T11:35:00",
+          "rescueEndDate": "2026-11-16T20:01:04.3144433+00:00",
+          "isDomestic": false,
+          "isNew": false,
+          "isConnected": false,
+          "isDirectFlight": true
+        }
+      ],
+      "aliases": [
+        "Kutaisi"
+      ],
+      "isExcludedFromGeoLocation": false,
+      "rank": 1,
+      "categories": [
+        2,
+        3,
+        4,
+        7,
+        8,
+        9,
+        0
+      ],
+      "isFakeStation": false
+    }
+  ],
+  "javascript": null
+}

@@ -14,6 +14,7 @@ const offer: Offer = {
     isDirect: true,
     flights: [
       {
+        airline: 'ryanair' as const,
         departureAirport: 'BGY',
         arrivalAirport: 'KRK',
         departure: { date: '2026-12-05', time: '23:30', timeZone: 'Europe/Rome' },
@@ -46,6 +47,7 @@ describe('offerView', () => {
   it('formats a one-way offer with an overnight flight and foreign price', () => {
     const view = offerView(offer, now);
     expect(view.legs[0].flights[0]).toEqual({
+      airline: 'Ryanair',
       departureDate: '2026-12-05',
       day: 'Sat 5 Dec',
       departureTime: '23:30',
@@ -109,6 +111,61 @@ describe('offerView', () => {
       '23:30',
       '01:20',
     ]);
+  });
+
+  it('names the airline of each flight, in both languages', () => {
+    expect(offerView(offer, now).legs[0].flights[0].airline).toBe('Ryanair');
+    expect(offerView(offer, now, 'pl').legs[0].flights[0].airline).toBe('Ryanair');
+  });
+
+  /** A self-transfer out with Ryanair then Wizz Air, whose arrival is estimated, and back with Wizz Air. */
+  const mixed: Offer = {
+    ...offer,
+    kind: 'roundTrip',
+    outbound: {
+      isDirect: false,
+      flights: [
+        { ...offer.outbound.flights[0], departureAirport: 'KRK', arrivalAirport: 'STN' },
+        {
+          ...offer.outbound.flights[0],
+          airline: 'wizzair',
+          departureAirport: 'LTN',
+          arrivalAirport: 'BGY',
+          arrival: { date: '2026-12-06', time: '10:40', timeZone: 'Europe/Rome' },
+          estimatedArrival: true,
+        },
+      ],
+    },
+    inbound: {
+      isDirect: true,
+      flights: [{ ...offer.outbound.flights[0], airline: 'wizzair' }],
+    },
+  };
+
+  it('mixes airlines within a self-transfer and between legs, one ticket per flight', () => {
+    const view = offerView(mixed, now);
+    expect(view.legs.map((leg) => leg.flights.map((flight) => flight.airline))).toEqual([
+      ['Ryanair', 'Wizz Air'],
+      ['Wizz Air'],
+    ]);
+    expect(view.tickets.map((ticket) => [ticket.route, ticket.airlineName])).toEqual([
+      ['KRK → STN', 'Ryanair'],
+      ['LTN → BGY', 'Wizz Air'],
+      ['BGY → KRK', 'Wizz Air'],
+    ]);
+  });
+
+  it('marks an estimated arrival with ~ and explains it, in both languages', () => {
+    const estimated = offerView(mixed, now).legs[0].flights[1];
+    expect(estimated.arrivalTime).toBe('~10:40');
+    expect(estimated.estimatedArrival).toMatch(/Wizz Air doesn’t publish the scheduled arrival/);
+    const polish = offerView(mixed, now, 'pl').legs[0].flights[1];
+    expect(polish.arrivalTime).toBe('~10:40');
+    expect(polish.estimatedArrival).toMatch(/Wizz Air nie podaje planowej godziny przylotu/);
+
+    const scheduled = offerView(mixed, now).legs[0].flights[0];
+    expect(scheduled.arrivalTime).toBe('01:20');
+    expect(scheduled.estimatedArrival).toBeUndefined();
   });
 
   it('keeps foreign original prices out of the whole-zloty price', () => {

@@ -9,7 +9,7 @@
   },
   "search": {
     "title": "Gdzie na weekend?",
-    "lede": "Tanie loty Ryanair na krótki city break.",
+    "lede": "Tanie loty Ryanair i Wizz Air na krótki city break.",
     "kind": {
       "label": "Rodzaj oferty",
       "roundTrip": "Tam i z powrotem",
@@ -153,8 +153,8 @@
       "many": "Kupowane jako {{count}} osobnych biletów w jedną stronę",
       "other": "Kupowane jako {{count}} osobnego biletu w jedną stronę"
     },
-    "book": "Rezerwuj ↗",
-    "bookRoute": "{{route}} w Ryanair ↗",
+    "book": "Rezerwuj · {{airline}} ↗",
+    "bookRoute": "Rezerwuj {{route}} · {{airline}} ↗",
     "grouped": "{{offers}} w {{groups}}, od {{price}}",
     "destinationGroups": {
       "one": "{{count}} miejscu",
@@ -181,6 +181,10 @@
       "leave": "Urlop",
       "from": "Od"
     }
+  },
+  "airline": {
+    "ryanair": "Ryanair",
+    "wizzair": "Wizz Air"
   },
   "offer": {
     "outbound": "Wylot",
@@ -267,7 +271,11 @@
       "text": "Przeliczono na PLN po średnim kursie NBP, ponieważ lot jest wyceniony w innej walucie."
     },
     "priceAge": {
-      "text": "To zapisana cena, która mogła się zmienić. Aktualną cenę sprawdzisz na stronie Ryanair."
+      "text": "To zapisana cena, która mogła się zmienić. Aktualną cenę sprawdzisz na stronie linii lotniczej."
+    },
+    "estimatedArrival": {
+      "label": "O szacowanej godzinie przylotu",
+      "text": "{{airline}} nie podaje planowej godziny przylotu tego lotu. Oszacowaliśmy ją na podstawie odległości, więc może się różnić o kilka minut."
     },
     "separateTickets": {
       "text": "Samodzielna przesiadka odbywa się na własne ryzyko. Nikt nie gwarantuje kolejnego lotu, jeśli pierwszy się spóźni."

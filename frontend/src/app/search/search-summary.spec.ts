@@ -65,6 +65,7 @@ describe('Search summary', () => {
     const fetchedAt = new Date().toISOString();
     return Array.from({ length: count }, (_, index) => {
       const flight = {
+        airline: 'ryanair' as const,
         departureAirport: 'KRK',
         arrivalAirport: 'BGY',
         departure: { date: '2026-12-24', time: '10:00', timeZone: 'Europe/Warsaw' },

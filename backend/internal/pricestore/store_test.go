@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hasia17/gocitybreak/backend/internal/airline"
 	"github.com/hasia17/gocitybreak/backend/internal/database"
 	"github.com/hasia17/gocitybreak/backend/internal/database/databasetest"
 	"github.com/hasia17/gocitybreak/backend/internal/nbp"
@@ -42,7 +43,7 @@ func TestReplaceRouteMonthKeepsPartialAndDeletesCancelledFlights(t *testing.T) {
 	}{
 		{flights, true, 2}, {flights[:1], false, 2}, {flights[:1], true, 1}, {nil, true, 0},
 	} {
-		if err := s.ReplaceRouteMonth(t.Context(), "KRK", "BGY", month, month, last, month, step.flights, step.complete); err != nil {
+		if err := s.ReplaceRouteMonth(t.Context(), airline.Ryanair, "KRK", "BGY", month, month, last, month, step.flights, step.complete); err != nil {
 			t.Fatal(err)
 		}
 		got, err := s.Flights(t.Context())
@@ -76,7 +77,7 @@ func TestReplaceRouteMonthRollsBackOnConstraintViolation(t *testing.T) {
 		{Departure: depart, Arrival: depart.Add(2 * time.Hour), Price: &ryanair.Money{Amount: 100, Currency: "PLN"}},
 		{Departure: depart.Add(24 * time.Hour), Arrival: depart.Add(26 * time.Hour)},
 	}
-	if err := s.ReplaceRouteMonth(t.Context(), "KRK", "BGY", month, month, last, fetched, original, true); err != nil {
+	if err := s.ReplaceRouteMonth(t.Context(), airline.Ryanair, "KRK", "BGY", month, month, last, fetched, original, true); err != nil {
 		t.Fatal(err)
 	}
 	before, err := s.Flights(t.Context())
@@ -92,7 +93,7 @@ func TestReplaceRouteMonthRollsBackOnConstraintViolation(t *testing.T) {
 		{Departure: depart, Arrival: depart.Add(3 * time.Hour), Price: &ryanair.Money{Amount: 200, Currency: "PLN"}},
 		{Departure: depart.Add(48 * time.Hour), Arrival: depart.Add(50 * time.Hour), Price: &ryanair.Money{Amount: -1, Currency: "PLN"}},
 	}
-	err = s.ReplaceRouteMonth(t.Context(), "KRK", "BGY", month, month, last, fetched.Add(time.Hour), replacement, true)
+	err = s.ReplaceRouteMonth(t.Context(), airline.Ryanair, "KRK", "BGY", month, month, last, fetched.Add(time.Hour), replacement, true)
 	var pgErr *pgconn.PgError
 	if !errors.As(err, &pgErr) || pgErr.Code != "23514" || pgErr.ConstraintName != "test_positive_price" {
 		t.Fatalf("ReplaceRouteMonth error = %v, want test_positive_price check violation", err)
@@ -106,7 +107,7 @@ func TestReplaceRouteMonthRollsBackOnConstraintViolation(t *testing.T) {
 	}
 	// This is the same refresh record read by the worker when scheduling.
 	var refreshed time.Time
-	if err := db.Pool.QueryRow(t.Context(), `SELECT refreshed_at FROM route_month_refreshes WHERE departure_airport = $1 AND arrival_airport = $2 AND month = $3`, "KRK", "BGY", month).Scan(&refreshed); err != nil {
+	if err := db.Pool.QueryRow(t.Context(), `SELECT refreshed_at FROM route_month_refreshes WHERE airline = $1 AND departure_airport = $2 AND arrival_airport = $3 AND month = $4`, "ryanair", "KRK", "BGY", month).Scan(&refreshed); err != nil {
 		t.Fatal(err)
 	}
 	if !refreshed.Equal(fetched) {
@@ -151,8 +152,8 @@ func TestFlightsReadsPricedAndUnpricedFlights(t *testing.T) {
 	depart := time.Date(2027, 1, 1, 10, 0, 0, 0, time.UTC)
 	fetched := time.Date(2026, 12, 12, 9, 15, 30, 123456000, time.UTC)
 	want := []pricestore.Flight{
-		{DepartureAirport: "KRK", ArrivalAirport: "BGY", Departure: depart, Arrival: depart.Add(2 * time.Hour), Price: &ryanair.Money{Amount: 0, Currency: "PLN"}, FetchedAt: fetched},
-		{DepartureAirport: "KRK", ArrivalAirport: "BGY", Departure: depart.Add(24 * time.Hour), Arrival: depart.Add(26 * time.Hour), FetchedAt: fetched.Add(time.Hour)},
+		{Airline: airline.Ryanair, DepartureAirport: "KRK", ArrivalAirport: "BGY", Departure: depart, Arrival: depart.Add(2 * time.Hour), Price: &ryanair.Money{Amount: 0, Currency: "PLN"}, FetchedAt: fetched},
+		{Airline: airline.Ryanair, DepartureAirport: "KRK", ArrivalAirport: "BGY", Departure: depart.Add(24 * time.Hour), Arrival: depart.Add(26 * time.Hour), FetchedAt: fetched.Add(time.Hour)},
 	}
 	if err := s.UpsertFlights(t.Context(), want); err != nil {
 		t.Fatal(err)
@@ -163,5 +164,48 @@ func TestFlightsReadsPricedAndUnpricedFlights(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("flights = %#v, want %#v", got, want)
+	}
+}
+
+func TestReplaceRouteMonthTouchesOnlyItsOwnAirlinesFlightsAndRefreshes(t *testing.T) {
+	db, err := database.Open(t.Context(), databasetest.Acquire(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(db.Close)
+	s := pricestore.New(db.Pool)
+	if err := s.UpsertAirports(t.Context(), []ryanair.Airport{
+		{Code: "KRK", Name: "Krakow", TimeZone: "Europe/Warsaw", CityCode: "KRA", CityName: "Krakow", CountryCode: "pl", CountryName: "Poland"},
+		{Code: "BGY", Name: "Bergamo", TimeZone: "Europe/Rome", CityCode: "BER", CityName: "Bergamo", CountryCode: "it", CountryName: "Italy"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	other := airline.Airline("other")
+	month := time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)
+	last := month.AddDate(0, 1, -1)
+	departure := month.Add(10 * time.Hour)
+	flight := []pricing.Flight{{Departure: departure, Arrival: departure.Add(2 * time.Hour)}}
+	// Both airlines fly the same minute; each one's refresh keeps its own flight and record.
+	for _, a := range []airline.Airline{airline.Ryanair, other} {
+		if err := s.ReplaceRouteMonth(t.Context(), a, "KRK", "BGY", month, month, last, month, flight, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.ReplaceRouteMonth(t.Context(), other, "KRK", "BGY", month, month, last, month, nil, true); err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.Flights(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].Airline != airline.Ryanair {
+		t.Errorf("flights = %#v, want only Ryanair's flight", got)
+	}
+	var refreshes int
+	if err := db.Pool.QueryRow(t.Context(), `SELECT count(DISTINCT airline) FROM route_month_refreshes`).Scan(&refreshes); err != nil {
+		t.Fatal(err)
+	}
+	if refreshes != 2 {
+		t.Errorf("airlines with a refresh record = %d, want 2", refreshes)
 	}
 }

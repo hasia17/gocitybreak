@@ -1,12 +1,12 @@
 # gocitybreak
 
-A search engine for cheap Ryanair flights for short city breaks. Domain vocabulary is in [`GLOSSARY.md`](GLOSSARY.md), architectural decisions in [`docs/adr/`](docs/adr/).
+A search engine for cheap Ryanair and Wizz Air flights for short city breaks. Domain vocabulary is in [`GLOSSARY.md`](GLOSSARY.md), architectural decisions in [`docs/adr/`](docs/adr/).
 
 ## Layout
 
 | Path | What |
 |---|---|
-| `backend/` | Go JSON API (`cmd/api`), price worker (`cmd/worker`, `internal/worker`, Ryanair and NBP clients in `internal/ryanair`, `internal/nbp`), search (`internal/search`), database access and migrations (`internal/database/migrations`), sample data (`seed/`) |
+| `backend/` | Go JSON API (`cmd/api`), price worker (`cmd/worker`, `internal/worker`, Ryanair, Wizz Air and NBP clients in `internal/ryanair`, `internal/wizzair`, `internal/nbp`), search (`internal/search`), database access and migrations (`internal/database/migrations`), sample data (`seed/`) |
 | `frontend/` | Angular app in Polish and English (texts in `public/i18n/<language>.json`, loaded at runtime with Transloco, ADR-0007); in Docker it is served by nginx, which also proxies `/api` to the backend |
 | `docker-compose.yml` | PostgreSQL + backend + price worker + frontend |
 | `deploy/compose.yml` | The same stack on the server, from published images ([`docs/deploy.md`](docs/deploy.md)) |
@@ -24,9 +24,9 @@ task stop   # stop (data is kept; `task stop -- -v` also deletes the database)
 
 Open http://localhost:8080. The API is under http://localhost:8080/api (e.g. `/api/status`).
 
-The price worker starts filling the database with real Ryanair prices right away: first the airport catalogue and NBP exchange rates, then route after route, nearest months first. The first fill of every route from the Polish airports takes more than a day at the default rate limit of 1 request per second (`RYANAIR_REQUESTS_PER_SECOND` in `docker-compose.yml`); search answers from whatever is stored so far. After that, the next four weeks are refetched twice a day, the next three months every other day and the rest weekly (`worker.DefaultFreshness`).
+The price worker starts filling the database with real Ryanair and Wizz Air prices right away: first the airport catalogue and NBP exchange rates, then route after route, nearest months first, each airline side by side at its own rate limit (`RYANAIR_REQUESTS_PER_SECOND` and `WIZZAIR_REQUESTS_PER_SECOND` in `docker-compose.yml`, both 1 request per second by default). The first fill of every route of either airline from the Polish airports takes more than a day; search answers from whatever is stored so far. After that, the next four weeks are refetched twice a day, the next three months every other day and the rest weekly (`worker.DefaultFreshness`), for each airline. Wizz Air publishes no arrival times to plain HTTP clients, so the worker works them out from each route's scheduled block time per departure time, which it reads daily from Wizz Air's flight status of the next few days; where none is known yet it estimates the arrival from the distance and offers mark it as estimated (ADR-0008); it fetches Wizz Air routes only to airports already in the catalogue.
 
-To work offline or without waiting, `task seed` loads hand-made sample flights (KRK⇄BGY, KTW⇄CIA, WRO⇄STN for the next 60 days; safe to re-run). The worker replaces them on routes it has fetched, so don't mix the two if you need clean data.
+To work offline or without waiting, `task seed` loads hand-made sample flights (Ryanair KRK⇄BGY, KTW⇄CIA, WRO⇄STN and Wizz Air KTW⇄BGY, BGY→KRK, with estimated arrivals, for the next 60 days, so out with Ryanair and back with Wizz Air is a mixed offer; safe to re-run). The worker replaces them on routes it has fetched, so don't mix the two if you need clean data.
 
 Without Task: `docker compose up -d --build`, and for sample flights, once the API has started, `docker compose exec -T postgres psql -U gocitybreak -d gocitybreak < backend/seed/dev.sql`.
 

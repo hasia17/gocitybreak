@@ -22,10 +22,10 @@ INSERT INTO exchange_rates (currency, rate_date, rate) VALUES
 ON CONFLICT (currency, rate_date) DO NOTHING;
 
 -- Every route flies every day for the next 60 days; prices vary with the day.
-INSERT INTO flights (departure_airport, arrival_airport,
+INSERT INTO flights (airline, departure_airport, arrival_airport,
     departure_date, departure_time, arrival_date, arrival_time,
     price_amount, price_currency, fetched_at)
-SELECT r.dep, r.arr, d::date, r.dep_time, d::date, r.arr_time,
+SELECT 'ryanair', r.dep, r.arr, d::date, r.dep_time, d::date, r.arr_time,
     r.base + (extract(doy FROM d)::int * 37 % 9) * r.step, r.currency,
     now() - (extract(doy FROM d)::int % 12) * interval '1 hour'
 FROM generate_series(CURRENT_DATE + 1, CURRENT_DATE + 60, interval '1 day') AS d
@@ -38,6 +38,22 @@ CROSS JOIN (VALUES
     ('WRO', 'STN', time '12:05', time '13:30', 9900, 3000, 'PLN'),
     ('STN', 'WRO', time '14:10', time '17:25', 2499, 900, 'GBP')
 ) AS r(dep, arr, dep_time, arr_time, base, step, currency)
-ON CONFLICT (departure_airport, arrival_airport, departure_date, departure_time) DO NOTHING;
+ON CONFLICT (airline, departure_airport, arrival_airport, departure_date, departure_time) DO NOTHING;
+
+-- Wizz Air flights, their arrivals estimated from the distance as the worker does (ADR-0008). Out with Ryanair
+-- and back with Wizz Air (KRK → BGY → KRK, or KRK → BGY → KTW) makes a mixed offer.
+INSERT INTO flights (airline, departure_airport, arrival_airport,
+    departure_date, departure_time, arrival_date, arrival_time, estimated_arrival,
+    price_amount, price_currency, fetched_at)
+SELECT 'wizzair', r.dep, r.arr, d::date, r.dep_time, d::date, r.arr_time, true,
+    r.base + (extract(doy FROM d)::int * 23 % 7) * r.step, r.currency,
+    now() - (extract(doy FROM d)::int % 10) * interval '1 hour'
+FROM generate_series(CURRENT_DATE + 1, CURRENT_DATE + 60, interval '1 day') AS d
+CROSS JOIN (VALUES
+    ('BGY', 'KRK', time '21:00', time '22:45', 1299, 600, 'EUR'),
+    ('KTW', 'BGY', time '06:00', time '07:45', 3900, 2000, 'PLN'),
+    ('BGY', 'KTW', time '17:30', time '19:15', 1599, 500, 'EUR')
+) AS r(dep, arr, dep_time, arr_time, base, step, currency)
+ON CONFLICT (airline, departure_airport, arrival_airport, departure_date, departure_time) DO NOTHING;
 
 COMMIT;
