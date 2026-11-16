@@ -154,7 +154,7 @@
       "other": "Kupowane jako {{count}} osobnego biletu w jedną stronę"
     },
     "book": "Rezerwuj ↗",
-    "bookRoute": "{{route}} w Ryanair ↗",
+    "bookRoute": "{{route}} w {{airline}} ↗",
     "grouped": "{{offers}} w {{groups}}, od {{price}}",
     "destinationGroups": {
       "one": "{{count}} miejscu",
@@ -181,6 +181,9 @@
       "leave": "Urlop",
       "from": "Od"
     }
+  },
+  "airline": {
+    "ryanair": "Ryanair"
   },
   "offer": {
     "outbound": "Wylot",

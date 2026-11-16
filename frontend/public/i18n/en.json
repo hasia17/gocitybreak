@@ -146,7 +146,7 @@
       "other": "Booked as {{count}} separate one-way tickets"
     },
     "book": "Book ↗",
-    "bookRoute": "{{route}} on Ryanair ↗",
+    "bookRoute": "{{route}} on {{airline}} ↗",
     "grouped": "{{offers}} in {{groups}}, from {{price}}",
     "destinationGroups": {
       "one": "{{count}} place",
@@ -167,6 +167,9 @@
       "leave": "Leave",
       "from": "From"
     }
+  },
+  "airline": {
+    "ryanair": "Ryanair"
   },
   "offer": {
     "outbound": "Outbound",

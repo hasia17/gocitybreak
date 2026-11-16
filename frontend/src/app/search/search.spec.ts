@@ -112,6 +112,7 @@ describe('Search', () => {
   function oneRoundTrip() {
     const fetchedAt = new Date().toISOString();
     const flight = (from: string, to: string, date: string) => ({
+      airline: 'ryanair' as const,
       departureAirport: from,
       arrivalAirport: to,
       departure: { date, time: '10:00', timeZone: 'Europe/Warsaw' },
@@ -159,6 +160,7 @@ describe('Search', () => {
             isDirect: true,
             flights: [
               {
+                airline: 'ryanair' as const,
                 departureAirport: 'KRK',
                 arrivalAirport: 'BGY',
                 departure: { date: '2026-12-04', time: '18:00', timeZone: 'Europe/Warsaw' },
@@ -172,6 +174,7 @@ describe('Search', () => {
             isDirect: true,
             flights: [
               {
+                airline: 'ryanair' as const,
                 departureAirport: 'BGY',
                 arrivalAirport: 'KTW',
                 departure: { date: '2026-12-06', time: '20:00', timeZone: 'Europe/Rome' },
@@ -191,7 +194,7 @@ describe('Search', () => {
 
     const offer = root.querySelector('[data-testid="offer"]')?.textContent?.replace(/\s+/g, ' ');
     expect(offer).toMatch(
-      /Fri 4 Dec, 18:00 → 19:55 KRK Kraków → BGY Bergamo.*Sun 6 Dec, 20:00 → 21:50 BGY Bergamo → KTW Katowice/,
+      /Fri 4 Dec, 18:00 → 19:55 Ryanair\s*KRK Kraków → BGY Bergamo.*Sun 6 Dec, 20:00 → 21:50 Ryanair\s*BGY Bergamo → KTW Katowice/,
     );
     expect(offer).toContain('2 nights');
     expect(offer).toContain('PLN 174');
@@ -211,6 +214,7 @@ describe('Search', () => {
     const fetchedAt = new Date().toISOString();
     const roundTrip = (out: string, back: string, price: number, leaveDays: number) => {
       const flight = (from: string, to: string, date: string) => ({
+        airline: 'ryanair' as const,
         departureAirport: from,
         arrivalAirport: to,
         departure: { date, time: '10:00', timeZone: 'Europe/Warsaw' },
@@ -516,6 +520,7 @@ describe('Search', () => {
             isDirect: true,
             flights: [
               {
+                airline: 'ryanair' as const,
                 departureAirport: 'BGY',
                 arrivalAirport: 'KRK',
                 departure: { date: '2026-12-05', time: '09:00', timeZone: 'Europe/Rome' },
@@ -600,6 +605,7 @@ describe('Search', () => {
     root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
     const fetchedAt = new Date().toISOString();
     const flight = (from: string, to: string, time: string) => ({
+      airline: 'ryanair' as const,
       departureAirport: from,
       arrivalAirport: to,
       departure: { date: `${nextYear}-01-02`, time, timeZone: 'Europe/Warsaw' },
@@ -646,6 +652,7 @@ describe('Search', () => {
             isDirect: true,
             flights: [
               {
+                airline: 'ryanair' as const,
                 departureAirport: 'KRK',
                 arrivalAirport: 'BGY',
                 departure: { date: '2026-12-10', time: '23:30', timeZone: 'Europe/Warsaw' },

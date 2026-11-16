@@ -63,6 +63,7 @@ function offer(to: string, price: number, day: number, leaveDays = 1): Offer {
   const fetchedAt = new Date().toISOString();
   const date = (d: number) => `2026-12-${String(d).padStart(2, '0')}`;
   const flight = (from: string, into: string, d: number) => ({
+    airline: 'ryanair' as const,
     departureAirport: from,
     arrivalAirport: into,
     departure: { date: date(d), time: '10:00', timeZone: 'Europe/Warsaw' },

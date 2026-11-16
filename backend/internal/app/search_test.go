@@ -268,6 +268,7 @@ type legBody struct {
 }
 
 type flightBody struct {
+	Airline          string        `json:"airline"`
 	DepartureAirport string        `json:"departureAirport"`
 	ArrivalAirport   string        `json:"arrivalAirport"`
 	Departure        localTimeBody `json:"departure"`

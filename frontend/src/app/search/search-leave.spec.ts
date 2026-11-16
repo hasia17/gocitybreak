@@ -98,6 +98,7 @@ describe('Search leave limit', () => {
     });
     const fetchedAt = new Date().toISOString();
     const flight = (from: string, to: string, date: string) => ({
+      airline: 'ryanair' as const,
       departureAirport: from,
       arrivalAirport: to,
       departure: { date, time: '10:00', timeZone: 'Europe/Warsaw' },

@@ -63,6 +63,7 @@ describe('Search offer readability', () => {
     root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
     const fetchedAt = new Date().toISOString();
     const flight = (from: string, to: string, date: string): Flight => ({
+      airline: 'ryanair' as const,
       departureAirport: from,
       arrivalAirport: to,
       departure: { date, time: '10:00', timeZone: 'Europe/Warsaw' },

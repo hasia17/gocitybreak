@@ -69,6 +69,7 @@ describe('Search conveniences', () => {
 
   function flight(from: string, to: string, date: string) {
     return {
+      airline: 'ryanair' as const,
       departureAirport: from,
       arrivalAirport: to,
       departure: { date, time: '10:00', timeZone: 'Europe/Warsaw' },

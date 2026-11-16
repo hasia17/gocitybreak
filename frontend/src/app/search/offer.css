@@ -51,6 +51,9 @@
 .times {
   font-weight: 500;
 }
+.airline {
+  font-size: 0.75rem;
+}
 .route {
   font-family: var(--font-serif);
   overflow-wrap: anywhere;
@@ -78,6 +81,7 @@ abbr {
 }
 .date,
 .route,
+.airline,
 .price small {
   color: var(--muted);
 }
