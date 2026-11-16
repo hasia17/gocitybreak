@@ -2,6 +2,7 @@ package fetch_test
 
 import (
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -68,5 +69,34 @@ func TestGetJSONGivesUpAfterMaxAttempts(t *testing.T) {
 	}
 	if n := requests.Load(); n != 3 {
 		t.Errorf("made %d requests, want 3", n)
+	}
+}
+
+func TestDoSendsTheSameBodyAndHeadersOnEveryAttempt(t *testing.T) {
+	var requests atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		if r.Method != http.MethodPost || string(body) != `{"a":1}` || r.Header.Get("X-Token") != "secret" ||
+			r.Header.Get("Content-Type") != "application/json" {
+			t.Errorf("request %s %q, token %q, type %q; want a JSON POST of {\"a\":1} with the token",
+				r.Method, body, r.Header.Get("X-Token"), r.Header.Get("Content-Type"))
+		}
+		if requests.Add(1) == 1 {
+			http.Error(w, "down", http.StatusServiceUnavailable)
+			return
+		}
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer srv.Close()
+	client := fetch.NewClient(fetch.Options{InitialBackoff: time.Millisecond})
+
+	body, err := client.Do(t.Context(), fetch.Request{Method: http.MethodPost, URL: srv.URL,
+		Header: http.Header{"X-Token": {"secret"}}, Body: []byte(`{"a":1}`)})
+
+	if err != nil || string(body) != `{"ok":true}` {
+		t.Errorf("Do = %q, %v; want the second answer", body, err)
+	}
+	if n := requests.Load(); n != 2 {
+		t.Errorf("made %d requests, want 2", n)
 	}
 }

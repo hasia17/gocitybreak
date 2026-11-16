@@ -1,0 +1,73 @@
+{
+  "outboundFlights": [
+    {
+      "departureStation": "LTN",
+      "arrivalStation": "WAW",
+      "departureDate": "2027-04-20T08:25:00",
+      "price": {
+        "amount": 34.99,
+        "currencyCode": "GBP",
+        "exchangedAmount": null,
+        "exchangedCurrencyCode": null
+      },
+      "originalPrice": {
+        "amount": 34.99,
+        "currencyCode": "GBP",
+        "exchangedAmount": null,
+        "exchangedCurrencyCode": null
+      },
+      "priceType": "price",
+      "departureDates": [
+        {
+          "date": "2027-04-20T08:25:00",
+          "isCheapestOfTheDay": true
+        },
+        {
+          "date": "2027-04-20T15:25:00",
+          "isCheapestOfTheDay": false
+        },
+        {
+          "date": "2027-04-20T19:45:00",
+          "isCheapestOfTheDay": false
+        }
+      ],
+      "hasMacFlight": false,
+      "appliedCouponCode": null
+    },
+    {
+      "departureStation": "LTN",
+      "arrivalStation": "WAW",
+      "departureDate": "2027-04-21T19:45:00",
+      "price": {
+        "amount": 34.99,
+        "currencyCode": "GBP",
+        "exchangedAmount": null,
+        "exchangedCurrencyCode": null
+      },
+      "originalPrice": {
+        "amount": 34.99,
+        "currencyCode": "GBP",
+        "exchangedAmount": null,
+        "exchangedCurrencyCode": null
+      },
+      "priceType": "price",
+      "departureDates": [
+        {
+          "date": "2027-04-21T08:25:00",
+          "isCheapestOfTheDay": false
+        },
+        {
+          "date": "2027-04-21T15:35:00",
+          "isCheapestOfTheDay": false
+        },
+        {
+          "date": "2027-04-21T19:45:00",
+          "isCheapestOfTheDay": true
+        }
+      ],
+      "hasMacFlight": false,
+      "appliedCouponCode": null
+    }
+  ],
+  "returnFlights": null
+}

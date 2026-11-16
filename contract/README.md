@@ -5,8 +5,9 @@ The corresponding `.response.json` is the complete HTTP 200 JSON response body;
 `query-error.response.txt` is the actual HTTP 400 `text/plain` body, including
 its final newline, not a JSON error object. Scenarios are `round-trip` (PLN),
 `one-way`, `fixed-dates` (overnight outbound and inbound flights),
-`fixed-one-way` (overnight departure), `foreign-currency` (EUR inbound, converted to PLN), and `query-error`
-(an invalid stay-length range). The backend test seeds deterministic flights,
+`fixed-one-way` (overnight departure), `foreign-currency` (EUR inbound, converted to PLN), `mixed-airlines`
+(out with Ryanair, back with Wizz Air on a flight whose arrival is estimated, so it carries
+`"estimatedArrival": true`; the field is absent otherwise), and `query-error` (an invalid stay-length range). The backend test seeds deterministic flights,
 airports and exchange rates in `backend/internal/app/contract_test.go`. Both
 stacks should use these exact files; requests are inputs, not generated output.
 

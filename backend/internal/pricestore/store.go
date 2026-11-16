@@ -28,7 +28,9 @@ type Flight struct {
 	DepartureAirport, ArrivalAirport string
 	Departure, Arrival               time.Time
 	Price                            *ryanair.Money
-	FetchedAt                        time.Time
+	// EstimatedArrival says Arrival is our estimate, the airline publishing none (GLOSSARY: Estimated arrival).
+	EstimatedArrival bool
+	FetchedAt        time.Time
 }
 
 // UpsertAirports stores the catalogue, marking Polish airports supported.
@@ -78,14 +80,15 @@ func queueFlight(b *pgx.Batch, f Flight) {
 	}
 	b.Queue(`INSERT INTO flights
     (airline, departure_airport, arrival_airport, departure_date, departure_time,
-     arrival_date, arrival_time, price_amount, price_currency, fetched_at)
-VALUES ($1, $2, $3, $4, $5::text::time, $6, $7::text::time, $8, $9, $10)
+     arrival_date, arrival_time, estimated_arrival, price_amount, price_currency, fetched_at)
+VALUES ($1, $2, $3, $4, $5::text::time, $6, $7::text::time, $8, $9, $10, $11)
 ON CONFLICT (airline, departure_airport, arrival_airport, departure_date, departure_time) DO UPDATE SET
     arrival_date = EXCLUDED.arrival_date,
     arrival_time = EXCLUDED.arrival_time,
+    estimated_arrival = EXCLUDED.estimated_arrival,
     price_amount = EXCLUDED.price_amount,
     price_currency = EXCLUDED.price_currency,
-    fetched_at = EXCLUDED.fetched_at`, string(f.Airline), f.DepartureAirport, f.ArrivalAirport, dateOf(f.Departure), f.Departure.Format("15:04"), dateOf(f.Arrival), f.Arrival.Format("15:04"), amount, currency, f.FetchedAt)
+    fetched_at = EXCLUDED.fetched_at`, string(f.Airline), f.DepartureAirport, f.ArrivalAirport, dateOf(f.Departure), f.Departure.Format("15:04"), dateOf(f.Arrival), f.Arrival.Format("15:04"), f.EstimatedArrival, amount, currency, f.FetchedAt)
 }
 
 // UpsertFlights stores flights without removing other flights or recording refreshes.
@@ -104,7 +107,7 @@ func (s *Store) UpsertFlights(ctx context.Context, flights []Flight) error {
 // arrival are local wall-clock times represented in UTC, not absolute instants.
 func (s *Store) Flights(ctx context.Context) ([]Flight, error) {
 	rows, err := s.pool.Query(ctx, `SELECT airline, departure_airport, arrival_airport,
-    departure_date + departure_time, arrival_date + arrival_time,
+    departure_date + departure_time, arrival_date + arrival_time, estimated_arrival,
     price_amount, price_currency, fetched_at
 FROM flights
 ORDER BY departure_airport, arrival_airport, departure_date, departure_time, airline`)
@@ -118,7 +121,7 @@ ORDER BY departure_airport, arrival_airport, departure_date, departure_time, air
 		var f Flight
 		var amount *int64
 		var currency *string
-		if err := rows.Scan(&f.Airline, &f.DepartureAirport, &f.ArrivalAirport, &f.Departure, &f.Arrival, &amount, &currency, &f.FetchedAt); err != nil {
+		if err := rows.Scan(&f.Airline, &f.DepartureAirport, &f.ArrivalAirport, &f.Departure, &f.Arrival, &f.EstimatedArrival, &amount, &currency, &f.FetchedAt); err != nil {
 			return nil, fmt.Errorf("read flights: %w", err)
 		}
 		if amount != nil && currency != nil {
@@ -157,7 +160,7 @@ func (s *Store) ReplaceRouteMonth(ctx context.Context, a airline.Airline, from, 
 		b := &pgx.Batch{}
 		var dates, times []string
 		for _, f := range flights {
-			queueFlight(b, Flight{Airline: a, DepartureAirport: from, ArrivalAirport: to, Departure: f.Departure, Arrival: f.Arrival, Price: f.Price, FetchedAt: fetchedAt})
+			queueFlight(b, Flight{Airline: a, DepartureAirport: from, ArrivalAirport: to, Departure: f.Departure, Arrival: f.Arrival, Price: f.Price, EstimatedArrival: f.EstimatedArrival, FetchedAt: fetchedAt})
 			dates = append(dates, f.Departure.Format(time.DateOnly))
 			times = append(times, f.Departure.Format("15:04"))
 		}

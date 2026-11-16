@@ -1,7 +1,9 @@
-// Package pricing merges Ryanair's daily cheapest fares, timetable and time-window fares
-// into flights for a route-month without accessing storage. RouteMonth returns whether
-// the timetable was complete; a daily-fares failure or a malformed timetable aborts, while
-// timetable and time-window failures produce partial or unpriced results respectively.
+// Package pricing turns an airline's answers into flights to store, without accessing storage.
+//
+// RouteMonth merges Ryanair's daily cheapest fares, timetable and time-window fares into flights
+// for a route-month. It returns whether the timetable was complete; a daily-fares failure or a
+// malformed timetable aborts, while timetable and time-window failures produce partial or unpriced
+// results respectively. WizzairRange prices Wizz Air's flights step by step (ADR-0008).
 package pricing
 
 import (
@@ -18,6 +20,8 @@ import (
 type Flight struct {
 	Departure, Arrival time.Time
 	Price              *ryanair.Money
+	// EstimatedArrival says Arrival is our estimate, the airline publishing none (GLOSSARY: Estimated arrival).
+	EstimatedArrival bool
 }
 
 // RouteMonth prices flights departing from first through last inclusive on the route

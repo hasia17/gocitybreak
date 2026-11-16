@@ -1,5 +1,6 @@
 import { ryanairLink } from './ryanair-booking';
 import { Airline, Flight, Offer } from './search-api';
+import { wizzairLink } from './wizzair-booking';
 
 /** A link to buy one ticket (GLOSSARY: Ticket): a round trip, or a single one-way flight. */
 export interface Ticket {
@@ -15,7 +16,7 @@ export type LinkBuilder = (outbound: Flight, inbound?: Flight) => string;
 /** One link builder per airline. */
 export type LinkBuilders = Record<Airline, LinkBuilder>;
 
-const linkBuilders: LinkBuilders = { ryanair: ryanairLink };
+const linkBuilders: LinkBuilders = { ryanair: ryanairLink, wizzair: wizzairLink };
 
 /**
  * The tickets that buy the offer's flights. A round trip is one round-trip ticket only when both

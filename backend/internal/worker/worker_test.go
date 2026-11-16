@@ -1,9 +1,11 @@
 package worker_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -15,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/hasia17/gocitybreak/backend/internal/airline"
 	"github.com/hasia17/gocitybreak/backend/internal/app"
 	"github.com/hasia17/gocitybreak/backend/internal/database"
 	"github.com/hasia17/gocitybreak/backend/internal/database/databasetest"
@@ -299,12 +302,15 @@ type env struct {
 	url     string
 	pool    *pgxpool.Pool
 	ryanair *fakeRyanair
+	wizzair *fakeWizzair
 	nbp     *fakeNBP
 	worker  *worker.Worker
 	clock   time.Time
+	logs    *bytes.Buffer
 }
 
-// start points a worker at a fresh migrated database, a fake Ryanair (KRK ⇄ BGY) and a fake NBP.
+// start points a worker at a fresh migrated database, a fake Ryanair (KRK ⇄ BGY), a fake Wizz Air flying nowhere
+// yet and a fake NBP.
 func start(t *testing.T) *env {
 	t.Helper()
 	url := databasetest.Acquire(t)
@@ -326,12 +332,14 @@ func start(t *testing.T) *env {
 	nbpFake.tables["B"] = fakeNBPTable{"2026-11-04", map[string]float64{"MAD": 0.4012}}
 
 	client := fetch.NewClient(fetch.Options{InitialBackoff: time.Millisecond})
-	e := &env{url: url, pool: db.Pool, ryanair: fake, nbp: nbpFake, clock: now}
+	e := &env{url: url, pool: db.Pool, ryanair: fake, wizzair: newFakeWizzair(), nbp: nbpFake, clock: now, logs: &bytes.Buffer{}}
 	e.worker = worker.New(worker.Config{
 		Pool:    db.Pool,
 		Ryanair: fake,
+		Wizzair: e.wizzair,
 		NBP:     nbp.NewClient(nbpURL, client),
 		Now:     func() time.Time { return e.clock },
+		Logger:  slog.New(slog.NewTextHandler(e.logs, nil)),
 	})
 	return e
 }
@@ -353,8 +361,14 @@ func storedRates(t *testing.T, pool *pgxpool.Pool) []string {
 	return queryStrings(t, pool, `SELECT currency || ' ' || rate_date || ' ' || rate FROM exchange_rates ORDER BY currency`)
 }
 
-// storedFlights describes every stored flight in one line, sorted.
+// storedFlights describes every stored Ryanair flight in one line, sorted.
 func storedFlights(t *testing.T, pool *pgxpool.Pool) []string {
+	t.Helper()
+	return storedFlightsOf(t, pool, airline.Ryanair)
+}
+
+// storedFlightsOf describes every stored flight of a in one line, sorted; an estimated arrival starts with "~".
+func storedFlightsOf(t *testing.T, pool *pgxpool.Pool, a airline.Airline) []string {
 	t.Helper()
 	flights, err := pricestore.New(pool).Flights(t.Context())
 	if err != nil {
@@ -362,12 +376,19 @@ func storedFlights(t *testing.T, pool *pgxpool.Pool) []string {
 	}
 	var got []string
 	for _, f := range flights {
+		if f.Airline != a {
+			continue
+		}
 		price := "no price"
 		if f.Price != nil {
 			price = fmt.Sprintf("%d %s", f.Price.Amount, f.Price.Currency)
 		}
-		got = append(got, fmt.Sprintf("%s→%s %s → %s %s @%s", f.DepartureAirport, f.ArrivalAirport,
-			f.Departure.Format("2006-01-02 15:04"), f.Arrival.Format("2006-01-02 15:04"), price,
+		estimated := ""
+		if f.EstimatedArrival {
+			estimated = "~"
+		}
+		got = append(got, fmt.Sprintf("%s→%s %s → %s%s %s @%s", f.DepartureAirport, f.ArrivalAirport,
+			f.Departure.Format("2006-01-02 15:04"), estimated, f.Arrival.Format("2006-01-02 15:04"), price,
 			f.FetchedAt.UTC().Format("2006-01-02T15:04")))
 	}
 	slices.Sort(got)

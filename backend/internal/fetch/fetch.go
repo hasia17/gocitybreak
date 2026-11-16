@@ -1,7 +1,9 @@
-// Package fetch gets JSON over HTTP politely: it rate-limits requests and retries failures with backoff.
+// Package fetch makes HTTP requests politely: it rate-limits requests and retries failures with backoff.
 package fetch
 
 import (
+	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -66,55 +68,95 @@ func NewClient(opts Options) *Client {
 
 // StatusError is a response with an unexpected HTTP status.
 type StatusError struct {
-	URL  string
-	Code int
+	Method string
+	URL    string
+	Code   int
 }
 
 func (e *StatusError) Error() string {
-	return fmt.Sprintf("GET %s: HTTP %d", e.URL, e.Code)
+	return fmt.Sprintf("%s %s: HTTP %d", cmp.Or(e.Method, http.MethodGet), e.URL, e.Code)
 }
 
-// GetJSON fetches url and decodes its JSON body into out. Network errors, HTTP 429 and 5xx responses are
-// retried with exponential backoff; other non-200 responses fail at once with a *StatusError.
+// Request is an HTTP request to make with Do.
+type Request struct {
+	// Method is the HTTP method (default GET).
+	Method string
+	URL    string
+	// Header is sent with the request; Accept defaults to application/json.
+	Header http.Header
+	// Body, when set, is sent as JSON.
+	Body []byte
+}
+
+// GetJSON fetches url and decodes its JSON body into out. Failures are retried as by Do.
 func (c *Client) GetJSON(ctx context.Context, url string, out any) error {
+	body, err := c.Do(ctx, Request{URL: url})
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(body, out); err != nil {
+		return fmt.Errorf("GET %s: decode JSON: %w", url, err)
+	}
+	return nil
+}
+
+// Do makes the request and returns the body of its 200 response. Network errors, HTTP 429 and 5xx responses
+// are retried with exponential backoff, sending the same headers and body; other non-200 responses fail at once
+// with a *StatusError.
+func (c *Client) Do(ctx context.Context, r Request) ([]byte, error) {
 	backoff := c.initialBackoff
 	for attempt := 1; ; attempt++ {
-		err := c.getOnce(ctx, url, out)
+		body, err := c.doOnce(ctx, r)
 		if err == nil || !retryable(err) || attempt == c.maxAttempts || ctx.Err() != nil {
-			return err
+			return body, err
 		}
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return nil, ctx.Err()
 		case <-time.After(backoff):
 		}
 		backoff *= 2
 	}
 }
 
-func (c *Client) getOnce(ctx context.Context, url string, out any) error {
+func (c *Client) doOnce(ctx context.Context, r Request) ([]byte, error) {
 	if err := c.limiter.Wait(ctx); err != nil {
-		return err
+		return nil, err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	method := cmp.Or(r.Method, http.MethodGet)
+	var body io.Reader
+	if r.Body != nil {
+		body = bytes.NewReader(r.Body)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, r.URL, body)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	req.Header.Set("Accept", "application/json")
+	req.Header = r.Header.Clone()
+	if req.Header == nil {
+		req.Header = http.Header{}
+	}
+	if req.Header.Get("Accept") == "" {
+		req.Header.Set("Accept", "application/json")
+	}
+	if r.Body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	req.Header.Set("User-Agent", c.userAgent)
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		_, _ = io.Copy(io.Discard, resp.Body)
-		return &StatusError{URL: url, Code: resp.StatusCode}
+		return nil, &StatusError{Method: method, URL: r.URL, Code: resp.StatusCode}
 	}
-	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
-		return fmt.Errorf("GET %s: decode JSON: %w", url, err)
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("%s %s: read body: %w", method, r.URL, err)
 	}
-	return nil
+	return b, nil
 }
 
 func retryable(err error) bool {

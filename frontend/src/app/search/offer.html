@@ -10,6 +10,9 @@
               >,
               <span class="times"
                 >{{ flight.departureTime }} → {{ flight.arrivalTime }}
+                @if (flight.estimatedArrival; as why) {
+                  <app-info-tip [label]="t('tips.estimatedArrival.label')" [text]="why" />
+                }
                 @if (flight.daysLater; as days) {
                   <abbr [title]="t('results.arrives', { date: flight.arrivalDate })"
                     >+{{ days }}</abbr
