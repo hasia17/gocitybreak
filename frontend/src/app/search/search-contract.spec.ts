@@ -10,6 +10,8 @@ import oneWayRequest from '../../../../contract/one-way.request.json';
 import oneWayResponse from '../../../../contract/one-way.response.json';
 import foreignCurrencyRequest from '../../../../contract/foreign-currency.request.json';
 import foreignCurrencyResponse from '../../../../contract/foreign-currency.response.json';
+import mixedAirlinesRequest from '../../../../contract/mixed-airlines.request.json';
+import mixedAirlinesResponse from '../../../../contract/mixed-airlines.response.json';
 import queryErrorResponse from '../../../../contract/query-error.response.txt?raw';
 import { Search } from './search';
 
@@ -100,6 +102,24 @@ describe('shared search HTTP contract', () => {
     const offer = root.querySelector('[data-testid="offer"]')!.textContent!;
     expect(offer).toContain('PLN 135');
     expect(offer).toContain('€19.99');
+  });
+
+  it('renders the shared offer mixing airlines, with its estimated arrival', async () => {
+    const { fixture, root } = await search('roundTrip');
+    const req = http.expectOne({ method: 'POST', url: '/api/search' });
+    expect(req.request.body).toEqual(mixedAirlinesRequest);
+    req.flush(mixedAirlinesResponse);
+    await fixture.whenStable();
+    const flights = Array.from(root.querySelectorAll('[data-testid="offer"] .flight')).map((f) =>
+      f.textContent!.replace(/\s+/g, ' '),
+    );
+    expect(flights[0]).toContain('18:00 → 19:55');
+    expect(flights[0]).toContain('Ryanair');
+    expect(flights[1]).toContain('21:00 → ~22:45');
+    expect(flights[1]).toContain('Wizz Air');
+    expect(
+      root.querySelector('[data-testid="offer"]')!.textContent!.replace(/\s+/g, ' '),
+    ).toContain('PLN 95');
   });
 
   it('handles the shared plain-text query error', async () => {

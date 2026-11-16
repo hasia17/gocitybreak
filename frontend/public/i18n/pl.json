@@ -183,7 +183,8 @@
     }
   },
   "airline": {
-    "ryanair": "Ryanair"
+    "ryanair": "Ryanair",
+    "wizzair": "Wizz Air"
   },
   "offer": {
     "outbound": "Wylot",
@@ -271,6 +272,10 @@
     },
     "priceAge": {
       "text": "To zapisana cena, która mogła się zmienić. Aktualną cenę sprawdzisz na stronie Ryanair."
+    },
+    "estimatedArrival": {
+      "label": "O szacowanej godzinie przylotu",
+      "text": "{{airline}} nie podaje planowej godziny przylotu tego lotu. Oszacowaliśmy ją na podstawie odległości, więc może się różnić o kilka minut."
     },
     "separateTickets": {
       "text": "Samodzielna przesiadka odbywa się na własne ryzyko. Nikt nie gwarantuje kolejnego lotu, jeśli pierwszy się spóźni."

@@ -169,7 +169,8 @@
     }
   },
   "airline": {
-    "ryanair": "Ryanair"
+    "ryanair": "Ryanair",
+    "wizzair": "Wizz Air"
   },
   "offer": {
     "outbound": "Outbound",
@@ -251,6 +252,10 @@
     },
     "priceAge": {
       "text": "This is a stored price and may have changed. Check the current price on Ryanair’s site."
+    },
+    "estimatedArrival": {
+      "label": "About the estimated arrival",
+      "text": "{{airline}} doesn’t publish the scheduled arrival time for this flight. We estimated it from the distance, so it may be off by a few minutes."
     },
     "separateTickets": {
       "text": "A self-transfer is at your own risk. Nobody guarantees the next flight if the first is late."

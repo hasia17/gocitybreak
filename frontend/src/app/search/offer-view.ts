@@ -30,12 +30,18 @@ export function offerView(offer: Offer, now: number, texts: Texts, catalogue?: C
       stops: leg.isDirect ? undefined : plural(texts, 'offer.stops', leg.flights.length - 1),
       flights: leg.flights.map((flight) => {
         const dateYear = Number(flight.departure.date.slice(0, 4));
+        const airline = texts.t(`airline.${flight.airline}`);
         return {
-          airline: texts.t(`airline.${flight.airline}`),
+          airline,
           departureDate: flight.departure.date,
           day: shortDay(texts, flight.departure.date, dateYear !== year),
           departureTime: flight.departure.time,
-          arrivalTime: flight.arrival.time,
+          /** An estimated arrival reads "~10:40" (GLOSSARY: Estimated arrival). */
+          arrivalTime: (flight.estimatedArrival ? '~' : '') + flight.arrival.time,
+          /** Why the arrival is estimated, for its ⓘ; undefined when the airline published it. */
+          estimatedArrival: flight.estimatedArrival
+            ? texts.t('tips.estimatedArrival.text', { airline })
+            : undefined,
           arrivalDate: flight.arrival.date,
           daysLater: daysBetween(flight.departure.date, flight.arrival.date),
           from: airportName(flight.departureAirport),

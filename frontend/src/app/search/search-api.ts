@@ -95,7 +95,7 @@ export interface Leg {
 }
 
 /** The airline operating a flight (GLOSSARY: Airline); its name is under `airline.<id>` in the i18n files. */
-export type Airline = 'ryanair';
+export type Airline = 'ryanair' | 'wizzair';
 
 export interface Flight {
   airline: Airline;
@@ -103,6 +103,8 @@ export interface Flight {
   arrivalAirport: string;
   departure: LocalTime;
   arrival: LocalTime;
+  /** True when the arrival is our estimate, the airline publishing none (GLOSSARY: Estimated arrival). */
+  estimatedArrival?: boolean;
   originalPrice: Money;
   fetchedAt: string;
 }
