@@ -153,8 +153,8 @@
       "many": "Kupowane jako {{count}} osobnych biletów w jedną stronę",
       "other": "Kupowane jako {{count}} osobnego biletu w jedną stronę"
     },
-    "book": "Rezerwuj ↗",
-    "bookRoute": "{{route}} w {{airline}} ↗",
+    "book": "Rezerwuj · {{airline}} ↗",
+    "bookRoute": "Rezerwuj {{route}} · {{airline}} ↗",
     "grouped": "{{offers}} w {{groups}}, od {{price}}",
     "destinationGroups": {
       "one": "{{count}} miejscu",

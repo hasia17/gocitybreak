@@ -1,9 +1,21 @@
 import { Flight } from './search-api';
 
+const selectFlight = 'https://www.wizzair.com/en-gb/booking/select-flight';
+
 /**
- * Wizz Air's site, for now: a link straight to its flight selection for one adult comes with Wizz
- * Air's booking links (#75), once its URL format is taken from wizzair.com.
+ * Wizz Air's flight selection for one adult: one way, or a round trip when `inbound` is given.
+ * The path is `<from>/<to>/<out date>/<return date or null>/<adults>/<children>/<infants>/null`.
  */
-export function wizzairLink(_outbound: Flight, _inbound?: Flight): string {
-  return 'https://www.wizzair.com/en-gb';
+export function wizzairLink(outbound: Flight, inbound?: Flight): string {
+  return [
+    selectFlight,
+    outbound.departureAirport,
+    outbound.arrivalAirport,
+    outbound.departure.date,
+    inbound?.departure.date ?? 'null',
+    '1',
+    '0',
+    '0',
+    'null',
+  ].join('/');
 }
