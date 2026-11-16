@@ -1,0 +1,115 @@
+{
+  "outboundFlights": [
+    {
+      "departureStation": "WAW",
+      "arrivalStation": "LTN",
+      "departureDate": "2026-12-10T06:00:00",
+      "price": {
+        "amount": 0.0,
+        "currencyCode": "PLN",
+        "exchangedAmount": null,
+        "exchangedCurrencyCode": null
+      },
+      "originalPrice": {
+        "amount": 0.0,
+        "currencyCode": "PLN",
+        "exchangedAmount": null,
+        "exchangedCurrencyCode": null
+      },
+      "priceType": "checkPrice",
+      "departureDates": [
+        {
+          "date": "2026-12-10T06:00:00",
+          "isCheapestOfTheDay": false
+        },
+        {
+          "date": "2026-12-10T11:40:00",
+          "isCheapestOfTheDay": false
+        }
+      ],
+      "hasMacFlight": false,
+      "appliedCouponCode": null
+    },
+    {
+      "departureStation": "WAW",
+      "arrivalStation": "LTN",
+      "departureDate": "2026-12-11T06:00:00",
+      "price": null,
+      "originalPrice": null,
+      "priceType": "noData",
+      "departureDates": [
+        {
+          "date": "2026-12-11T06:00:00",
+          "isCheapestOfTheDay": false
+        }
+      ],
+      "hasMacFlight": false,
+      "appliedCouponCode": null
+    },
+    {
+      "departureStation": "WAW",
+      "arrivalStation": "LTN",
+      "departureDate": "2026-12-12T11:40:00",
+      "price": {
+        "amount": 0.0,
+        "currencyCode": "PLN",
+        "exchangedAmount": null,
+        "exchangedCurrencyCode": null
+      },
+      "originalPrice": {
+        "amount": 0.0,
+        "currencyCode": "PLN",
+        "exchangedAmount": null,
+        "exchangedCurrencyCode": null
+      },
+      "priceType": "price",
+      "departureDates": [
+        {
+          "date": "2026-12-12T06:00:00",
+          "isCheapestOfTheDay": false
+        },
+        {
+          "date": "2026-12-12T11:40:00",
+          "isCheapestOfTheDay": true
+        }
+      ],
+      "hasMacFlight": false,
+      "appliedCouponCode": null
+    },
+    {
+      "departureStation": "WAW",
+      "arrivalStation": "LTN",
+      "departureDate": "2026-12-13T06:00:00",
+      "price": {
+        "amount": 179.0,
+        "currencyCode": "PLN",
+        "exchangedAmount": null,
+        "exchangedCurrencyCode": null
+      },
+      "originalPrice": {
+        "amount": 179.0,
+        "currencyCode": "PLN",
+        "exchangedAmount": null,
+        "exchangedCurrencyCode": null
+      },
+      "priceType": "price",
+      "departureDates": [
+        {
+          "date": "2026-12-13T06:00:00",
+          "isCheapestOfTheDay": true
+        },
+        {
+          "date": "2026-12-13T11:40:00",
+          "isCheapestOfTheDay": false
+        },
+        {
+          "date": "2026-12-13T16:35:00",
+          "isCheapestOfTheDay": false
+        }
+      ],
+      "hasMacFlight": false,
+      "appliedCouponCode": null
+    }
+  ],
+  "returnFlights": []
+}
