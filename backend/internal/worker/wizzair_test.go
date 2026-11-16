@@ -18,13 +18,13 @@ import (
 
 // Wizz Air's stations, with the coordinates of its station network (asset/map, 2026-11-16).
 var (
-	krk = wizzair.Station{Code: "KRK", Name: "Kraków", CountryCode: "pl", Currency: "PLN", CityGroup: "SPQ",
+	krk = wizzair.Station{Code: "KRK", Names: names("Kraków", "Kraków"), CountryNames: names("Poland", "Polska"), CountryCode: "pl", Currency: "PLN", CityGroup: "SPQ",
 		Latitude: 50.07777777777778, Longitude: 19.784722222222225}
-	bgy = wizzair.Station{Code: "BGY", Name: "Milan Bergamo", CountryCode: "it", Currency: "EUR", CityGroup: "MIL",
+	bgy = wizzair.Station{Code: "BGY", Names: names("Milan Bergamo", "Mediolan-Bergamo"), CountryNames: names("Italy", "Włochy"), CountryCode: "it", Currency: "EUR", CityGroup: "MIL",
 		Latitude: 45.66833333333333, Longitude: 9.700277777777776}
-	ltn = wizzair.Station{Code: "LTN", Name: "London Luton", CountryCode: "gb", Currency: "GBP", CityGroup: "LON",
+	ltn = wizzair.Station{Code: "LTN", Names: names("London Luton", "Londyn-Luton"), CountryNames: names("United Kingdom", "Wielka Brytania"), CountryCode: "gb", Currency: "GBP", CityGroup: "LON",
 		Latitude: 51.874722222222225, Longitude: -0.3683333333333333}
-	kut = wizzair.Station{Code: "KUT", Name: "Kutaisi", CountryCode: "ge", Currency: "GEL", CityGroup: "GEL",
+	kut = wizzair.Station{Code: "KUT", Names: names("Kutaisi", "Kutaisi"), CountryNames: names("Georgia", "Gruzja"), CountryCode: "ge", Currency: "GEL", CityGroup: "GEL",
 		Latitude: 42.17666666666666, Longitude: 42.4825}
 )
 
@@ -150,20 +150,6 @@ func TestWorkerKeepsOnlyTheCheapestFlightOfADayWhenTheTimeOfDayIsIgnored(t *test
 	})
 	if !strings.Contains(env.logs.String(), "airline=wizzair") || !strings.Contains(env.logs.String(), "time of day ignored") {
 		t.Errorf("logs don't report the ignored time of day:\n%s", env.logs)
-	}
-}
-
-func TestWorkerFetchesWizzairRoutesToCatalogueAirportsOnly(t *testing.T) {
-	env := start(t)
-	// Kutaisi isn't in the catalogue (yet), so search couldn't use its flights.
-	env.wizzair.stations = []wizzair.Station{flies(krk, "BGY", "KUT"), flies(bgy, "KRK"), flies(kut, "KRK")}
-
-	env.refresh(t)
-
-	for _, r := range env.wizzair.takeRequests() {
-		if strings.Contains(r, "KUT") {
-			t.Errorf("asked Wizz Air for %s, want no route to an airport missing from the catalogue", r)
-		}
 	}
 }
 

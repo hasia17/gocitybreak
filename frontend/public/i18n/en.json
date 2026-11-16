@@ -145,8 +145,8 @@
       "one": "Booked as {{count}} separate one-way ticket",
       "other": "Booked as {{count}} separate one-way tickets"
     },
-    "book": "Book ↗",
-    "bookRoute": "{{route}} on {{airline}} ↗",
+    "book": "Book · {{airline}} ↗",
+    "bookRoute": "Book {{route}} · {{airline}} ↗",
     "grouped": "{{offers}} in {{groups}}, from {{price}}",
     "destinationGroups": {
       "one": "{{count}} place",
