@@ -28,8 +28,9 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # The price worker (ADR-0002): fetches Ryanair prices and NBP rates in the background.
-  # Near months are refetched every 12 h, far ones weekly (worker.DefaultFreshness); search works on whatever is stored.
+  # The price worker (ADR-0002): fetches Ryanair and Wizz Air prices and NBP rates in the background, each airline
+  # at its own rate. Near months are refetched every 12 h, far ones weekly (worker.DefaultFreshness); search works on
+  # whatever is stored. WIZZAIR_URL and WIZZAIR_API_VERSION left empty take the worker's defaults.
   worker:
     build:
       context: ./backend
@@ -39,6 +40,9 @@ services:
     environment:
       DATABASE_URL: postgres://gocitybreak:${POSTGRES_PASSWORD:-gocitybreak}@postgres:5432/gocitybreak?sslmode=disable
       RYANAIR_REQUESTS_PER_SECOND: ${RYANAIR_REQUESTS_PER_SECOND:-1}
+      WIZZAIR_REQUESTS_PER_SECOND: ${WIZZAIR_REQUESTS_PER_SECOND:-1}
+      WIZZAIR_URL: ${WIZZAIR_URL:-}
+      WIZZAIR_API_VERSION: ${WIZZAIR_API_VERSION:-}
       PRICE_REFRESH_PAUSE: ${PRICE_REFRESH_PAUSE:-10m}
     depends_on:
       postgres:
