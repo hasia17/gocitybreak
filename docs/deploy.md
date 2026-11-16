@@ -7,6 +7,7 @@ The app runs on one VPS (currently a Mikrus 2.1 trial, server `eve369`; see #14)
 Every push to `main` runs `.github/workflows/ci.yml`:
 
 1. The backend and frontend tests run. If either fails, nothing is published or deployed.
+   - `changes` compares the push with the previous tip of `main`. The next two steps run only when something under `backend/`, `frontend/`, `deploy/` or `.github/workflows/` changed; a push that changes only docs deploys nothing.
 2. `publish` builds the `linux/amd64` images and pushes them to GHCR as `ghcr.io/hasia17/gocitybreak-{backend,frontend}:<commit SHA>`.
 3. `deploy` connects to the server over SSH, uploads `deploy/compose.yml` to `/opt/gocitybreak/compose.yml`, sets `VERSION=<commit SHA>` in `/opt/gocitybreak/.env`, then runs `docker compose pull` and `docker compose up -d`. It waits until `/api/status` reports the new version. If that never happens, the job fails and prints the backend logs.
 
@@ -48,6 +49,6 @@ curl -s http://localhost:20369/api/status   # shows the version that is running
 
 **From GitHub**, if the image is gone from the server: open the CI run of the good commit under Actions, choose "Re-run jobs", and re-run only "Deploy to VPS". That job deploys its own commit's images from GHCR.
 
-The next push to `main` deploys the new commit again.
+The next push to `main` that changes deployed files deploys the new commit again.
 
 A rollback doesn't undo database migrations. A migration that the older version can't handle needs a fix forward instead.
