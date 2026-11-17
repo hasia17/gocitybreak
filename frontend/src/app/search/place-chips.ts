@@ -128,7 +128,14 @@ import { cataloguePlaces, PlaceField, PlaceSuggestion, suggestPlaces } from './p
       />
     </div>
     @if (error()) {
-      <span class="field-error" [id]="id + '-error'" role="alert">{{ error() }}</span>
+      <span
+        class="field-error"
+        animate.enter="field-error-enter"
+        animate.leave="field-error-leave"
+        [id]="id + '-error'"
+        role="alert"
+        >{{ error() }}</span
+      >
     }
     @if (open()) {
       <div role="listbox" [id]="id + '-list'" [attr.aria-label]="label()" class="suggestions">

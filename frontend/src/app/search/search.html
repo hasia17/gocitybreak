@@ -83,7 +83,14 @@
             [attr.aria-describedby]="errorId('from')"
           />
           @if (validationMessage('from'); as message) {
-            <span class="field-error" [id]="errorId('from')" role="alert">{{ message }}</span>
+            <span
+              class="field-error"
+              animate.enter="field-error-enter"
+              animate.leave="field-error-leave"
+              [id]="errorId('from')"
+              role="alert"
+              >{{ message }}</span
+            >
           }
         </label>
         @if (applies('to')) {
@@ -96,7 +103,14 @@
               [attr.aria-describedby]="errorId('to')"
             />
             @if (validationMessage('to'); as message) {
-              <span class="field-error" [id]="errorId('to')" role="alert">{{ message }}</span>
+              <span
+                class="field-error"
+                animate.enter="field-error-enter"
+                animate.leave="field-error-leave"
+                [id]="errorId('to')"
+                role="alert"
+                >{{ message }}</span
+              >
             }
           </label>
         }
@@ -131,7 +145,14 @@
             </span>
             @for (path of ['stayLength.min', 'stayLength.max']; track path) {
               @if (validationMessage(path); as message) {
-                <span class="field-error" [id]="errorId(path)" role="alert">{{ message }}</span>
+                <span
+                  class="field-error"
+                  animate.enter="field-error-enter"
+                  animate.leave="field-error-leave"
+                  [id]="errorId(path)"
+                  role="alert"
+                  >{{ message }}</span
+                >
               }
             }
           </div>
@@ -187,9 +208,14 @@
                   [attr.aria-describedby]="errorId('leave.workStart')"
                 />
                 @if (validationMessage('leave.workStart'); as message) {
-                  <span class="field-error" [id]="errorId('leave.workStart')" role="alert">{{
-                    message
-                  }}</span>
+                  <span
+                    class="field-error"
+                    animate.enter="field-error-enter"
+                    animate.leave="field-error-leave"
+                    [id]="errorId('leave.workStart')"
+                    role="alert"
+                    >{{ message }}</span
+                  >
                 }
               </label>
               <app-info-tip [label]="t('tips.workStart.label')" [text]="t('tips.workHours.text')" />
@@ -204,9 +230,14 @@
                   [attr.aria-describedby]="errorId('leave.workEnd')"
                 />
                 @if (validationMessage('leave.workEnd'); as message) {
-                  <span class="field-error" [id]="errorId('leave.workEnd')" role="alert">{{
-                    message
-                  }}</span>
+                  <span
+                    class="field-error"
+                    animate.enter="field-error-enter"
+                    animate.leave="field-error-leave"
+                    [id]="errorId('leave.workEnd')"
+                    role="alert"
+                    >{{ message }}</span
+                  >
                 }
               </label>
               <app-info-tip [label]="t('tips.workEnd.label')" [text]="t('tips.workHours.text')" />
@@ -223,9 +254,14 @@
                   [attr.aria-describedby]="errorId('leave.maxLeaveDays')"
                 />
                 @if (validationMessage('leave.maxLeaveDays'); as message) {
-                  <span class="field-error" [id]="errorId('leave.maxLeaveDays')" role="alert">{{
-                    message
-                  }}</span>
+                  <span
+                    class="field-error"
+                    animate.enter="field-error-enter"
+                    animate.leave="field-error-leave"
+                    [id]="errorId('leave.maxLeaveDays')"
+                    role="alert"
+                    >{{ message }}</span
+                  >
                 }
               </label>
               <app-info-tip
@@ -292,6 +328,8 @@
                   @if (validationMessage('filters.' + moment.name); as message) {
                     <span
                       class="field-error"
+                      animate.enter="field-error-enter"
+                      animate.leave="field-error-leave"
                       [id]="errorId('filters.' + moment.name)"
                       role="alert"
                       >{{ message }}</span
@@ -334,6 +372,8 @@
               @if (validationMessage('filters.outboundDepartureWeekdays'); as message) {
                 <span
                   class="field-error"
+                  animate.enter="field-error-enter"
+                  animate.leave="field-error-leave"
                   [id]="errorId('filters.outboundDepartureWeekdays')"
                   role="alert"
                   >{{ message }}</span
@@ -371,6 +411,8 @@
               @if (validationMessage('filters.inboundDepartureWeekdays'); as message) {
                 <span
                   class="field-error"
+                  animate.enter="field-error-enter"
+                  animate.leave="field-error-leave"
                   [id]="errorId('filters.inboundDepartureWeekdays')"
                   role="alert"
                   >{{ message }}</span

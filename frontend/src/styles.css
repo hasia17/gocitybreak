@@ -32,12 +32,21 @@
   --subtle: color-mix(in srgb, var(--ink) 6%, var(--card));
   --faint: color-mix(in srgb, var(--muted) 65%, var(--card));
   color-scheme: light dark;
+
+  /* Motion tokens (spec #79): every transition takes its timing from these. */
+  --motion-short: 120ms; /* suggestions, validation messages */
+  --motion-medium: 200ms; /* sections, skeleton to results */
+  --motion-long: 280ms; /* form to summary bar and back */
+  --motion-ease-enter: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  /* Lets height animate to and from auto; browsers without it change size instantly. */
+  interpolate-size: allow-keywords;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-  /* One content width for the whole search page: form, panels and results. */
-  --content-width: 68rem;
+    /* One content width for the whole search page: form, panels and results. */
+    --content-width: 68rem;
     --bg: #12161f;
     --card: #1b212d;
     --ink: #eeeae2;
@@ -48,6 +57,39 @@
     --blue: #8ea8f0;
     --on-blue: #12161f;
     --ok: #4ade80;
+  }
+}
+
+/* The one reduced-motion rule: zeroing the tokens makes every transition instant. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-short: 0ms;
+    --motion-medium: 0ms;
+    --motion-long: 0ms;
+  }
+}
+
+/* Validation messages: fade in and open their space, and leave the same way, so the form never jumps. */
+.field-error-enter {
+  overflow: hidden;
+  animation: field-error-in var(--motion-short) var(--motion-ease-enter);
+}
+.field-error-leave {
+  overflow: hidden;
+  animation: field-error-out var(--motion-short) var(--motion-ease-exit) forwards;
+}
+@keyframes field-error-in {
+  from {
+    opacity: 0;
+    height: 0;
+    margin-top: 0;
+  }
+}
+@keyframes field-error-out {
+  to {
+    opacity: 0;
+    height: 0;
+    margin-top: 0;
   }
 }
 
