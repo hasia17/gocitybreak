@@ -1,14 +1,6 @@
 import { vi } from 'vitest';
-import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { TestBed } from '@angular/core/testing';
 import roundTripResponse from '../../../../contract/round-trip.response.json';
-import { provideTestI18n } from '../i18n/testing';
-import { fillPlace, flushCatalogue } from './place-testing';
-import { Search } from './search';
-import { useSearchClock } from './search-testing';
-
-useSearchClock();
+import { fillSearch, renderSearch, useAnimatedSearch } from './search-testing';
 
 /**
  * The skeleton hands over to the results (#82, spec #79), with Angular animations switched on.
@@ -16,38 +8,15 @@ useSearchClock();
  * pin the DOM outcome of the handover; the crossfade itself is checked by hand in the browser.
  */
 describe('Search results handover', () => {
-  let http: HttpTestingController;
-  beforeEach(async () => {
-    localStorage.clear();
-    await TestBed.configureTestingModule({
-      imports: [Search],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideTestI18n()],
-      animationsEnabled: true,
-    }).compileComponents();
-    http = TestBed.inject(HttpTestingController);
-  });
-  afterEach(() => {
-    http.match('/api/catalogue');
-    http.verify();
-    localStorage.clear();
-  });
+  const harness = useAnimatedSearch();
 
   async function setup() {
-    const fixture = TestBed.createComponent(Search);
-    flushCatalogue();
-    await fixture.whenStable();
-    const root = fixture.nativeElement as HTMLElement;
-    fillPlace(root, 'From', 'KRK');
-    fillPlace(root, 'To', 'BGY');
-    for (const [name, value] of Object.entries({ from: '2026-12-01', to: '2026-12-10' })) {
-      const input = root.querySelector<HTMLInputElement>(`input[formControlName="${name}"]`)!;
-      input.value = value;
-      input.dispatchEvent(new Event('input'));
-    }
+    const { fixture, root } = await renderSearch();
+    fillSearch(root);
     const submit = root.querySelector<HTMLButtonElement>('button[type="submit"]')!;
     const start = async () => {
       submit.click();
-      const request = http.expectOne('/api/search');
+      const request = harness.http.expectOne('/api/search');
       await fixture.whenStable();
       return request;
     };

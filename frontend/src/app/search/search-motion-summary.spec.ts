@@ -1,31 +1,8 @@
-import { useSearchClock } from './search-testing';
-import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { TestBed } from '@angular/core/testing';
-import { provideTestI18n } from '../i18n/testing';
-import { flushCatalogue } from './place-testing';
-import { Search } from './search';
-
-useSearchClock();
+import { renderSearch, useAnimatedSearch } from './search-testing';
 
 /** The form folding into the summary bar and back, with Angular animations switched on (#81, spec #79). */
 describe('Search form and summary bar motion', () => {
-  let http: HttpTestingController;
-  beforeEach(async () => {
-    localStorage.clear();
-    await TestBed.configureTestingModule({
-      imports: [Search],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideTestI18n()],
-      animationsEnabled: true,
-    }).compileComponents();
-    http = TestBed.inject(HttpTestingController);
-  });
-  afterEach(() => {
-    http.match('/api/catalogue');
-    http.verify();
-    localStorage.clear();
-    document.body.replaceChildren();
-  });
+  const harness = useAnimatedSearch();
 
   async function search() {
     localStorage.setItem(
@@ -37,13 +14,10 @@ describe('Search form and summary bar motion', () => {
         to: '2026-12-31',
       }),
     );
-    const fixture = TestBed.createComponent(Search);
-    flushCatalogue();
-    await fixture.whenStable();
-    const root = fixture.nativeElement as HTMLElement;
+    const { fixture, root } = await renderSearch();
     document.body.appendChild(root);
     root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
-    http.expectOne('/api/search').flush({ offers: [] });
+    harness.http.expectOne('/api/search').flush({ offers: [] });
     await fixture.whenStable();
     return { fixture, root };
   }
@@ -64,5 +38,14 @@ describe('Search form and summary bar motion', () => {
     expect(root.querySelector('.hero')!.closest('[hidden], [inert]')).toBeNull();
     expect(root.querySelector('.hero h1')).toBe(document.activeElement);
     expect(root.querySelector<HTMLInputElement>('input[type="date"]')!.value).toBe('2026-12-20');
+  });
+
+  it('keeps the summary bar out of Tab while it plays out, and only then', async () => {
+    const { fixture, root } = await search();
+    const slot = root.querySelector('[data-testid="summary"]')!.parentElement!;
+    expect(slot.hasAttribute('inert')).toBe(false);
+    root.querySelector<HTMLButtonElement>('[data-testid="summary"] button')!.click();
+    await fixture.whenStable();
+    expect(slot.hasAttribute('inert')).toBe(true);
   });
 });

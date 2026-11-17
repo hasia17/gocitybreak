@@ -1,33 +1,9 @@
-import { useSearchClock } from './search-testing';
-import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { TestBed } from '@angular/core/testing';
-import { provideTestI18n } from '../i18n/testing';
-import { fillPlace, flushCatalogue, removeAnywhere } from './place-testing';
-import { Search } from './search';
-
-useSearchClock();
+import { fillPlace, removeAnywhere } from './place-testing';
+import { renderSearch, useAnimatedSearch } from './search-testing';
 
 /** Motion of the Leave and Filters panels, kept toggled with [hidden] (#84, spec #79). */
 describe('Search section panel motion', () => {
-  let http: HttpTestingController;
-  beforeEach(async () => {
-    localStorage.clear();
-    await TestBed.configureTestingModule({
-      imports: [Search],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideTestI18n()],
-      animationsEnabled: true,
-    }).compileComponents();
-    http = TestBed.inject(HttpTestingController);
-  });
-  afterEach(() => http.verify());
-
-  async function render() {
-    const fixture = TestBed.createComponent(Search);
-    flushCatalogue();
-    await fixture.whenStable();
-    return { fixture, root: fixture.nativeElement as HTMLElement };
-  }
+  useAnimatedSearch();
 
   function sectionButton(root: HTMLElement, name: string): HTMLButtonElement {
     const found = Array.from(
@@ -45,7 +21,7 @@ describe('Search section panel motion', () => {
     ['Leave', 'leave-panel'],
     ['Filters', 'filters-panel'],
   ])('makes the %s panel inert at once while it closes', async (name, id) => {
-    const { fixture, root } = await render();
+    const { fixture, root } = await renderSearch();
     sectionButton(root, name).click();
     await fixture.whenStable();
     expect(panel(root, id).hidden).toBe(false);
@@ -63,7 +39,7 @@ describe('Search section panel motion', () => {
   });
 
   it('still opens a closed Leave section to show a blocking field inside it', async () => {
-    const { fixture, root } = await render();
+    const { fixture, root } = await renderSearch();
     removeAnywhere(root);
     fillPlace(root, 'From', 'KRK');
     fillPlace(root, 'To', 'BGY');
@@ -81,5 +57,13 @@ describe('Search section panel motion', () => {
     expect(root.querySelector('[role="alert"]')?.textContent).toContain(
       'Enter your work start time.',
     );
+  });
+
+  it('arms the fold transitions only once the user acts, not on page load', async () => {
+    const { fixture, root } = await renderSearch();
+    expect(root.classList.contains('motion-armed')).toBe(false);
+    sectionButton(root, 'Filters').click();
+    await fixture.whenStable();
+    expect(root.classList.contains('motion-armed')).toBe(true);
   });
 });

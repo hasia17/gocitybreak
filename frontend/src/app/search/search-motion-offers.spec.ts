@@ -1,13 +1,5 @@
-import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { TestBed } from '@angular/core/testing';
-import { provideTestI18n } from '../i18n/testing';
-import { fillPlace, flushCatalogue } from './place-testing';
-import { Search } from './search';
 import { Offer } from './search-api';
-import { useSearchClock } from './search-testing';
-
-useSearchClock();
+import { fillSearch, renderSearch, useAnimatedSearch } from './search-testing';
 
 /**
  * Offers stagger in after a new search only (#83, spec #79), with Angular animations switched on.
@@ -15,21 +7,7 @@ useSearchClock();
  * carries `data-stagger` exactly while its offers are to stagger in. The timing is checked by hand.
  */
 describe('Search offers motion', () => {
-  let http: HttpTestingController;
-  beforeEach(async () => {
-    localStorage.clear();
-    await TestBed.configureTestingModule({
-      imports: [Search],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideTestI18n()],
-      animationsEnabled: true,
-    }).compileComponents();
-    http = TestBed.inject(HttpTestingController);
-  });
-  afterEach(() => {
-    http.match('/api/catalogue');
-    http.verify();
-    localStorage.clear();
-  });
+  const harness = useAnimatedSearch();
 
   function offers(count: number, to = 'BGY'): Offer[] {
     const fetchedAt = new Date().toISOString();
@@ -59,20 +37,11 @@ describe('Search offers motion', () => {
   }
 
   async function setup(destination = 'BGY') {
-    const fixture = TestBed.createComponent(Search);
-    flushCatalogue();
-    await fixture.whenStable();
-    const root = fixture.nativeElement as HTMLElement;
-    fillPlace(root, 'From', 'KRK');
-    fillPlace(root, 'To', destination);
-    for (const [name, value] of Object.entries({ from: '2026-12-01', to: '2026-12-10' })) {
-      const input = root.querySelector<HTMLInputElement>(`input[formControlName="${name}"]`)!;
-      input.value = value;
-      input.dispatchEvent(new Event('input'));
-    }
+    const { fixture, root } = await renderSearch();
+    fillSearch(root, destination);
     const search = async (found: Offer[]) => {
       root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
-      http.expectOne('/api/search').flush({ offers: found });
+      harness.http.expectOne('/api/search').flush({ offers: found });
       await fixture.whenStable();
     };
     const staggering = () => root.querySelector('app-offer-list')?.hasAttribute('data-stagger');
@@ -84,7 +53,7 @@ describe('Search offers motion', () => {
     };
     const more = () =>
       Array.from(root.querySelectorAll<HTMLButtonElement>('[data-testid="results"] button')).find(
-        (b) => b.textContent?.trim() === 'Show more',
+        (b) => b.textContent?.trim().startsWith('Show more'),
       );
     return { fixture, root, search, staggering, sortBy, more };
   }
@@ -130,6 +99,30 @@ describe('Search offers motion', () => {
     expect(rows.slice(20).some((row) => entering.includes(row))).toBe(false);
   });
 
+  it('stops marking the list for the stagger once a page is added, until the next search', async () => {
+    const { fixture, search, staggering, more } = await setup();
+    await search(offers(45));
+    expect(staggering()).toBe(true);
+    more()!.click();
+    await fixture.whenStable();
+    expect(staggering()).toBe(false);
+    await search(offers(45));
+    expect(staggering()).toBe(true);
+  });
+
+  it('stops marking destination groups for the stagger once a page is added', async () => {
+    const { fixture, root, search, staggering, more } = await setup('anywhere');
+    const found = Array.from({ length: 25 }, (_, i) =>
+      offers(1, `X${String(i).padStart(2, '0')}`),
+    ).flat();
+    await search(found);
+    expect(root.querySelectorAll('[data-testid="group"]').length).toBeGreaterThan(1);
+    expect(staggering()).toBe(true);
+    more()!.click();
+    await fixture.whenStable();
+    expect(staggering()).toBe(false);
+  });
+
   it('staggers destination groups the same way, but not after a sort change', async () => {
     const { search, staggering, sortBy, root } = await setup('anywhere');
     await search([...offers(3, 'BGY'), ...offers(3, 'KTW')]);
@@ -144,7 +137,7 @@ describe('Search offers motion', () => {
     await search([]);
     expect(root.querySelector('[data-testid="no-offers"]')).not.toBeNull();
     root.querySelector<HTMLButtonElement>('[data-testid="suggestion"]')!.click();
-    http.expectOne('/api/search').flush({ offers: offers(5) });
+    harness.http.expectOne('/api/search').flush({ offers: offers(5) });
     await fixture.whenStable();
     expect(staggering()).toBe(true);
   });
