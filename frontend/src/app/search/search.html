@@ -202,7 +202,12 @@
       </button>
     </div>
     @if (applies('leave')) {
-      <div class="options" id="leave-panel" [hidden]="!leaveOpen()">
+      <div
+        class="options"
+        id="leave-panel"
+        [hidden]="!leaveOpen()"
+        [attr.inert]="leaveOpen() ? null : ''"
+      >
         <ng-container formGroupName="leave">
           <label class="check leave-switch">
             <input type="checkbox" role="switch" formControlName="ignoreLeave" />
@@ -284,7 +289,12 @@
         </ng-container>
       </div>
     }
-    <div class="filters" id="filters-panel" [hidden]="!filtersOpen()">
+    <div
+      class="filters"
+      id="filters-panel"
+      [hidden]="!filtersOpen()"
+      [attr.inert]="filtersOpen() ? null : ''"
+    >
       <div class="filters-body">
         <app-place-chips
           class="field"

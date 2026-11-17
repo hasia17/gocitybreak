@@ -31,6 +31,35 @@
   transform: translateY(-0.5rem);
   transition-timing-function: var(--motion-ease-exit);
 }
+/*
+ * The Leave and Filters panels (#84) fold open and shut like the hero: they stay toggled with
+ * [hidden], display is transitioned discretely, and height animates to and from auto.
+ * They are inert while closed, so a folding panel cannot be reached with Tab.
+ */
+#leave-panel,
+#filters-panel {
+  overflow: hidden;
+  transition:
+    opacity var(--motion-medium) var(--motion-ease-enter),
+    height var(--motion-medium) var(--motion-ease-enter),
+    margin-top var(--motion-medium) var(--motion-ease-enter),
+    display var(--motion-medium) allow-discrete;
+}
+#leave-panel[hidden],
+#filters-panel[hidden] {
+  display: none;
+  height: 0;
+  margin-top: 0;
+  opacity: 0;
+}
+@starting-style {
+  #leave-panel:not([hidden]),
+  #filters-panel:not([hidden]) {
+    height: 0;
+    margin-top: 0;
+    opacity: 0;
+  }
+}
 @starting-style {
   .hero {
     height: 0;
@@ -148,7 +177,7 @@ h1 {
   margin: 0;
   -webkit-appearance: none;
 }
-[hidden]:not(.hero) {
+[hidden]:not(.hero):not(#leave-panel):not(#filters-panel) {
   display: none !important;
 }
 .options {
