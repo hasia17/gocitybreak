@@ -1,8 +1,19 @@
 @if (summary(); as summary) {
-  <app-search-summary [summary]="summary" [changeLabel]="t('search.change')" (change)="change()" />
+  <app-search-summary
+    animate.enter="summary-enter"
+    animate.leave="summary-leave"
+    [summary]="summary"
+    [changeLabel]="t('search.change')"
+    (change)="change()"
+  />
 }
 
-<section class="hero" [class.compact]="offers() !== undefined" [hidden]="collapsed()">
+<section
+  class="hero"
+  [class.compact]="offers() !== undefined"
+  [hidden]="collapsed()"
+  [attr.inert]="collapsed() ? '' : null"
+>
   <h1>{{ t('search.title') }}</h1>
   <p class="lede">{{ t('search.lede') }}</p>
 

@@ -9,6 +9,54 @@
 .hero.compact {
   padding-top: 2rem;
 }
+/*
+ * The form folds into the summary bar and unfolds back with the same movement. It stays in the
+ * DOM, toggled with [hidden], so it keeps its state; display is transitioned discretely so the
+ * fold-away plays before it leaves the layout.
+ */
+.hero {
+  transition:
+    opacity var(--motion-long) var(--motion-ease-enter),
+    height var(--motion-long) var(--motion-ease-enter),
+    padding var(--motion-long) var(--motion-ease-enter),
+    transform var(--motion-long) var(--motion-ease-enter),
+    display var(--motion-long) allow-discrete;
+}
+.hero[hidden] {
+  display: none;
+  overflow: clip;
+  height: 0;
+  padding-block: 0;
+  opacity: 0;
+  transform: translateY(-0.5rem);
+  transition-timing-function: var(--motion-ease-exit);
+}
+@starting-style {
+  .hero {
+    height: 0;
+    padding-block: 0;
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+}
+.summary-enter {
+  animation: summary-in var(--motion-long) var(--motion-ease-enter);
+}
+.summary-leave {
+  animation: summary-out var(--motion-long) var(--motion-ease-exit) forwards;
+}
+@keyframes summary-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+}
+@keyframes summary-out {
+  to {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+}
 h1 {
   margin: 0 0 0.5rem;
   font: 400 clamp(2rem, 5vw, 2.75rem) / 1.15 var(--font-serif);
@@ -100,7 +148,7 @@ h1 {
   margin: 0;
   -webkit-appearance: none;
 }
-[hidden] {
+[hidden]:not(.hero) {
   display: none !important;
 }
 .options {
