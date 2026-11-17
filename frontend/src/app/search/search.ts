@@ -470,6 +470,8 @@ export class Search extends Translated {
    * form's heading, not to a field, so no list of places pops open unasked.
    */
   protected change() {
+    // The leaving summary bar must not be reachable with Tab while it plays out.
+    this.element.nativeElement.querySelector('app-search-summary')?.setAttribute('inert', '');
     this.collapsed.set(false);
     afterNextRender(
       () => {

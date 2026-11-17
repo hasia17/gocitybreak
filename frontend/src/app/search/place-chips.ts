@@ -79,6 +79,8 @@ import { cataloguePlaces, PlaceField, PlaceSuggestion, suggestPlaces } from './p
       @if (listOpen()) {
         <div
           class="chosen-list"
+          animate.enter="dropdown-enter"
+          animate.leave="dropdown-leave"
           role="group"
           [id]="id + '-chosen'"
           [attr.aria-label]="t('places.chosen', { count: chosen().length })"
@@ -138,7 +140,14 @@ import { cataloguePlaces, PlaceField, PlaceSuggestion, suggestPlaces } from './p
       >
     }
     @if (open()) {
-      <div role="listbox" [id]="id + '-list'" [attr.aria-label]="label()" class="suggestions">
+      <div
+        role="listbox"
+        [id]="id + '-list'"
+        [attr.aria-label]="label()"
+        class="suggestions"
+        animate.enter="dropdown-enter"
+        animate.leave="dropdown-leave"
+      >
         @for (place of suggestions(); track place.value; let i = $index) {
           <button
             type="button"
