@@ -1,0 +1,70 @@
+/*
+ * The form folds into the summary bar and unfolds back with the same movement. It stays in the
+ * DOM, toggled with [hidden], so it keeps its state; display is transitioned discretely so the
+ * fold-away plays before it leaves the layout. The Leave and Filters panels (#84) fold the same
+ * way, over height. Folding panels are inert while closed, so Tab cannot reach them.
+ */
+.hero {
+  transition:
+    opacity var(--motion-long) var(--motion-ease-enter),
+    height var(--motion-long) var(--motion-ease-enter),
+    padding var(--motion-long) var(--motion-ease-enter),
+    transform var(--motion-long) var(--motion-ease-enter),
+    display var(--motion-long) allow-discrete;
+}
+.hero[hidden] {
+  display: none;
+  overflow: clip;
+  height: 0;
+  padding-block: 0;
+  opacity: 0;
+  transform: translateY(-0.5rem);
+  transition-timing-function: var(--motion-ease-exit);
+}
+.options,
+.filters {
+  overflow: hidden;
+  transition:
+    opacity var(--motion-medium) var(--motion-ease-enter),
+    height var(--motion-medium) var(--motion-ease-enter),
+    margin-top var(--motion-medium) var(--motion-ease-enter),
+    display var(--motion-medium) allow-discrete;
+}
+.options[hidden],
+.filters[hidden] {
+  display: none;
+  height: 0;
+  margin-top: 0;
+  opacity: 0;
+}
+/*
+ * Unfolding starts from the folded state, but only after the user has acted: on page load the
+ * elements show as they are, a remembered-open panel included.
+ */
+@starting-style {
+  :host(.motion-armed) .hero {
+    height: 0;
+    padding-block: 0;
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+  :host(.motion-armed) .options:not([hidden]),
+  :host(.motion-armed) .filters:not([hidden]) {
+    height: 0;
+    margin-top: 0;
+    opacity: 0;
+  }
+}
+
+/* The slot only carries `inert` for the bar leaving it; it takes no part in the layout. */
+.summary-slot {
+  display: contents;
+}
+.summary-enter {
+  --shift: -0.5rem;
+  animation: shift-in var(--motion-long) var(--motion-ease-enter);
+}
+.summary-leave {
+  --shift: -0.5rem;
+  animation: shift-out var(--motion-long) var(--motion-ease-exit) forwards;
+}

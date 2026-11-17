@@ -3,7 +3,7 @@ import { linkedSignal, Signal } from '@angular/core';
 const pageSize = 20;
 
 /** Entering offers stagger over their first few; later ones enter with the last of those. */
-const staggered = 8;
+const staggerSteps = 8;
 
 /** How many items of a list are shown, 20 at a time; it starts again at one page when `key` changes. */
 export function pagedBy(key: Signal<unknown>) {
@@ -19,5 +19,5 @@ export function pagedBy(key: Signal<unknown>) {
  * that showing more adds enter at once.
  */
 export function enterIndex(index: number): number | null {
-  return index < pageSize ? Math.min(index, staggered - 1) : null;
+  return index < pageSize ? Math.min(index, staggerSteps - 1) : null;
 }

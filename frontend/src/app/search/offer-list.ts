@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, linkedSignal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Texts, money, plural } from '../i18n/texts';
 import { Translated } from '../i18n/translated';
@@ -15,7 +15,7 @@ import { SortOrder } from './search-api';
   // Its offers show a price age that follows the clock.
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [ReactiveFormsModule, OfferItem, DestinationGroupList],
-  host: { '[attr.data-stagger]': 'stagger() ? "" : null' },
+  host: { '[attr.data-stagger]': 'staggering() ? "" : null' },
   styleUrl: './offer-list.css',
   templateUrl: './offer-list.html',
 })
@@ -34,8 +34,18 @@ export class OfferList extends Translated {
   readonly texts = input<Texts | undefined>();
 
   protected readonly page = pagedBy(this.pageKey);
+  /** Whether the list is marked for the stagger: a page added by "show more" ends it. */
+  protected readonly staggering = linkedSignal(() => {
+    this.pageKey();
+    return this.stagger();
+  });
 
   protected readonly enterIndex = enterIndex;
+
+  protected showMore() {
+    this.page.showMore();
+    this.staggering.set(false);
+  }
 
   protected visibleOffers() {
     return this.offers().slice(0, this.page.shown());

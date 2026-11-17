@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, input, linkedSignal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  input,
+  linkedSignal,
+  output,
+} from '@angular/core';
 import { Texts, plural } from '../i18n/texts';
 import { Translated } from '../i18n/translated';
 import { DestinationGroup } from './destination-groups';
@@ -29,6 +36,9 @@ export class DestinationGroupList extends Translated {
   /** Texts of the interface language; undefined until they have loaded. */
   readonly texts = input<Texts | undefined>();
 
+  /** Emits when another page of groups is shown. */
+  readonly pageAdded = output();
+
   protected readonly page = pagedBy(this.pageKey);
   protected readonly visibleGroups = computed(() => this.groups().slice(0, this.page.shown()));
 
@@ -44,6 +54,11 @@ export class DestinationGroupList extends Translated {
   });
 
   protected readonly enterIndex = enterIndex;
+
+  protected showMore() {
+    this.page.showMore();
+    this.pageAdded.emit();
+  }
 
   protected toggle(airport: string) {
     this.open.update((open) => toggled(open, airport));

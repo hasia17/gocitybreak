@@ -32,6 +32,7 @@ import { OfferList } from './offer-list';
 import { NoOffersMessage } from './no-offers-message';
 import { describeNoOffers, SuggestionId } from './no-offers';
 import { ResultsSkeleton } from './results-skeleton';
+import { FieldError } from './field-error';
 import { SearchSummary, summarySearch } from './search-summary';
 import { offerView } from './offer-view';
 import { coversSeveralAirports, destinationGroups } from './destination-groups';
@@ -131,6 +132,7 @@ function rejectedSearchMessage(reason: string): string {
   selector: 'app-search',
   imports: [
     ReactiveFormsModule,
+    FieldError,
     InfoTip,
     PlaceChips,
     OfferList,
@@ -138,8 +140,10 @@ function rejectedSearchMessage(reason: string): string {
     NoOffersMessage,
     ResultsSkeleton,
   ],
+  host: { '[class.motion-armed]': 'motionArmed()' },
   styleUrls: [
     './search.css',
+    './search-motion.css',
     './search-toggles.css',
     './search-filters.css',
     './search-results.css',
@@ -222,6 +226,11 @@ export class Search extends Translated {
   /** Whether the Leave and Filters sections of the form are open; both start collapsed. */
   protected readonly leaveOpen = signal(false);
   protected readonly filtersOpen = signal(false);
+  /**
+   * Whether the user has acted on the page. Elements that unfold out of `[hidden]` animate only
+   * then, so nothing moves on page load, a remembered-open panel included.
+   */
+  protected readonly motionArmed = signal(false);
 
   /** The filters in use: exclusions, direct flights, time ranges and departure days that restrict. */
   private readonly filterCount = computed(() => {
@@ -426,7 +435,18 @@ export class Search extends Translated {
       });
   }
 
+  protected toggleLeave() {
+    this.motionArmed.set(true);
+    this.leaveOpen.update((open) => !open);
+  }
+
+  protected toggleFilters() {
+    this.motionArmed.set(true);
+    this.filtersOpen.update((open) => !open);
+  }
+
   protected submit() {
+    this.motionArmed.set(true);
     this.submitted.set(true);
     // A form left open over local midnight must not submit yesterday's dates.
     for (const date of [this.form.controls.from, this.form.controls.to])
@@ -475,8 +495,6 @@ export class Search extends Translated {
    * form's heading, not to a field, so no list of places pops open unasked.
    */
   protected change() {
-    // The leaving summary bar must not be reachable with Tab while it plays out.
-    this.element.nativeElement.querySelector('app-search-summary')?.setAttribute('inert', '');
     this.collapsed.set(false);
     afterNextRender(
       () => {

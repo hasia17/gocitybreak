@@ -174,11 +174,11 @@
   }
 }
 
-.time-range .field-error {
+.time-range app-field-error {
   grid-column: 1 / -1;
   max-width: none;
 }
-.days .field-error {
+.days app-field-error {
   flex-basis: 100%;
   max-width: none;
 }

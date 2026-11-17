@@ -46,8 +46,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    /* One content width for the whole search page: form, panels and results. */
-    --content-width: 68rem;
+  /* One content width for the whole search page: form, panels and results. */
+  --content-width: 68rem;
     --bg: #12161f;
     --card: #1b212d;
     --ink: #eeeae2;
@@ -69,6 +69,27 @@
     --motion-long: 0ms;
     --motion-stagger: 0ms;
   }
+}
+
+/* Fade plus a short slide by `--shift` (default none); the element sets the distance. */
+@keyframes shift-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--shift, 0));
+  }
+}
+@keyframes shift-out {
+  to {
+    opacity: 0;
+    transform: translateY(var(--shift, 0));
+  }
+}
+
+/* After a new search only (the list is marked then): the first offers and groups enter one after another. */
+app-offer-list[data-stagger] [style*='--enter-index'] {
+  --shift: 0.5rem;
+  animation: shift-in var(--motion-medium) var(--motion-ease-enter) backwards;
+  animation-delay: calc(var(--enter-index) * var(--motion-stagger));
 }
 
 /* Validation messages: fade in and open their space, and leave the same way, so the form never jumps. */
@@ -104,6 +125,10 @@
   inset: 0 0 auto;
   pointer-events: none;
   animation: results-out var(--motion-medium) var(--motion-ease-exit) forwards;
+}
+/* The results region anchors a skeleton that fades out while the results fade in. */
+.results-region {
+  position: relative;
 }
 @keyframes results-in {
   from {

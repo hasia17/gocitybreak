@@ -102,34 +102,15 @@ input::placeholder {
 }
 /* Both drop-downs open from their field with a short fade; closing is quicker (#85, spec #79). */
 .dropdown-enter {
-  animation: dropdown-in var(--motion-short) var(--motion-ease-enter);
+  --shift: -4px;
+  animation: shift-in var(--motion-short) var(--motion-ease-enter);
 }
 .dropdown-leave {
   /* A leaving list must not take clicks while it fades. */
   pointer-events: none;
-  animation: dropdown-out calc(var(--motion-short) * 0.6) var(--motion-ease-exit) forwards;
+  --shift: -4px;
+  animation: shift-out calc(var(--motion-short) * 0.6) var(--motion-ease-exit) forwards;
 }
-@keyframes dropdown-in {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-@keyframes dropdown-out {
-  from {
-    opacity: 1;
-    transform: none;
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-}
-
 .suggestions,
 .chosen-list {
   position: absolute;
@@ -221,15 +202,6 @@ input::placeholder {
 .no-matches {
   display: block;
   padding: 0.75rem;
-}
-
-.field-error {
-  display: block;
-  max-width: 18rem;
-  margin-top: 0.25rem;
-  color: var(--danger);
-  font-size: 0.75rem;
-  line-height: 1.4;
 }
 
 /* An active field turns grey; chips switch to the surface colour so they stay visible on it. */
