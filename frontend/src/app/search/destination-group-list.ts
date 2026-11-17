@@ -4,7 +4,7 @@ import { Translated } from '../i18n/translated';
 import { DestinationGroup } from './destination-groups';
 import { OfferItem } from './offer';
 import { OfferView } from './offer-view';
-import { pagedBy } from './paging';
+import { enterIndex, pagedBy } from './paging';
 import { PriceStamp } from './price-stamp';
 
 /** Offers an open group shows before "Show all". */
@@ -42,6 +42,8 @@ export class DestinationGroupList extends Translated {
     source: this.pageKey,
     computation: () => new Set(),
   });
+
+  protected readonly enterIndex = enterIndex;
 
   protected toggle(airport: string) {
     this.open.update((open) => toggled(open, airport));

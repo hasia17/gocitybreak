@@ -6,7 +6,7 @@ import { DestinationGroupList } from './destination-group-list';
 import { DestinationGroup } from './destination-groups';
 import { OfferItem } from './offer';
 import { OfferView } from './offer-view';
-import { pagedBy } from './paging';
+import { enterIndex, pagedBy } from './paging';
 import { SortOrder } from './search-api';
 
 /** The heading, sort and offers of a search's results, shown 20 at a time. */
@@ -15,6 +15,7 @@ import { SortOrder } from './search-api';
   // Its offers show a price age that follows the clock.
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [ReactiveFormsModule, OfferItem, DestinationGroupList],
+  host: { '[attr.data-stagger]': 'stagger() ? "" : null' },
   styleUrl: './offer-list.css',
   templateUrl: './offer-list.html',
 })
@@ -27,10 +28,14 @@ export class OfferList extends Translated {
   readonly pageKey = input<unknown>();
   readonly sort = input.required<FormControl<SortOrder>>();
   readonly showSort = input(true);
+  /** Whether the offers come from a new search: only then do the first ones stagger in. */
+  readonly stagger = input(false);
   /** Texts of the interface language; undefined until they have loaded. */
   readonly texts = input<Texts | undefined>();
 
   protected readonly page = pagedBy(this.pageKey);
+
+  protected readonly enterIndex = enterIndex;
 
   protected visibleOffers() {
     return this.offers().slice(0, this.page.shown());

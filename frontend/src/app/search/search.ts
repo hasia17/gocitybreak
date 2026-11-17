@@ -271,6 +271,8 @@ export class Search extends Translated {
   private readonly sort = toSignal(this.form.controls.sort.valueChanges, {
     initialValue: this.form.controls.sort.value,
   });
+  /** Whether the offers on show come from a new search, not yet re-sorted: only those stagger in. */
+  protected readonly newSearch = signal(false);
   /** Changes with a new search or sort, not with the language: the list then starts at page one. */
   protected readonly pageKey = computed(() => ({ found: this.found(), sort: this.sort() }));
   /**
@@ -338,6 +340,8 @@ export class Search extends Translated {
   constructor() {
     super();
     this.form.controls.sort.valueChanges.pipe(takeUntilDestroyed()).subscribe((sort) => {
+      // Re-sorted offers show at once.
+      this.newSearch.set(false);
       // The sort is chosen over the results, after searching: remember it on its own.
       saveSearchSettings({ ...loadSearchSettings(), sort });
     });
@@ -448,6 +452,7 @@ export class Search extends Translated {
     this.http.post<SearchResponse>('/api/search', buildSearchQuery(v, this.catalogue())).subscribe({
       next: (resp) => {
         this.found.set({ offers: resp.offers, at: Date.now() });
+        this.newSearch.set(true);
         this.searched.set(v);
         this.collapsed.set(true);
         this.loading.set(false);

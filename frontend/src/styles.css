@@ -37,6 +37,7 @@
   --motion-short: 120ms; /* suggestions, validation messages */
   --motion-medium: 200ms; /* sections, skeleton to results */
   --motion-long: 280ms; /* form to summary bar and back */
+  --motion-stagger: 30ms; /* between offers entering after a new search */
   --motion-ease-enter: cubic-bezier(0.22, 1, 0.36, 1);
   --motion-ease-exit: cubic-bezier(0.4, 0, 1, 1);
   /* Lets height animate to and from auto; browsers without it change size instantly. */
@@ -66,6 +67,7 @@
     --motion-short: 0ms;
     --motion-medium: 0ms;
     --motion-long: 0ms;
+    --motion-stagger: 0ms;
   }
 }
 

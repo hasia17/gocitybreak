@@ -96,3 +96,15 @@
   padding: 0 0.75rem;
   font-size: 0.8rem;
 }
+
+/* After a new search only (the list is marked then): the first offers enter one after another. */
+:host([data-stagger]) .offers > li[style*='--enter-index'] {
+  animation: offer-in var(--motion-medium) var(--motion-ease-enter) backwards;
+  animation-delay: calc(var(--enter-index) * var(--motion-stagger));
+}
+@keyframes offer-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}

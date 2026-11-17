@@ -8,10 +8,10 @@
   <span class="from">{{ t('results.board.from') }}</span>
 </div>
 <ol class="groups">
-  @for (group of visibleGroups(); track group.airport) {
+  @for (group of visibleGroups(); track group.airport; let index = $index) {
     @let best = group.offers[0];
     @let isOpen = open().has(group.airport);
-    <li data-testid="group">
+    <li data-testid="group" [style.--enter-index]="enterIndex(index)">
       <button
         type="button"
         class="group-row"

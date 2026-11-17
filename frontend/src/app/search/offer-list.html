@@ -26,7 +26,12 @@
   } @else {
     <ol class="offers">
       @for (offer of visibleOffers(); track $index) {
-        <li app-offer [offer]="offer" [texts]="texts()"></li>
+        <li
+          app-offer
+          [style.--enter-index]="enterIndex($index)"
+          [offer]="offer"
+          [texts]="texts()"
+        ></li>
       }
     </ol>
     @if (page.shown() < offers().length) {

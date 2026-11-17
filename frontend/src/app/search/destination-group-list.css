@@ -161,3 +161,15 @@ app-price-stamp {
     padding: 0 0.25rem 0.5rem;
   }
 }
+
+/* After a new search only (the list is marked then): the first groups enter one after another. */
+:host-context(app-offer-list[data-stagger]) .groups > li[style*='--enter-index'] {
+  animation: group-in var(--motion-medium) var(--motion-ease-enter) backwards;
+  animation-delay: calc(var(--enter-index) * var(--motion-stagger));
+}
+@keyframes group-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
