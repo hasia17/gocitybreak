@@ -32,6 +32,16 @@
   --subtle: color-mix(in srgb, var(--ink) 6%, var(--card));
   --faint: color-mix(in srgb, var(--muted) 65%, var(--card));
   color-scheme: light dark;
+
+  /* Motion tokens (spec #79): every transition takes its timing from these. */
+  --motion-short: 120ms; /* suggestions, validation messages */
+  --motion-medium: 200ms; /* sections, skeleton to results */
+  --motion-long: 280ms; /* form to summary bar and back */
+  --motion-stagger: 30ms; /* between offers entering after a new search */
+  --motion-ease-enter: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  /* Lets height animate to and from auto; browsers without it change size instantly. */
+  interpolate-size: allow-keywords;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -48,6 +58,86 @@
     --blue: #8ea8f0;
     --on-blue: #12161f;
     --ok: #4ade80;
+  }
+}
+
+/* The one reduced-motion rule: zeroing the tokens makes every transition instant. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-short: 0ms;
+    --motion-medium: 0ms;
+    --motion-long: 0ms;
+    --motion-stagger: 0ms;
+  }
+}
+
+/* Fade plus a short slide by `--shift` (default none); the element sets the distance. */
+@keyframes shift-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--shift, 0));
+  }
+}
+@keyframes shift-out {
+  to {
+    opacity: 0;
+    transform: translateY(var(--shift, 0));
+  }
+}
+
+/* After a new search only (the list is marked then): the first offers and groups enter one after another. */
+app-offer-list[data-stagger] [style*='--enter-index'] {
+  --shift: 0.5rem;
+  animation: shift-in var(--motion-medium) var(--motion-ease-enter) backwards;
+  animation-delay: calc(var(--enter-index) * var(--motion-stagger));
+}
+
+/* Validation messages: fade in and open their space, and leave the same way, so the form never jumps. */
+.field-error-enter {
+  overflow: hidden;
+  animation: field-error-in var(--motion-short) var(--motion-ease-enter);
+}
+.field-error-leave {
+  overflow: hidden;
+  animation: field-error-out var(--motion-short) var(--motion-ease-exit) forwards;
+}
+@keyframes field-error-in {
+  from {
+    opacity: 0;
+    height: 0;
+    margin-top: 0;
+  }
+}
+@keyframes field-error-out {
+  to {
+    opacity: 0;
+    height: 0;
+    margin-top: 0;
+  }
+}
+
+/* Skeleton to results: the skeleton fades out over the results, which fade in beneath it. */
+.results-enter {
+  animation: results-in var(--motion-medium) var(--motion-ease-enter);
+}
+.results-leave {
+  position: absolute;
+  inset: 0 0 auto;
+  pointer-events: none;
+  animation: results-out var(--motion-medium) var(--motion-ease-exit) forwards;
+}
+/* The results region anchors a skeleton that fades out while the results fade in. */
+.results-region {
+  position: relative;
+}
+@keyframes results-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes results-out {
+  to {
+    opacity: 0;
   }
 }
 

@@ -17,6 +17,7 @@ import {
   Validator,
 } from '@angular/forms';
 import { TranslocoService } from '@jsverse/transloco';
+import { FieldError } from './field-error';
 import { Catalogue } from './search-api';
 import {
   PlaceSelection,
@@ -34,6 +35,7 @@ import { cataloguePlaces, PlaceField, PlaceSuggestion, suggestPlaces } from './p
     { provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => PlaceChips), multi: true },
     { provide: NG_VALIDATORS, useExisting: forwardRef(() => PlaceChips), multi: true },
   ],
+  imports: [FieldError],
   styleUrl: './place-chips.css',
   host: { '(document:click)': 'clickOutside($event)' },
   template: `
@@ -79,6 +81,8 @@ import { cataloguePlaces, PlaceField, PlaceSuggestion, suggestPlaces } from './p
       @if (listOpen()) {
         <div
           class="chosen-list"
+          animate.enter="dropdown-enter"
+          animate.leave="dropdown-leave"
           role="group"
           [id]="id + '-chosen'"
           [attr.aria-label]="t('places.chosen', { count: chosen().length })"
@@ -127,11 +131,16 @@ import { cataloguePlaces, PlaceField, PlaceSuggestion, suggestPlaces } from './p
         (keydown)="key($event)"
       />
     </div>
-    @if (error()) {
-      <span class="field-error" [id]="id + '-error'" role="alert">{{ error() }}</span>
-    }
+    <app-field-error [message]="error()" [errorId]="id + '-error'" />
     @if (open()) {
-      <div role="listbox" [id]="id + '-list'" [attr.aria-label]="label()" class="suggestions">
+      <div
+        role="listbox"
+        [id]="id + '-list'"
+        [attr.aria-label]="label()"
+        class="suggestions"
+        animate.enter="dropdown-enter"
+        animate.leave="dropdown-leave"
+      >
         @for (place of suggestions(); track place.value; let i = $index) {
           <button
             type="button"

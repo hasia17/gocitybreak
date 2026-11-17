@@ -1,0 +1,15 @@
+:host {
+  display: block;
+  max-width: 18rem;
+}
+/* Nothing to show: take no room, so a grid or flex gap does not open around it. */
+:host(:empty) {
+  display: none;
+}
+.field-error {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--danger);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}

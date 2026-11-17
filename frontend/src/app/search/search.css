@@ -100,7 +100,8 @@ h1 {
   margin: 0;
   -webkit-appearance: none;
 }
-[hidden] {
+/* Elements that fold out of [hidden] (`.foldable`) are hidden by their own transition rules. */
+[hidden]:not(.foldable) {
   display: none !important;
 }
 .options {
@@ -151,14 +152,6 @@ h1 {
   }
 }
 
-.field-error {
-  display: block;
-  max-width: 18rem;
-  margin-top: 0.25rem;
-  color: var(--danger);
-  font-size: 0.75rem;
-  line-height: 1.4;
-}
 /* Keep tooltip triggers next to headings, outside labels and their input hit areas. */
 .mode-choice,
 .field-heading {

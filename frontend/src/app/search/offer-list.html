@@ -22,15 +22,25 @@
     }
   </header>
   @if (groups(); as groups) {
-    <app-destination-group-list [groups]="groups" [pageKey]="pageKey()" [texts]="texts()" />
+    <app-destination-group-list
+      [groups]="groups"
+      [pageKey]="pageKey()"
+      [texts]="texts()"
+      (pageAdded)="staggering.set(false)"
+    />
   } @else {
     <ol class="offers">
       @for (offer of visibleOffers(); track $index) {
-        <li app-offer [offer]="offer" [texts]="texts()"></li>
+        <li
+          app-offer
+          [style.--enter-index]="enterIndex($index)"
+          [offer]="offer"
+          [texts]="texts()"
+        ></li>
       }
     </ol>
     @if (page.shown() < offers().length) {
-      <button class="show-more" type="button" (click)="page.showMore()">
+      <button class="show-more" type="button" (click)="showMore()">
         {{ t('results.showMore') }}
       </button>
     }
