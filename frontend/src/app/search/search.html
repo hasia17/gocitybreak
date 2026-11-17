@@ -442,11 +442,16 @@
     aria-live="polite"
   >
     @if (loading()) {
-      <app-results-skeleton />
+      <app-results-skeleton animate.leave="results-leave" />
     } @else if (noOffers(); as noOffers) {
-      <app-no-offers-message [noOffers]="noOffers" (chosen)="applySuggestion($event)" />
+      <app-no-offers-message
+        animate.enter="results-enter"
+        [noOffers]="noOffers"
+        (chosen)="applySuggestion($event)"
+      />
     } @else if (offers(); as offers) {
       <app-offer-list
+        animate.enter="results-enter"
         [offers]="offers"
         [groups]="groups()"
         [pageKey]="pageKey()"

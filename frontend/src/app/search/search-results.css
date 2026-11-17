@@ -14,3 +14,7 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+/* The results region is the anchor for a skeleton that fades out while the results fade in. */
+section[data-testid='results'] {
+  position: relative;
+}

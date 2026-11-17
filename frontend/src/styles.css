@@ -93,6 +93,27 @@
   }
 }
 
+/* Skeleton to results: the skeleton fades out over the results, which fade in beneath it. */
+.results-enter {
+  animation: results-in var(--motion-medium) var(--motion-ease-enter);
+}
+.results-leave {
+  position: absolute;
+  inset: 0 0 auto;
+  pointer-events: none;
+  animation: results-out var(--motion-medium) var(--motion-ease-exit) forwards;
+}
+@keyframes results-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes results-out {
+  to {
+    opacity: 0;
+  }
+}
+
 body {
   margin: 0;
   background: var(--bg);
