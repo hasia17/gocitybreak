@@ -21,19 +21,4 @@
   <main>
     <app-search />
   </main>
-
-  <footer>
-    @if (apiStatus.hasValue()) {
-      @let status = apiStatus.value();
-      <ul>
-        <li>{{ t('app.apiStatus', { status: status.status }) }}</li>
-        <li>{{ t('app.version', { version: status.version }) }}</li>
-        <li>{{ t('app.database', { status: status.database.status }) }}</li>
-      </ul>
-    } @else if (apiStatus.error()) {
-      <p role="alert">{{ t('app.apiUnavailable') }}</p>
-    } @else {
-      <p>{{ t('app.checkingApi') }}</p>
-    }
-  </footer>
 </ng-container>

@@ -12,8 +12,7 @@ header {
 }
 
 header,
-main,
-footer {
+main {
   box-sizing: border-box;
   width: 100%;
   max-width: 60rem;
@@ -61,25 +60,4 @@ footer {
 
 main {
   flex: 1;
-}
-
-footer {
-  padding-block: 3rem 1.5rem;
-  color: var(--muted);
-  font-size: 0.8rem;
-  text-align: center;
-}
-
-footer ul {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.25rem 1rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-footer p {
-  margin: 0;
 }
