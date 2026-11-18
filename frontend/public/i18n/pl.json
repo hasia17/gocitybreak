@@ -1,11 +1,6 @@
 {
   "app": {
-    "language": "Język",
-    "apiStatus": "API: {{status}}",
-    "version": "Wersja: {{version}}",
-    "database": "Baza danych: {{status}}",
-    "apiUnavailable": "API niedostępne.",
-    "checkingApi": "Sprawdzam API…"
+    "language": "Język"
   },
   "search": {
     "title": "Gdzie na weekend?",

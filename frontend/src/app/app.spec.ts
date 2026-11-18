@@ -24,43 +24,11 @@ describe('App', () => {
     localStorage.clear();
   });
 
-  /** Renders the app; its /api/status request stays pending until the test answers it. */
   function render() {
     const fixture = TestBed.createComponent(App);
     TestBed.tick();
     return fixture;
   }
-
-  it('shows the API version and database status from /api/status', async () => {
-    const fixture = render();
-
-    httpTesting.expectOne('/api/status').flush({
-      status: 'ok',
-      version: '1.2.3',
-      database: { status: 'ok', schemaVersion: 1 },
-    });
-    await fixture.whenStable();
-
-    const text = (fixture.nativeElement as HTMLElement).textContent;
-    expect(text).toContain('API: ok');
-    expect(text).toContain('Version: 1.2.3');
-    expect(text).toContain('Database: ok');
-  });
-
-  it('shows an alert when /api/status fails', async () => {
-    const fixture = render();
-
-    httpTesting
-      .expectOne('/api/status')
-      .flush(
-        { status: 'degraded', version: '1.2.3', database: { status: 'unavailable' } },
-        { status: 503, statusText: 'Service Unavailable' },
-      );
-    await fixture.whenStable();
-
-    const alert = (fixture.nativeElement as HTMLElement).querySelector('[role="alert"]');
-    expect(alert?.textContent).toContain('API unavailable');
-  });
 
   describe('language', () => {
     function languageButton(root: HTMLElement, code: string) {
@@ -72,14 +40,10 @@ describe('App', () => {
     it('starts in Polish for a Polish browser, with Polish formats', async () => {
       vi.spyOn(navigator, 'language', 'get').mockReturnValue('pl-PL');
       const fixture = render();
-      httpTesting
-        .expectOne('/api/status')
-        .flush({ status: 'ok', version: '1', database: { status: 'ok' } });
       await fixture.whenStable();
       const root = fixture.nativeElement as HTMLElement;
 
       expect(root.querySelector('h1')?.textContent).toBe('Gdzie na weekend?');
-      expect(root.textContent).toContain('Wersja: 1');
       expect(languageButton(root, 'PL').getAttribute('aria-pressed')).toBe('true');
       expect(document.documentElement.lang).toBe('pl');
     });
@@ -87,9 +51,6 @@ describe('App', () => {
     it('starts in English for any other browser language', async () => {
       vi.spyOn(navigator, 'language', 'get').mockReturnValue('de-DE');
       const fixture = render();
-      httpTesting
-        .expectOne('/api/status')
-        .flush({ status: 'ok', version: '1', database: { status: 'ok' } });
       await fixture.whenStable();
 
       expect((fixture.nativeElement as HTMLElement).querySelector('h1')?.textContent).toBe(
@@ -100,9 +61,6 @@ describe('App', () => {
     it('switches language without a reload, keeping what was typed, and remembers the choice', async () => {
       vi.spyOn(navigator, 'language', 'get').mockReturnValue('en-GB');
       const fixture = render();
-      httpTesting
-        .expectOne('/api/status')
-        .flush({ status: 'ok', version: '1', database: { status: 'ok' } });
       await fixture.whenStable();
       let root = fixture.nativeElement as HTMLElement;
       const from = root.querySelector<HTMLInputElement>(
@@ -134,9 +92,6 @@ describe('App', () => {
       }).compileComponents();
       httpTesting = TestBed.inject(HttpTestingController);
       const next = render();
-      httpTesting
-        .expectOne('/api/status')
-        .flush({ status: 'ok', version: '1', database: { status: 'ok' } });
       await next.whenStable();
       root = next.nativeElement as HTMLElement;
       expect(root.querySelector('h1')?.textContent).toBe('Gdzie na weekend?');

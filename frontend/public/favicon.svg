@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <pattern id="airmail" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="8" height="8" fill="#fff" />
+      <rect width="2.6" height="8" fill="#de6066" />
+      <rect x="4" width="2.6" height="8" fill="#284b9b" />
+    </pattern>
+  </defs>
+  <polygon points="14,19 29,4 19,28" fill="#284b9b" stroke="#1e2430" stroke-width="1.2" stroke-linejoin="round" />
+  <polygon points="3,14 29,4 14,19" fill="#fff" stroke="url(#airmail)" stroke-width="3.4" stroke-linejoin="round" />
+  <polygon points="4.73,13.77 27.09,5.17 14.19,18.07" fill="#fff" />
+</svg>

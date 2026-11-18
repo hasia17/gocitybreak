@@ -1,11 +1,6 @@
 {
   "app": {
-    "language": "Language",
-    "apiStatus": "API: {{status}}",
-    "version": "Version: {{version}}",
-    "database": "Database: {{status}}",
-    "apiUnavailable": "API unavailable.",
-    "checkingApi": "Checking API…"
+    "language": "Language"
   },
   "search": {
     "title": "Where to this weekend?",
