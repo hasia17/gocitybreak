@@ -32,15 +32,16 @@ h1 {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-composer);
 }
+/* Equal cells that share the row, as flex items so a cell coming or going can hand over its width. */
 .fields {
-  display: grid;
+  display: flex;
   flex: 1;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
+  min-width: 0;
   /* Top-aligned, so a cell that grows with chosen places doesn't push its neighbours down. */
-  align-items: start;
+  align-items: flex-start;
 }
 .fields > .field {
+  flex: 1 1 0;
   min-width: 0;
   min-height: 4rem;
   padding: 0.6rem 0.9rem;
@@ -201,17 +202,18 @@ h1 {
     flex-direction: column;
   }
   .fields {
-    grid-auto-flow: row;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    flex-wrap: wrap;
   }
+  /* Two bases fit a row and three do not, so cells pair up and an odd last one fills its row. */
   .fields > .field {
+    flex-basis: 34%;
     border-bottom: 1px solid var(--line);
   }
+  /* A right cell keeps its border's width, unseen, so both cells of a pair grow to equal halves. */
   .fields > .field:nth-child(2n) {
-    border-right: 0;
+    border-right-color: transparent;
   }
   .fields > .field:last-child:nth-child(odd) {
-    grid-column: 1 / -1;
     border-right: 0;
   }
   .send {

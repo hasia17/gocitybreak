@@ -17,6 +17,7 @@ import {
   Validator,
 } from '@angular/forms';
 import { TranslocoService } from '@jsverse/transloco';
+import { leaveOutOfReach } from '../ui/leave-out-of-reach';
 import { FieldError } from './field-error';
 import { Catalogue } from './search-api';
 import {
@@ -44,6 +45,8 @@ import { cataloguePlaces, PlaceField, PlaceSuggestion, suggestPlaces } from './p
       @for (place of shownChips(); track place.value) {
         <span
           class="chip"
+          [animate.enter]="chipEnter()"
+          (animate.leave)="leaveChip($event)"
           [attr.data-place-chip]="place.value"
           [attr.title]="place.kind === 'city' ? cityAirports(place) : null"
         >
@@ -184,6 +187,10 @@ export class PlaceChips implements ControlValueAccessor, Validator {
   protected readonly disabled = signal(false);
   /** Whether the list of every chosen place is open, from the "+N" button. */
   protected readonly listOpen = signal(false);
+  /** Chips shift in once the user changes the places, never for the places shown on page load. */
+  private readonly armed = signal(false);
+  protected readonly chipEnter = computed(() => (this.armed() ? 'chip-enter' : ''));
+  protected readonly leaveChip = leaveOutOfReach('chip-leave');
   protected readonly open = computed(
     () => this.focused() && !this.disabled() && !!this.catalogue(),
   );
@@ -330,6 +337,7 @@ export class PlaceChips implements ControlValueAccessor, Validator {
     this.onValidatorChange();
   }
   protected choose(place: PlaceSuggestion): void {
+    this.armed.set(true);
     const places =
       this.field() === 'homeAirports' && place.kind === 'country'
         ? place.airports.map((code): PlaceSelection => ({ kind: 'airport', code }))
@@ -349,6 +357,7 @@ export class PlaceChips implements ControlValueAccessor, Validator {
     this.focused.set(false);
   }
   protected remove(value: string): void {
+    this.armed.set(true);
     this.selected.update((values) => values.filter((p) => placeValue(p) !== value));
     this.onChange(writePlaceSelections(this.selected()));
   }

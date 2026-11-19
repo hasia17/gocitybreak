@@ -1,40 +1,14 @@
 import { Offer } from './search-api';
-import { fillSearch, renderSearch, useAnimatedSearch } from './search-testing';
+import { fillSearch, offers, renderSearch, useAnimatedSearch } from './search-testing';
 
 /**
  * Offers stagger in after a new search only (#83, spec #79), with Angular animations switched on.
  * jsdom runs no CSS animations, so these specs pin the decision, not the motion: the offer list
- * carries `data-stagger` exactly while its offers are to stagger in. The timing is checked by hand.
+ * carries `data-stagger` exactly while its offers are to stagger in. Offers and groups added with
+ * "Show more" fade in together instead (#88): they carry `data-added`. The timing is checked by hand.
  */
 describe('Search offers motion', () => {
   const harness = useAnimatedSearch();
-
-  function offers(count: number, to = 'BGY'): Offer[] {
-    const fetchedAt = new Date().toISOString();
-    return Array.from({ length: count }, (_, index) => {
-      const flight = {
-        airline: 'ryanair' as const,
-        departureAirport: 'KRK',
-        arrivalAirport: to,
-        departure: { date: '2026-12-04', time: '10:00', timeZone: 'Europe/Warsaw' },
-        arrival: { date: '2026-12-04', time: '12:00', timeZone: 'Europe/Rome' },
-        originalPrice: { amount: 100 + index, currency: 'PLN' },
-        fetchedAt,
-      };
-      return {
-        kind: 'roundTrip',
-        outbound: { isDirect: true, flights: [flight] },
-        inbound: {
-          isDirect: true,
-          flights: [{ ...flight, departureAirport: to, arrivalAirport: 'KRK' }],
-        },
-        nights: 2,
-        price: { amount: 100 + index, currency: 'PLN', approximate: false },
-        priceFetchedAt: fetchedAt,
-        leaveDays: count - index,
-      };
-    });
-  }
 
   async function setup(destination = 'BGY') {
     const { fixture, root } = await renderSearch();
@@ -121,6 +95,49 @@ describe('Search offers motion', () => {
     more()!.click();
     await fixture.whenStable();
     expect(staggering()).toBe(false);
+  });
+
+  it('fades in the offers added with "Show more" together, but not the first page', async () => {
+    const { fixture, root, search, more } = await setup();
+    await search(offers(45));
+    const fading = () =>
+      Array.from(root.querySelectorAll('[data-testid="offer"]')).map((row) =>
+        row.hasAttribute('data-added'),
+      );
+    expect(fading()).toEqual(Array(20).fill(false));
+    more()!.click();
+    await fixture.whenStable();
+    expect(fading()).toEqual([...Array(20).fill(false), ...Array(20).fill(true)]);
+    more()!.click();
+    await fixture.whenStable();
+    expect(fading()).toEqual([...Array(20).fill(false), ...Array(25).fill(true)]);
+  });
+
+  it('staggers the offers of a new search after "Show more", none of them fading in', async () => {
+    const { fixture, root, search, staggering, more } = await setup();
+    await search(offers(45));
+    more()!.click();
+    await fixture.whenStable();
+    await search(offers(45));
+    expect(staggering()).toBe(true);
+    expect(root.querySelectorAll('[data-testid="offer"]')).toHaveLength(20);
+    expect(root.querySelectorAll('[data-added]')).toHaveLength(0);
+  });
+
+  it('fades in the destination groups added with "Show more" together, but not the first page', async () => {
+    const { fixture, root, search, more } = await setup('anywhere');
+    const found = Array.from({ length: 25 }, (_, i) =>
+      offers(1, `X${String(i).padStart(2, '0')}`),
+    ).flat();
+    await search(found);
+    const fading = () =>
+      Array.from(root.querySelectorAll('[data-testid="group"]')).map((group) =>
+        group.hasAttribute('data-added'),
+      );
+    expect(fading()).toEqual(Array(20).fill(false));
+    more()!.click();
+    await fixture.whenStable();
+    expect(fading()).toEqual([...Array(20).fill(false), ...Array(5).fill(true)]);
   });
 
   it('staggers destination groups the same way, but not after a sort change', async () => {

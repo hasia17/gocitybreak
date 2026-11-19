@@ -1,42 +1,4 @@
-/* A pill of mutually exclusive choices: the kind of offer and the sort order. */
-.toggle {
-  display: inline-flex;
-  gap: 0.25rem;
-  padding: 0.2rem;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 9999px;
-}
-.toggle label {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  min-height: 2.75rem;
-  padding: 0 1rem;
-  border-radius: 9999px;
-  color: var(--muted);
-  font-size: 0.875rem;
-  cursor: pointer;
-}
-.toggle label:hover {
-  background: var(--subtle);
-}
-.toggle input {
-  position: absolute;
-  inset: 0;
-  margin: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-.toggle label:has(input:checked) {
-  background: var(--accent);
-  color: var(--on-accent);
-}
-.toggle label:has(input:focus-visible) {
-  box-shadow:
-    0 0 0 2px var(--card),
-    0 0 0 4px var(--ring);
-}
+/* Where the form's pills sit; the pills themselves are styled in ui/pill-toggle.css. */
 .kind {
   margin: 0 0 0.75rem;
 }
@@ -78,9 +40,11 @@
   font-size: 1.1rem;
   line-height: 1;
   color: var(--text);
+  /* One arrow turns a quarter turn with the section's fold (spec #88). */
+  transition: transform var(--motion-medium) var(--motion-ease-enter);
 }
 .section-toggle[aria-expanded='true']::before {
-  content: '▾';
+  transform: rotate(90deg);
 }
 .section-toggle:hover {
   background: var(--subtle);

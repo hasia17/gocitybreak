@@ -50,6 +50,10 @@
   border-radius: 50%;
   background: var(--muted);
   content: '';
+  /* The knob slides and fades; the track fades as every input does (styles.css). */
+  transition:
+    var(--colour-fade),
+    transform var(--motion-short) var(--motion-ease-enter);
 }
 .leave-switch input:checked {
   background: var(--accent);

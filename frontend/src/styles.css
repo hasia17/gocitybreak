@@ -40,6 +40,12 @@
   --motion-stagger: 30ms; /* between offers entering after a new search */
   --motion-ease-enter: cubic-bezier(0.22, 1, 0.36, 1);
   --motion-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  /* Hover, checked and pressed colours fade (spec #88); nothing scales or moves. */
+  --colour-fade:
+    color var(--motion-short) var(--motion-ease-enter),
+    background-color var(--motion-short) var(--motion-ease-enter),
+    border-color var(--motion-short) var(--motion-ease-enter),
+    box-shadow var(--motion-short) var(--motion-ease-enter);
   /* Lets height animate to and from auto; browsers without it change size instantly. */
   interpolate-size: allow-keywords;
 }
@@ -71,6 +77,15 @@
   }
 }
 
+/*
+ * Every control fades between its colours. Zero specificity, so a control that transitions
+ * something else sets its own list; controls that are not buttons or inputs use --colour-fade.
+ * The search button keeps its instant colours (spec #88, story 26).
+ */
+:where(button:not(.send), input, select, textarea, label:has(input)) {
+  transition: var(--colour-fade);
+}
+
 /* Fade plus a short slide by `--shift` (default none); the element sets the distance. */
 @keyframes shift-in {
   from {
@@ -90,6 +105,11 @@ app-offer-list[data-stagger] [style*='--enter-index'] {
   --shift: 0.5rem;
   animation: shift-in var(--motion-medium) var(--motion-ease-enter) backwards;
   animation-delay: calc(var(--enter-index) * var(--motion-stagger));
+}
+/* Offers and groups added by "show more" fade in together: no stagger, no slide (#88). */
+app-offer-list [data-added] {
+  --shift: 0;
+  animation: shift-in var(--motion-medium) var(--motion-ease-enter);
 }
 
 /* Validation messages: fade in and open their space, and leave the same way, so the form never jumps. */

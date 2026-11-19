@@ -6,7 +6,7 @@ import { DestinationGroupList } from './destination-group-list';
 import { DestinationGroup } from './destination-groups';
 import { OfferItem } from './offer';
 import { OfferView } from './offer-view';
-import { enterIndex, pagedBy } from './paging';
+import { addedByShowMore, enterIndex, pagedBy } from './paging';
 import { SortOrder } from './search-api';
 
 /** The heading, sort and offers of a search's results, shown 20 at a time. */
@@ -16,7 +16,7 @@ import { SortOrder } from './search-api';
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [ReactiveFormsModule, OfferItem, DestinationGroupList],
   host: { '[attr.data-stagger]': 'staggering() ? "" : null' },
-  styleUrl: './offer-list.css',
+  styleUrls: ['./offer-list.css', '../ui/pill-toggle.css'],
   templateUrl: './offer-list.html',
 })
 export class OfferList extends Translated {
@@ -41,6 +41,7 @@ export class OfferList extends Translated {
   });
 
   protected readonly enterIndex = enterIndex;
+  protected readonly addedByShowMore = addedByShowMore;
 
   protected showMore() {
     this.page.showMore();
