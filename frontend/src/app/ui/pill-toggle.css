@@ -1,0 +1,78 @@
+/*
+ * A pill of mutually exclusive choices: the kind of offer, the date mode and the sort order.
+ * Shared by every component that shows one, so the three pills behave as one control.
+ */
+.toggle {
+  position: relative;
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.2rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 9999px;
+}
+.toggle label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  border-radius: 9999px;
+  color: var(--muted);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.toggle label:hover {
+  background: var(--subtle);
+}
+.toggle input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.toggle label:has(input:checked) {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.toggle label:has(input:focus-visible) {
+  box-shadow:
+    0 0 0 2px var(--card),
+    0 0 0 4px var(--ring);
+}
+
+/*
+ * Spec #88: one fill per pill, anchored to the checked label, slides to the option chosen by click
+ * or arrow key. It follows the label's box, so it fits any width in either language and never
+ * covers the date mode's info icons. Browsers without anchor positioning keep the fill on the
+ * label itself, which switches at once.
+ */
+@supports (anchor-name: --a) {
+  .toggle {
+    anchor-scope: --pill-choice;
+  }
+  .toggle::before {
+    content: '';
+    position: absolute;
+    position-anchor: --pill-choice;
+    top: anchor(top);
+    right: anchor(right);
+    bottom: anchor(bottom);
+    left: anchor(left);
+    border-radius: 9999px;
+    background: var(--accent);
+    transition:
+      top var(--motion-medium) var(--motion-ease-enter),
+      right var(--motion-medium) var(--motion-ease-enter),
+      bottom var(--motion-medium) var(--motion-ease-enter),
+      left var(--motion-medium) var(--motion-ease-enter);
+  }
+  .toggle label {
+    transition: color var(--motion-medium) var(--motion-ease-enter);
+  }
+  .toggle label:has(input:checked) {
+    anchor-name: --pill-choice;
+    background: none;
+  }
+}

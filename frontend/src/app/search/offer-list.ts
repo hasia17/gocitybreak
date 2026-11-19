@@ -16,7 +16,7 @@ import { SortOrder } from './search-api';
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [ReactiveFormsModule, OfferItem, DestinationGroupList],
   host: { '[attr.data-stagger]': 'staggering() ? "" : null' },
-  styleUrl: './offer-list.css',
+  styleUrls: ['./offer-list.css', '../ui/pill-toggle.css'],
   templateUrl: './offer-list.html',
 })
 export class OfferList extends Translated {

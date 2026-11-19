@@ -145,6 +145,7 @@ function rejectedSearchMessage(reason: string): string {
     './search.css',
     './search-motion.css',
     './search-toggles.css',
+    '../ui/pill-toggle.css',
     './search-filters.css',
     './search-results.css',
   ],
