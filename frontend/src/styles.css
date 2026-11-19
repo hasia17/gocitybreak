@@ -40,6 +40,12 @@
   --motion-stagger: 30ms; /* between offers entering after a new search */
   --motion-ease-enter: cubic-bezier(0.22, 1, 0.36, 1);
   --motion-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  /* Hover, checked and pressed colours fade (spec #88); nothing scales or moves. */
+  --colour-fade:
+    color var(--motion-short) var(--motion-ease-enter),
+    background-color var(--motion-short) var(--motion-ease-enter),
+    border-color var(--motion-short) var(--motion-ease-enter),
+    box-shadow var(--motion-short) var(--motion-ease-enter);
   /* Lets height animate to and from auto; browsers without it change size instantly. */
   interpolate-size: allow-keywords;
 }
@@ -69,6 +75,14 @@
     --motion-long: 0ms;
     --motion-stagger: 0ms;
   }
+}
+
+/*
+ * Every control fades between its colours. Zero specificity, so a control that transitions
+ * something else sets its own list; controls that are not buttons or inputs use --colour-fade.
+ */
+:where(button, input, select, textarea, label:has(input)) {
+  transition: var(--colour-fade);
 }
 
 /* Fade plus a short slide by `--shift` (default none); the element sets the distance. */

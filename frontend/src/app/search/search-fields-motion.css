@@ -1,3 +1,8 @@
+/* Every cell fades its hover, focus and invalid colours, the place cells too (styles.css). */
+.field {
+  transition: var(--colour-fade);
+}
+
 /*
  * Latest and Nights grow in and shrink out as they start and stop applying (spec #88). On wide
  * screens a cell takes or gives back its width while its neighbours re-share the row; below the
