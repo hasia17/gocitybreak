@@ -1,0 +1,115 @@
+/*
+ * Latest and Nights grow in and shrink out as they start and stop applying (spec #88). On wide
+ * screens a cell takes or gives back its width while its neighbours re-share the row; below the
+ * tablet breakpoint, where cells pair up, a cell that pairs up does the same and a cell on a row
+ * of its own opens or closes the row's height. Entering plays only once the user has acted, so
+ * nothing grows on page load; a leaving cell is inert (leaveOutOfReach).
+ */
+:host(.motion-armed) .fields > .field-enter,
+.fields > .field-leave {
+  overflow: clip;
+  white-space: nowrap;
+}
+:host(.motion-armed) .fields > .field-enter {
+  animation: cell-grow var(--motion-medium) var(--motion-ease-enter);
+}
+.fields > .field-leave {
+  animation: cell-shrink var(--motion-medium) var(--motion-ease-exit) forwards;
+}
+@keyframes cell-grow {
+  from {
+    flex-grow: 0;
+    flex-basis: 0;
+    padding-inline: 0;
+    border-right-width: 0;
+    opacity: 0;
+  }
+}
+@keyframes cell-shrink {
+  to {
+    flex-grow: 0;
+    flex-basis: 0;
+    padding-inline: 0;
+    border-right-width: 0;
+    opacity: 0;
+  }
+}
+@media (max-width: 1100px) {
+  :host(.motion-armed) .fields > .field-enter:nth-child(odd) {
+    animation-name: row-open;
+  }
+  .fields > .field-leave:nth-child(odd) {
+    animation-name: row-close;
+  }
+}
+
+/*
+ * The work hours and leave limit fields fold in and out with the "no leave limit" switch, over
+ * width and height, so the centred switch slides to its new place; at phone width, where they
+ * sit in rows of their own, over height only.
+ */
+:host(.motion-armed) .leave-field-enter,
+.leave-field-leave {
+  min-width: 0;
+  overflow: clip;
+  white-space: nowrap;
+}
+:host(.motion-armed) .leave-field-enter {
+  animation: leave-field-in var(--motion-medium) var(--motion-ease-enter);
+}
+.leave-field-leave {
+  animation: leave-field-out var(--motion-medium) var(--motion-ease-exit) forwards;
+}
+@keyframes leave-field-in {
+  from {
+    width: 0;
+    height: 0;
+    opacity: 0;
+  }
+}
+@keyframes leave-field-out {
+  to {
+    width: 0;
+    height: 0;
+    opacity: 0;
+  }
+}
+@media (max-width: 640px) {
+  :host(.motion-armed) .leave-field-enter {
+    animation-name: row-open;
+  }
+  .leave-field-leave {
+    animation-name: row-close;
+  }
+}
+
+@keyframes row-open {
+  from {
+    height: 0;
+    min-height: 0;
+    padding-block: 0;
+    border-bottom-width: 0;
+    opacity: 0;
+  }
+}
+@keyframes row-close {
+  to {
+    height: 0;
+    min-height: 0;
+    padding-block: 0;
+    border-bottom-width: 0;
+    opacity: 0;
+  }
+}
+
+/* The switch's knob slides and its track and knob fade to their new colours. */
+.leave-switch input {
+  transition:
+    background-color var(--motion-short) var(--motion-ease-enter),
+    border-color var(--motion-short) var(--motion-ease-enter);
+}
+.leave-switch input::before {
+  transition:
+    transform var(--motion-short) var(--motion-ease-enter),
+    background-color var(--motion-short) var(--motion-ease-enter);
+}

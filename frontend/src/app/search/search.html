@@ -30,7 +30,7 @@
     </div>
   }
 
-  <form [formGroup]="form" (ngSubmit)="submit()">
+  <form [formGroup]="form" (ngSubmit)="submit()" (change)="motionArmed.set(true)">
     <div class="toggle kind" role="radiogroup" [attr.aria-label]="t('search.kind.label')">
       <label
         ><input type="radio" formControlName="kind" value="roundTrip" />{{
@@ -99,7 +99,12 @@
           <app-field-error [message]="validationMessage('from')" [errorId]="errorId('from')" />
         </label>
         @if (applies('to')) {
-          <label class="field" [class.invalid]="invalid('to')">
+          <label
+            class="field"
+            animate.enter="field-enter"
+            (animate.leave)="leaveCell($event)"
+            [class.invalid]="invalid('to')"
+          >
             {{ t(dateMode() === 'fixed' ? 'search.inboundDate' : 'search.latest') }}
             <input
               type="date"
@@ -113,6 +118,8 @@
         @if (applies('stayLength')) {
           <div
             class="field nights"
+            animate.enter="field-enter"
+            (animate.leave)="leaveCell($event)"
             formGroupName="stayLength"
             [class.invalid]="invalid('stayLength')"
           >
@@ -190,7 +197,11 @@
             {{ t('search.ignoreLeave') }}
           </label>
           @if (!ignoreLeave()) {
-            <div class="field-info">
+            <div
+              class="field-info"
+              animate.enter="leave-field-enter"
+              (animate.leave)="leaveLeaveField($event)"
+            >
               <label class="field time" [class.invalid]="invalid('leave.workStart')">
                 {{ t('search.workStart') }}
                 <input
@@ -206,7 +217,11 @@
               </label>
               <app-info-tip [label]="t('tips.workStart.label')" [text]="t('tips.workHours.text')" />
             </div>
-            <div class="field-info">
+            <div
+              class="field-info"
+              animate.enter="leave-field-enter"
+              (animate.leave)="leaveLeaveField($event)"
+            >
               <label class="field time" [class.invalid]="invalid('leave.workEnd')">
                 {{ t('search.workEnd') }}
                 <input
@@ -222,7 +237,11 @@
               </label>
               <app-info-tip [label]="t('tips.workEnd.label')" [text]="t('tips.workHours.text')" />
             </div>
-            <div class="field-info">
+            <div
+              class="field-info"
+              animate.enter="leave-field-enter"
+              (animate.leave)="leaveLeaveField($event)"
+            >
               <label class="field leave" [class.invalid]="invalid('leave.maxLeaveDays')">
                 {{ t('search.maxLeaveDays') }}
                 <input
