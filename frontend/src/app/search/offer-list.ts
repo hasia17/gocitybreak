@@ -6,7 +6,7 @@ import { DestinationGroupList } from './destination-group-list';
 import { DestinationGroup } from './destination-groups';
 import { OfferItem } from './offer';
 import { OfferView } from './offer-view';
-import { enterIndex, pagedBy } from './paging';
+import { addedByShowMore, enterIndex, pagedBy } from './paging';
 import { SortOrder } from './search-api';
 
 /** The heading, sort and offers of a search's results, shown 20 at a time. */
@@ -41,6 +41,7 @@ export class OfferList extends Translated {
   });
 
   protected readonly enterIndex = enterIndex;
+  protected readonly addedByShowMore = addedByShowMore;
 
   protected showMore() {
     this.page.showMore();
