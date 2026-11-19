@@ -34,6 +34,7 @@
         <li
           app-offer
           [style.--enter-index]="enterIndex($index)"
+          [attr.data-added]="addedByShowMore($index) ? '' : null"
           [offer]="offer"
           [texts]="texts()"
         ></li>
