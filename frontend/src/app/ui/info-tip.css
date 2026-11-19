@@ -49,8 +49,17 @@ svg {
   font-weight: 400;
   line-height: 1.4;
   text-align: left;
+  /* Fades in and out (#88); hidden at rest, still in the page for aria-describedby, never clickable. */
+  opacity: 0;
   visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--motion-short) var(--motion-ease-exit),
+    visibility var(--motion-short);
 }
 [role='tooltip'].open {
+  opacity: 1;
   visibility: visible;
+  pointer-events: auto;
+  transition-timing-function: var(--motion-ease-enter);
 }
