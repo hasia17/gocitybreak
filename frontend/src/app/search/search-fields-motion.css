@@ -107,14 +107,9 @@
   }
 }
 
-/* The switch's knob slides and its track and knob fade to their new colours. */
-.leave-switch input {
-  transition:
-    background-color var(--motion-short) var(--motion-ease-enter),
-    border-color var(--motion-short) var(--motion-ease-enter);
-}
+/* The switch's knob slides and its track (an input, styles.css) and knob fade to their new colours. */
 .leave-switch input::before {
   transition:
-    transform var(--motion-short) var(--motion-ease-enter),
-    background-color var(--motion-short) var(--motion-ease-enter);
+    var(--colour-fade),
+    transform var(--motion-short) var(--motion-ease-enter);
 }
