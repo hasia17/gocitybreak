@@ -28,6 +28,7 @@ import { PlaceChips } from './place-chips';
 import { PlaceTranslations } from './place-translations';
 import { restorePlaces } from './place-suggestions';
 import { InfoTip } from '../ui/info-tip';
+import { leaveOutOfReach } from '../ui/leave-out-of-reach';
 import { OfferList } from './offer-list';
 import { NoOffersMessage } from './no-offers-message';
 import { describeNoOffers, SuggestionId } from './no-offers';
@@ -144,6 +145,7 @@ function rejectedSearchMessage(reason: string): string {
   styleUrls: [
     './search.css',
     './search-motion.css',
+    './search-fields-motion.css',
     './search-toggles.css',
     '../ui/pill-toggle.css',
     './search-filters.css',
@@ -232,6 +234,9 @@ export class Search extends Translated {
    * then, so nothing moves on page load, a remembered-open panel included.
    */
   protected readonly motionArmed = signal(false);
+  /** A field leaving the row (Latest, Nights) or the Leave section: out of Tab's reach as it goes. */
+  protected readonly leaveCell = leaveOutOfReach('field-leave');
+  protected readonly leaveLeaveField = leaveOutOfReach('leave-field-leave');
 
   /** The filters in use: exclusions, direct flights, time ranges and departure days that restrict. */
   private readonly filterCount = computed(() => {
