@@ -59,6 +59,24 @@ input::placeholder {
   color: var(--text);
   font-size: 0.85rem;
 }
+/* A chosen place shifts in; a removed one fades while its space closes, so neighbours slide in (#88). */
+.chip-enter {
+  --shift: -4px;
+  animation: shift-in var(--motion-short) var(--motion-ease-enter);
+}
+.chip-leave {
+  overflow: hidden;
+  animation: chip-out var(--motion-short) var(--motion-ease-exit) forwards;
+}
+@keyframes chip-out {
+  to {
+    opacity: 0;
+    width: 0;
+    padding-inline: 0;
+    /* Takes back the row's gap after the chip, so nothing is left where it was. */
+    margin-inline-end: -0.25rem;
+  }
+}
 .chip-name {
   overflow: hidden;
   text-overflow: ellipsis;
