@@ -11,7 +11,11 @@
   @for (group of visibleGroups(); track group.airport; let index = $index) {
     @let best = group.offers[0];
     @let isOpen = open().has(group.airport);
-    <li data-testid="group" [style.--enter-index]="enterIndex(index)">
+    <li
+      data-testid="group"
+      [style.--enter-index]="enterIndex(index)"
+      [attr.data-added]="addedByShowMore(index) ? '' : null"
+    >
       <button
         type="button"
         class="group-row"

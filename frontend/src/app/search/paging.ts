@@ -19,5 +19,10 @@ export function pagedBy(key: Signal<unknown>) {
  * that showing more adds enter at once.
  */
 export function enterIndex(index: number): number | null {
-  return index < pageSize ? Math.min(index, staggerSteps - 1) : null;
+  return addedByShowMore(index) ? null : Math.min(index, staggerSteps - 1);
+}
+
+/** Whether an item is past the first page, so "show more" added it: such items fade in together. */
+export function addedByShowMore(index: number): boolean {
+  return index >= pageSize;
 }

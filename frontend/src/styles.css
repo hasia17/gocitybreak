@@ -91,6 +91,11 @@ app-offer-list[data-stagger] [style*='--enter-index'] {
   animation: shift-in var(--motion-medium) var(--motion-ease-enter) backwards;
   animation-delay: calc(var(--enter-index) * var(--motion-stagger));
 }
+/* Offers and groups added by "show more" fade in together: no stagger, no slide (#88). */
+app-offer-list [data-added] {
+  --shift: 0;
+  animation: shift-in var(--motion-medium) var(--motion-ease-enter);
+}
 
 /* Validation messages: fade in and open their space, and leave the same way, so the form never jumps. */
 .field-error-enter {
