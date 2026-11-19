@@ -200,7 +200,7 @@
             <div
               class="field-info"
               animate.enter="leave-field-enter"
-              (animate.leave)="leaveLeaveField($event)"
+              (animate.leave)="foldLeaveSectionField($event)"
             >
               <label class="field time" [class.invalid]="invalid('leave.workStart')">
                 {{ t('search.workStart') }}
@@ -220,7 +220,7 @@
             <div
               class="field-info"
               animate.enter="leave-field-enter"
-              (animate.leave)="leaveLeaveField($event)"
+              (animate.leave)="foldLeaveSectionField($event)"
             >
               <label class="field time" [class.invalid]="invalid('leave.workEnd')">
                 {{ t('search.workEnd') }}
@@ -240,7 +240,7 @@
             <div
               class="field-info"
               animate.enter="leave-field-enter"
-              (animate.leave)="leaveLeaveField($event)"
+              (animate.leave)="foldLeaveSectionField($event)"
             >
               <label class="field leave" [class.invalid]="invalid('leave.maxLeaveDays')">
                 {{ t('search.maxLeaveDays') }}
