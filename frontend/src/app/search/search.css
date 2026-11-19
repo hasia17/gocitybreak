@@ -211,8 +211,9 @@ h1 {
   .fields > .field {
     border-bottom: 1px solid var(--line);
   }
+  /* A right cell keeps its border's width, unseen, so both cells of a pair grow to equal halves. */
   .fields > .field:nth-child(2n) {
-    border-right: 0;
+    border-right-color: transparent;
   }
   .fields > .field:last-child:nth-child(odd) {
     border-right: 0;
