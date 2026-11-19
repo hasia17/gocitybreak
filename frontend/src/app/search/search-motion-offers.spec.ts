@@ -1,5 +1,5 @@
 import { Offer } from './search-api';
-import { fillSearch, renderSearch, useAnimatedSearch } from './search-testing';
+import { fillSearch, offers, renderSearch, useAnimatedSearch } from './search-testing';
 
 /**
  * Offers stagger in after a new search only (#83, spec #79), with Angular animations switched on.
@@ -9,33 +9,6 @@ import { fillSearch, renderSearch, useAnimatedSearch } from './search-testing';
  */
 describe('Search offers motion', () => {
   const harness = useAnimatedSearch();
-
-  function offers(count: number, to = 'BGY'): Offer[] {
-    const fetchedAt = new Date().toISOString();
-    return Array.from({ length: count }, (_, index) => {
-      const flight = {
-        airline: 'ryanair' as const,
-        departureAirport: 'KRK',
-        arrivalAirport: to,
-        departure: { date: '2026-12-04', time: '10:00', timeZone: 'Europe/Warsaw' },
-        arrival: { date: '2026-12-04', time: '12:00', timeZone: 'Europe/Rome' },
-        originalPrice: { amount: 100 + index, currency: 'PLN' },
-        fetchedAt,
-      };
-      return {
-        kind: 'roundTrip',
-        outbound: { isDirect: true, flights: [flight] },
-        inbound: {
-          isDirect: true,
-          flights: [{ ...flight, departureAirport: to, arrivalAirport: 'KRK' }],
-        },
-        nights: 2,
-        price: { amount: 100 + index, currency: 'PLN', approximate: false },
-        priceFetchedAt: fetchedAt,
-        leaveDays: count - index,
-      };
-    });
-  }
 
   async function setup(destination = 'BGY') {
     const { fixture, root } = await renderSearch();

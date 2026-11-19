@@ -1,5 +1,4 @@
-import { Offer } from './search-api';
-import { fillSearch, renderSearch, useAnimatedSearch } from './search-testing';
+import { fillSearch, offers, renderSearch, useAnimatedSearch } from './search-testing';
 
 /**
  * The pill toggles slide one shared fill to the chosen option (spec #88). jsdom runs no CSS
@@ -8,31 +7,6 @@ import { fillSearch, renderSearch, useAnimatedSearch } from './search-testing';
  */
 describe('Search pill toggle motion', () => {
   const harness = useAnimatedSearch();
-
-  function offer(): Offer {
-    const fetchedAt = new Date().toISOString();
-    const flight = {
-      airline: 'ryanair' as const,
-      departureAirport: 'KRK',
-      arrivalAirport: 'BGY',
-      departure: { date: '2026-12-04', time: '10:00', timeZone: 'Europe/Warsaw' },
-      arrival: { date: '2026-12-04', time: '12:00', timeZone: 'Europe/Rome' },
-      originalPrice: { amount: 100, currency: 'PLN' },
-      fetchedAt,
-    };
-    return {
-      kind: 'roundTrip',
-      outbound: { isDirect: true, flights: [flight] },
-      inbound: {
-        isDirect: true,
-        flights: [{ ...flight, departureAirport: 'BGY', arrivalAirport: 'KRK' }],
-      },
-      nights: 2,
-      price: { amount: 100, currency: 'PLN', approximate: false },
-      priceFetchedAt: fetchedAt,
-      leaveDays: 1,
-    };
-  }
 
   function option(root: HTMLElement, group: string, value: string): HTMLInputElement {
     return root.querySelector<HTMLInputElement>(`[aria-label="${group}"] input[value="${value}"]`)!;
@@ -57,7 +31,7 @@ describe('Search pill toggle motion', () => {
     const { fixture, root } = await renderSearch();
     fillSearch(root);
     root.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
-    harness.http.expectOne('/api/search').flush({ offers: [offer()] });
+    harness.http.expectOne('/api/search').flush({ offers: offers(1) });
     await fixture.whenStable();
 
     const chosen = option(root, 'Sort by', 'leaveDays');

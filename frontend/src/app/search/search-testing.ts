@@ -5,6 +5,7 @@ import { afterEach, beforeEach, vi } from 'vitest';
 import { provideTestI18n } from '../i18n/testing';
 import { fillPlace, flushCatalogue } from './place-testing';
 import { Search } from './search';
+import { Offer } from './search-api';
 
 /** Keep the 2026 search fixtures in the future while Angular's scheduling stays real. */
 export function useSearchClock() {
@@ -56,4 +57,32 @@ export function fillSearch(root: HTMLElement, destination = 'BGY') {
     input.value = value;
     input.dispatchEvent(new Event('input'));
   }
+}
+
+/** `count` round trips from Kraków to `to`, PLN 100 up, the cheapest costing the most leave. */
+export function offers(count: number, to = 'BGY'): Offer[] {
+  const fetchedAt = new Date().toISOString();
+  return Array.from({ length: count }, (_, index) => {
+    const flight = {
+      airline: 'ryanair' as const,
+      departureAirport: 'KRK',
+      arrivalAirport: to,
+      departure: { date: '2026-12-04', time: '10:00', timeZone: 'Europe/Warsaw' },
+      arrival: { date: '2026-12-04', time: '12:00', timeZone: 'Europe/Rome' },
+      originalPrice: { amount: 100 + index, currency: 'PLN' },
+      fetchedAt,
+    };
+    return {
+      kind: 'roundTrip',
+      outbound: { isDirect: true, flights: [flight] },
+      inbound: {
+        isDirect: true,
+        flights: [{ ...flight, departureAirport: to, arrivalAirport: 'KRK' }],
+      },
+      nights: 2,
+      price: { amount: 100 + index, currency: 'PLN', approximate: false },
+      priceFetchedAt: fetchedAt,
+      leaveDays: count - index,
+    };
+  });
 }
