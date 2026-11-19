@@ -11,7 +11,7 @@ import { Translated } from '../i18n/translated';
 import { DestinationGroup } from './destination-groups';
 import { OfferItem } from './offer';
 import { OfferView } from './offer-view';
-import { enterIndex, pagedBy } from './paging';
+import { addedByShowMore, enterIndex, pagedBy } from './paging';
 import { PriceStamp } from './price-stamp';
 
 /** Offers an open group shows before "Show all". */
@@ -54,6 +54,7 @@ export class DestinationGroupList extends Translated {
   });
 
   protected readonly enterIndex = enterIndex;
+  protected readonly addedByShowMore = addedByShowMore;
 
   protected showMore() {
     this.page.showMore();
