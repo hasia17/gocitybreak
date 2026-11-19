@@ -236,7 +236,7 @@ export class Search extends Translated {
   protected readonly motionArmed = signal(false);
   /** A field leaving the row (Latest, Nights) or the Leave section: out of Tab's reach as it goes. */
   protected readonly leaveCell = leaveOutOfReach('field-leave');
-  protected readonly leaveLeaveField = leaveOutOfReach('leave-field-leave');
+  protected readonly foldLeaveSectionField = leaveOutOfReach('leave-field-leave');
 
   /** The filters in use: exclusions, direct flights, time ranges and departure days that restrict. */
   private readonly filterCount = computed(() => {

@@ -106,15 +106,3 @@
     opacity: 0;
   }
 }
-
-/* The switch's knob slides and its track and knob fade to their new colours. */
-.leave-switch input {
-  transition:
-    background-color var(--motion-short) var(--motion-ease-enter),
-    border-color var(--motion-short) var(--motion-ease-enter);
-}
-.leave-switch input::before {
-  transition:
-    transform var(--motion-short) var(--motion-ease-enter),
-    background-color var(--motion-short) var(--motion-ease-enter);
-}

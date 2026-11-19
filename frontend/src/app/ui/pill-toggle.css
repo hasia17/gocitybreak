@@ -62,12 +62,19 @@
     left: anchor(left);
     border-radius: 9999px;
     background: var(--accent);
+  }
+  /*
+   * It slides only under the traveller's pointer or focus, so a language switch or a resized
+   * window moves it at once. Safari doesn't focus a clicked radio, hence the hover as well.
+   */
+  .toggle:is(:hover, :focus-within)::before {
     transition:
       top var(--motion-medium) var(--motion-ease-enter),
       right var(--motion-medium) var(--motion-ease-enter),
       bottom var(--motion-medium) var(--motion-ease-enter),
       left var(--motion-medium) var(--motion-ease-enter);
   }
+  /* Not --colour-fade: the text colour takes the fill's medium timing, to change in step with it. */
   .toggle label {
     transition:
       color var(--motion-medium) var(--motion-ease-enter),
